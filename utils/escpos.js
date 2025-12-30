@@ -13,17 +13,17 @@ export class ESCPOSBuilder {
     }
 
     alignLeft() {
-        this.commands.push(this.ESC + 'a' + '\x00');
+        this.commands.push(this.ESC + 'a\x00');
         return this;
     }
 
     alignCenter() {
-        this.commands.push(this.ESC + 'a' + '\x01');
+        this.commands.push(this.ESC + 'a\x01');
         return this;
     }
 
     alignRight() {
-        this.commands.push(this.ESC + 'a' + '\x02');
+        this.commands.push(this.ESC + 'a\x02');
         return this;
     }
 
@@ -61,7 +61,7 @@ export class ESCPOSBuilder {
     }
 
     cut() {
-        this.commands.push(this.GS + 'V' + '\x41');
+        this.commands.push(this.GS + 'V\x41');
         return this;
     }
 
@@ -74,36 +74,44 @@ export function generarTicketESCPOS(venta, empresa, anchoLinea = 32) {
     const builder = new ESCPOSBuilder();
     
     builder.init();
+    builder.alignCenter();
     
-    builder.alignCenter().bold(true).textSize(2, 2);
+    builder.bold(true).textSize(2, 2);
     builder.text(empresa.nombre_empresa).newLine();
     
     builder.textSize(1, 1).bold(false);
     builder.text(empresa.razon_social).newLine();
-    builder.text(`RNC: ${empresa.rnc}`).newLine();
+    builder.text('RNC: ' + empresa.rnc).newLine();
     builder.text(empresa.direccion).newLine();
     if (empresa.telefono) {
-        builder.text(`Tel: ${empresa.telefono}`).newLine();
+        builder.text('Tel: ' + empresa.telefono).newLine();
     }
     
-    builder.alignLeft().line('-', anchoLinea);
+    builder.alignLeft();
+    builder.line('-', anchoLinea);
     
     builder.alignCenter().bold(true);
     builder.text(venta.tipo_comprobante_nombre).newLine();
-    builder.text(`NCF: ${venta.ncf}`).newLine();
-    builder.text(`No. ${venta.numero_interno}`).newLine();
+    builder.text('NCF: ' + venta.ncf).newLine();
+    builder.text('No. ' + venta.numero_interno).newLine();
     builder.bold(false);
     
-    builder.alignLeft().line('-', anchoLinea);
+    builder.alignLeft();
+    builder.line('-', anchoLinea);
     
     const fecha = new Date(venta.fecha_venta);
-    const fechaStr = `${String(fecha.getDate()).padStart(2, '0')}/${String(fecha.getMonth() + 1).padStart(2, '0')}/${fecha.getFullYear()} ${String(fecha.getHours()).padStart(2, '0')}:${String(fecha.getMinutes()).padStart(2, '0')}`;
-    builder.text(`Fecha: ${fechaStr}`).newLine();
-    builder.text(`Vendedor: ${venta.usuario_nombre}`).newLine();
+    const fechaStr = String(fecha.getDate()).padStart(2, '0') + '/' + 
+                     String(fecha.getMonth() + 1).padStart(2, '0') + '/' + 
+                     fecha.getFullYear() + ' ' + 
+                     String(fecha.getHours()).padStart(2, '0') + ':' + 
+                     String(fecha.getMinutes()).padStart(2, '0');
+    
+    builder.text('Fecha: ' + fechaStr).newLine();
+    builder.text('Vendedor: ' + venta.usuario_nombre).newLine();
     
     if (venta.cliente_id) {
-        builder.text(`Cliente: ${venta.cliente_nombre}`).newLine();
-        builder.text(`${venta.cliente_tipo_documento}: ${venta.cliente_numero_documento}`).newLine();
+        builder.text('Cliente: ' + venta.cliente_nombre).newLine();
+        builder.text(venta.cliente_tipo_documento + ': ' + venta.cliente_numero_documento).newLine();
     } else {
         builder.text('Cliente: Consumidor Final').newLine();
     }
@@ -125,14 +133,14 @@ export function generarTicketESCPOS(venta, empresa, anchoLinea = 32) {
             nombre = nombre.padEnd(nombreMax, ' ');
         }
         
-        builder.text(`${cant} ${nombre} ${total}`).newLine();
+        builder.text(cant + ' ' + nombre + ' ' + total).newLine();
         
         const precio = formatearMoneda(producto.precio_unitario);
-        builder.text(`      @${precio}`).newLine();
+        builder.text('      @' + precio).newLine();
         
         if (producto.cantidad_despachada < producto.cantidad) {
             const pendiente = producto.cantidad - producto.cantidad_despachada;
-            builder.text(`      Pendiente: ${pendiente}`).newLine();
+            builder.text('      Pendiente: ' + pendiente).newLine();
         }
     });
     
@@ -152,45 +160,45 @@ export function generarTicketESCPOS(venta, empresa, anchoLinea = 32) {
                 nombre = nombre.padEnd(nombreMax, ' ');
             }
             
-            builder.text(`${cant} ${nombre} ${total}`).newLine();
-            builder.text(`      @${formatearMoneda(extra.precio_unitario)}`).newLine();
+            builder.text(cant + ' ' + nombre + ' ' + total).newLine();
+            builder.text('      @' + formatearMoneda(extra.precio_unitario)).newLine();
         });
     }
     
     builder.line('-', anchoLinea);
     
     const subtotal = formatearMoneda(venta.subtotal).padStart(10, ' ');
-    builder.text(`Subtotal:${subtotal}`).newLine();
+    builder.text('Subtotal:' + subtotal).newLine();
     
     if (parseFloat(venta.descuento) > 0) {
         const descuento = formatearMoneda(venta.descuento).padStart(10, ' ');
-        builder.text(`Descuento:${descuento}`).newLine();
+        builder.text('Descuento:' + descuento).newLine();
     }
     
     const itbis = formatearMoneda(venta.itbis).padStart(10, ' ');
-    builder.text(`${empresa.impuesto_nombre} (${empresa.impuesto_porcentaje}%):${itbis}`).newLine();
+    builder.text(empresa.impuesto_nombre + ' (' + empresa.impuesto_porcentaje + '%):' + itbis).newLine();
     
     builder.doubleLine('=', anchoLinea);
     
     builder.bold(true).textSize(2, 2);
     const total = formatearMoneda(venta.total).padStart(10, ' ');
-    builder.text(`TOTAL:${total}`).newLine();
+    builder.text('TOTAL:' + total).newLine();
     builder.textSize(1, 1).bold(false);
     
     if (venta.metodo_pago === 'efectivo' && venta.efectivo_recibido) {
         builder.line('-', anchoLinea);
         const recibido = formatearMoneda(venta.efectivo_recibido).padStart(10, ' ');
-        builder.text(`Recibido:${recibido}`).newLine();
+        builder.text('Recibido:' + recibido).newLine();
         const cambio = formatearMoneda(venta.cambio).padStart(10, ' ');
-        builder.text(`Cambio:${cambio}`).newLine();
+        builder.text('Cambio:' + cambio).newLine();
     }
     
     builder.line('-', anchoLinea);
-    builder.text(`Metodo: ${venta.metodo_pago_texto}`).newLine();
+    builder.text('Metodo: ' + venta.metodo_pago_texto).newLine();
     
     if (venta.notas) {
         builder.line('-', anchoLinea);
-        builder.text(`NOTA: ${venta.notas}`).newLine();
+        builder.text('NOTA: ' + venta.notas).newLine();
     }
     
     builder.line('-', anchoLinea);

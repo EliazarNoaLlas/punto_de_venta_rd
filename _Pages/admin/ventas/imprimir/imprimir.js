@@ -172,22 +172,83 @@ export default function ImprimirVenta() {
         }
     }
 
-    const compartirTexto = () => {
+    const compartirTexto = async () => {
         if (!venta || !empresa) return
 
         const anchoLinea = tamañoPapel === '58mm' ? 32 : 42
         const ticketTexto = generarTicketESCPOS(venta, empresa, anchoLinea)
 
-        if (navigator.share) {
-            navigator.share({
-                text: ticketTexto,
-                title: 'Ticket de venta'
-            }).catch(error => {
-                console.error('Error al compartir:', error)
+        const esAndroid = /Android/i.test(navigator.userAgent)
+
+        if (esAndroid) {
+            try {
+                const blob = new Blob([ticketTexto], { type: 'text/plain' })
+                const file = new File([blob], 'ticket.txt', { type: 'text/plain' })
+                
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'Imprimir con RawBT'
+                    })
+                } else if (navigator.share) {
+                    await navigator.share({
+                        text: ticketTexto,
+                        title: 'Imprimir con RawBT'
+                    })
+                } else {
+                    copiarAlPortapapeles(ticketTexto)
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Error al compartir:', error)
+                    copiarAlPortapapeles(ticketTexto)
+                }
+            }
+        } else {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        text: ticketTexto,
+                        title: 'Imprimir con RawBT'
+                    })
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        copiarAlPortapapeles(ticketTexto)
+                    }
+                }
+            } else {
+                copiarAlPortapapeles(ticketTexto)
+            }
+        }
+    }
+
+    const copiarAlPortapapeles = (texto) => {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(texto).then(() => {
+                alert('Ticket copiado. Abre RawBT y pega el texto.')
+            }).catch(() => {
+                mostrarTextoParaCopiar(texto)
             })
         } else {
-            alert('Tu navegador no soporta la función de compartir')
+            mostrarTextoParaCopiar(texto)
         }
+    }
+
+    const mostrarTextoParaCopiar = (texto) => {
+        const textarea = document.createElement('textarea')
+        textarea.value = texto
+        textarea.style.position = 'fixed'
+        textarea.style.opacity = '0'
+        document.body.appendChild(textarea)
+        textarea.select()
+        try {
+            document.execCommand('copy')
+            alert('Ticket copiado. Abre RawBT y pega el texto.')
+        } catch (err) {
+            alert('No se pudo copiar. Intenta manualmente.')
+            console.error('Error al copiar:', err)
+        }
+        document.body.removeChild(textarea)
     }
 
     const formatearFecha = (fecha) => {
@@ -292,7 +353,7 @@ export default function ImprimirVenta() {
                     
                     {esAndroid && (
                         <button onClick={compartirTexto} className={estilos.btnCompartir}>
-                            Compartir (Android)
+                            Compartir (RawBT)
                         </button>
                     )}
                     
