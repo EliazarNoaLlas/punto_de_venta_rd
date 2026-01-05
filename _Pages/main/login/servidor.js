@@ -94,26 +94,34 @@ export async function iniciarSesion(email, password) {
 
         const cookieStore = await cookies()
         
+        // Detectar si estamos en HTTPS (producción)
+        // En producción con NGINX + HTTPS, siempre usar secure: true
+        // Solo usar secure: false en desarrollo local (NODE_ENV === 'development')
+        const isSecure = process.env.NODE_ENV !== 'development' || process.env.HTTPS === 'true'
+
         cookieStore.set('userId', usuario.id.toString(), {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: isSecure,
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
+            maxAge: 60 * 60 * 24 * 7,
+            path: '/'
         })
 
         cookieStore.set('userTipo', usuario.tipo, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: isSecure,
             sameSite: 'lax',
-            maxAge: 60 * 60 * 24 * 7
+            maxAge: 60 * 60 * 24 * 7,
+            path: '/'
         })
 
         if (usuario.empresa_id) {
             cookieStore.set('empresaId', usuario.empresa_id.toString(), {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
+                secure: isSecure,
                 sameSite: 'lax',
-                maxAge: 60 * 60 * 24 * 7
+                maxAge: 60 * 60 * 24 * 7,
+                path: '/'
             })
         }
 

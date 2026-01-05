@@ -2,6 +2,7 @@
 
 import db from "@/_DB/db"
 import { cookies } from 'next/headers'
+import { existeImagenLocal } from '@/services/imageService'
 
 export async function obtenerDetalleProducto(productoId) {
     let connection
@@ -45,9 +46,21 @@ export async function obtenerDetalleProducto(productoId) {
 
         connection.release()
 
+        // ✅ VALIDACIÓN DE IMAGEN EN SERVIDOR
+        const productoData = producto[0]
+        
+        // Validar que la imagen existe si es local
+        if (productoData.imagen_url && productoData.imagen_url.startsWith('/images/')) {
+            const existe = await existeImagenLocal(productoData.imagen_url)
+            if (!existe) {
+                console.warn(`Imagen no encontrada físicamente: ${productoData.imagen_url}`)
+                productoData.imagen_url = null // Limpiar referencia rota
+            }
+        }
+
         return {
             success: true,
-            producto: producto[0]
+            producto: productoData
         }
 
     } catch (error) {

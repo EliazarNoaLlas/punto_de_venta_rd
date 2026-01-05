@@ -131,10 +131,10 @@ export default function EditarProductoAdmin() {
         const archivo = e.target.files?.[0]
         if (!archivo) return
 
-        const maxSize = 2 * 1024 * 1024
+        const maxSize = 5 * 1024 * 1024
 
         if (archivo.size > maxSize) {
-            alert('La imagen no debe superar los 2MB. Tu archivo pesa: ' + (archivo.size / 1024 / 1024).toFixed(2) + 'MB')
+            alert('La imagen no debe superar los 5MB. Tu archivo pesa: ' + (archivo.size / 1024 / 1024).toFixed(2) + 'MB')
             e.target.value = ''
             setImagenArchivo(null)
             setVistaPrevia(null)
@@ -580,7 +580,7 @@ export default function EditarProductoAdmin() {
                                 </div>
                             ) : (
                                 <div className={estilos.grupoInput}>
-                                    <label>Seleccionar Archivo (máx. 2MB)</label>
+                                    <label>Seleccionar Archivo (máx. 5MB)</label>
                                     <div className={estilos.contenedorArchivo}>
                                         <input
                                             type="file"

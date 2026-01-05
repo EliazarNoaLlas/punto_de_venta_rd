@@ -140,6 +140,14 @@ export default function HeaderSuperAdmin() {
                             <ion-icon name="people-outline"></ion-icon>
                             <span>Usuarios</span>
                         </Link>
+                        <Link href="/superadmin/tienda-b2b" className={`${estilos.navItem} ${pathname === '/superadmin/tienda-b2b' || pathname.startsWith('/superadmin/tienda-b2b/') ? estilos.activo : ''}`}>
+                            <ion-icon name="storefront-outline"></ion-icon>
+                            <span>Tienda B2B</span>
+                        </Link>
+                        <Link href="/superadmin/catalogo" className={`${estilos.navItem} ${pathname === '/superadmin/catalogo' || pathname.startsWith('/superadmin/catalogo/') ? estilos.activo : ''}`}>
+                            <ion-icon name="albums-outline"></ion-icon>
+                            <span>Catálogo Online</span>
+                        </Link>
                         <Link href="/superadmin/configuracion" className={`${estilos.navItem} ${pathname === '/superadmin/configuracion' ? estilos.activo : ''}`}>
                             <ion-icon name="settings-outline"></ion-icon>
                             <span>Configuracion</span>
@@ -242,6 +250,14 @@ export default function HeaderSuperAdmin() {
                                 <Link href="/superadmin/usuarios" className={`${estilos.menuItem} ${pathname === '/superadmin/usuarios' ? estilos.activo : ''}`} onClick={cerrarMenu}>
                                     <ion-icon name="people-outline"></ion-icon>
                                     <span>Usuarios</span>
+                                </Link>
+                                <Link href="/superadmin/tienda-b2b" className={`${estilos.menuItem} ${pathname === '/superadmin/tienda-b2b' || pathname.startsWith('/superadmin/tienda-b2b/') ? estilos.activo : ''}`} onClick={cerrarMenu}>
+                                    <ion-icon name="storefront-outline"></ion-icon>
+                                    <span>Tienda B2B</span>
+                                </Link>
+                                <Link href="/superadmin/catalogo" className={`${estilos.menuItem} ${pathname === '/superadmin/catalogo' || pathname.startsWith('/superadmin/catalogo/') ? estilos.activo : ''}`} onClick={cerrarMenu}>
+                                    <ion-icon name="albums-outline"></ion-icon>
+                                    <span>Catálogo Online</span>
                                 </Link>
                                 <Link href="/superadmin/configuracion" className={`${estilos.menuItem} ${pathname === '/superadmin/configuracion' ? estilos.activo : ''}`} onClick={cerrarMenu}>
                                     <ion-icon name="settings-outline"></ion-icon>

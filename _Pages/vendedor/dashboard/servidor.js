@@ -9,8 +9,9 @@ export async function obtenerDatosDashboard() {
         const cookieStore = await cookies()
         const userId = cookieStore.get('userId')?.value
         const empresaId = cookieStore.get('empresaId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
 
-        if (!userId || !empresaId) {
+        if (!userId || !empresaId || (userTipo !== 'admin' && userTipo !== 'vendedor')) {
             return {
                 success: false,
                 mensaje: 'Sesion invalida'
@@ -28,13 +29,18 @@ export async function obtenerDatosDashboard() {
 
         const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1)
 
+        // Para vendedores: solo calcular ventas del vendedor actual
+        const condicionUsuario = userTipo === 'vendedor' ? 'AND usuario_id = ?' : ''
+        const parametrosVentas = userTipo === 'vendedor' ? [empresaId, userId] : [empresaId]
+
         const [ventasHoy] = await connection.execute(
             `SELECT SUM(total) as total, COUNT(*) as cantidad
             FROM ventas
             WHERE empresa_id = ? 
             AND estado = 'emitida'
+            ${condicionUsuario}
             AND fecha_venta BETWEEN ? AND ?`,
-            [empresaId, inicioHoy, finHoy]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioHoy, finHoy] : [empresaId, inicioHoy, finHoy]
         )
 
         const [ventasSemana] = await connection.execute(
@@ -42,8 +48,9 @@ export async function obtenerDatosDashboard() {
             FROM ventas
             WHERE empresa_id = ? 
             AND estado = 'emitida'
+            ${condicionUsuario}
             AND fecha_venta >= ?`,
-            [empresaId, inicioSemana]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioSemana] : [empresaId, inicioSemana]
         )
 
         const [ventasMes] = await connection.execute(
@@ -51,8 +58,9 @@ export async function obtenerDatosDashboard() {
             FROM ventas
             WHERE empresa_id = ? 
             AND estado = 'emitida'
+            ${condicionUsuario}
             AND fecha_venta >= ?`,
-            [empresaId, inicioMes]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioMes] : [empresaId, inicioMes]
         )
 
         const [productos] = await connection.execute(
@@ -73,65 +81,81 @@ export async function obtenerDatosDashboard() {
             [empresaId]
         )
 
+        // Construir consultas de lista de ventas
+        const condicionVentasUsuario = userTipo === 'vendedor' ? 'AND v.usuario_id = ?' : ''
+        const camposTotal = userTipo === 'vendedor' ? 'NULL as total' : 'v.total'
+
         const [listaVentasHoy] = await connection.execute(
-            `SELECT v.id, v.ncf, v.total, v.fecha_venta,
+            `SELECT v.id, v.ncf, ${camposTotal}, v.fecha_venta,
                     CONCAT(c.nombre, ' ', COALESCE(c.apellidos, '')) as cliente_nombre
             FROM ventas v
             LEFT JOIN clientes c ON v.cliente_id = c.id
             WHERE v.empresa_id = ? 
             AND v.estado = 'emitida'
+            ${condicionVentasUsuario}
             AND v.fecha_venta BETWEEN ? AND ?
             ORDER BY v.fecha_venta DESC
             LIMIT 10`,
-            [empresaId, inicioHoy, finHoy]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioHoy, finHoy] : [empresaId, inicioHoy, finHoy]
         )
 
         const [listaVentasSemana] = await connection.execute(
-            `SELECT v.id, v.ncf, v.total, v.fecha_venta,
+            `SELECT v.id, v.ncf, ${camposTotal}, v.fecha_venta,
                     CONCAT(c.nombre, ' ', COALESCE(c.apellidos, '')) as cliente_nombre
             FROM ventas v
             LEFT JOIN clientes c ON v.cliente_id = c.id
             WHERE v.empresa_id = ? 
             AND v.estado = 'emitida'
+            ${condicionVentasUsuario}
             AND v.fecha_venta >= ?
             ORDER BY v.fecha_venta DESC
             LIMIT 10`,
-            [empresaId, inicioSemana]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioSemana] : [empresaId, inicioSemana]
         )
 
         const [listaVentasMes] = await connection.execute(
-            `SELECT v.id, v.ncf, v.total, v.fecha_venta,
+            `SELECT v.id, v.ncf, ${camposTotal}, v.fecha_venta,
                     CONCAT(c.nombre, ' ', COALESCE(c.apellidos, '')) as cliente_nombre
             FROM ventas v
             LEFT JOIN clientes c ON v.cliente_id = c.id
             WHERE v.empresa_id = ? 
             AND v.estado = 'emitida'
+            ${condicionVentasUsuario}
             AND v.fecha_venta >= ?
             ORDER BY v.fecha_venta DESC
             LIMIT 10`,
-            [empresaId, inicioMes]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioMes] : [empresaId, inicioMes]
         )
+
+        // Top productos
+        const camposMontoTotal = userTipo === 'vendedor' ? 'NULL as monto_total' : 'SUM(dv.total) as monto_total'
+        const condicionTopProductos = userTipo === 'vendedor' ? 'AND v.usuario_id = ?' : ''
 
         const [topProductos] = await connection.execute(
             `SELECT p.id, p.nombre, p.imagen_url,
                     cat.nombre as categoria_nombre,
                     SUM(dv.cantidad) as total_vendido,
-                    SUM(dv.total) as monto_total
+                    ${camposMontoTotal}
             FROM productos p
             LEFT JOIN categorias cat ON p.categoria_id = cat.id
             INNER JOIN detalle_ventas dv ON p.id = dv.producto_id
             INNER JOIN ventas v ON dv.venta_id = v.id
             WHERE p.empresa_id = ? 
             AND v.estado = 'emitida'
+            ${condicionTopProductos}
             AND v.fecha_venta >= ?
             GROUP BY p.id, p.nombre, p.imagen_url, cat.nombre
             ORDER BY total_vendido DESC
             LIMIT 10`,
-            [empresaId, inicioMes]
+            userTipo === 'vendedor' ? [empresaId, userId, inicioMes] : [empresaId, inicioMes]
         )
 
+        // Productos bajo stock (para vendedores: no mostrar números)
+        const camposStock = userTipo === 'vendedor' ? 'NULL as stock, NULL as stock_minimo' : 'p.stock, p.stock_minimo'
+
         const [productosBajoStock] = await connection.execute(
-            `SELECT p.id, p.nombre, p.imagen_url, p.stock, p.stock_minimo,
+            `SELECT p.id, p.nombre, p.imagen_url, 
+                    ${camposStock},
                     cat.nombre as categoria_nombre
             FROM productos p
             LEFT JOIN categorias cat ON p.categoria_id = cat.id
@@ -178,24 +202,28 @@ export async function obtenerDatosDashboard() {
 
         connection.release()
 
+        // Filtrar datos según el rol
+        const resumen = {
+            // Para vendedores: no mostrar montos, solo cantidades
+            ventasHoy: userTipo === 'vendedor' ? null : totalVentasHoy,
+            cantidadVentasHoy: cantidadVentasHoy,
+            ventasSemana: userTipo === 'vendedor' ? null : totalVentasSemana,
+            cantidadVentasSemana: cantidadVentasSemana,
+            ventasMes: userTipo === 'vendedor' ? null : totalVentasMes,
+            cantidadVentasMes: cantidadVentasMes,
+            promedioVenta: userTipo === 'vendedor' ? null : promedioVenta,
+            totalProductos: parseInt(productos[0]?.total || 0),
+            productosActivos: parseInt(productos[0]?.activos || 0),
+            productosBajoStock: userTipo === 'vendedor' ? null : parseInt(productos[0]?.bajo_stock || 0),
+            valorInventario: userTipo === 'vendedor' ? null : parseFloat(productos[0]?.valor_inventario || 0),
+            totalClientes: parseInt(clientes[0]?.total || 0),
+            clientesActivos: parseInt(clientes[0]?.activos || 0)
+        }
+
         return {
             success: true,
             datos: {
-                resumen: {
-                    ventasHoy: totalVentasHoy,
-                    cantidadVentasHoy: cantidadVentasHoy,
-                    ventasSemana: totalVentasSemana,
-                    cantidadVentasSemana: cantidadVentasSemana,
-                    ventasMes: totalVentasMes,
-                    cantidadVentasMes: cantidadVentasMes,
-                    promedioVenta: promedioVenta,
-                    totalProductos: parseInt(productos[0]?.total || 0),
-                    productosActivos: parseInt(productos[0]?.activos || 0),
-                    productosBajoStock: parseInt(productos[0]?.bajo_stock || 0),
-                    valorInventario: parseFloat(productos[0]?.valor_inventario || 0),
-                    totalClientes: parseInt(clientes[0]?.total || 0),
-                    clientesActivos: parseInt(clientes[0]?.activos || 0)
-                },
+                resumen: resumen,
                 ventasHoy: listaVentasHoy,
                 ventasSemana: listaVentasSemana,
                 ventasMes: listaVentasMes,
@@ -205,7 +233,7 @@ export async function obtenerDatosDashboard() {
                 alertas: {
                     cajaAbierta: cajaAbierta.length > 0,
                     numeroCaja: cajaAbierta[0]?.numero_caja || null,
-                    montoInicial: parseFloat(cajaAbierta[0]?.monto_inicial || 0)
+                    montoInicial: userTipo === 'vendedor' ? null : parseFloat(cajaAbierta[0]?.monto_inicial || 0)
                 }
             }
         }

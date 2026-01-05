@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { obtenerEmpresas, obtenerUsuarios, crearUsuario, actualizarUsuario, toggleEstadoUsuario, eliminarUsuario } from './servidor'
+import { obtenerEmpresas, obtenerUsuarios, crearUsuario, actualizarUsuario, toggleEstadoUsuario, eliminarUsuario, obtenerConteoRegistrosUsuario } from './servidor'
 import estilos from './usuarios.module.css'
 
 export default function UsuariosSuperAdmin() {
@@ -20,6 +20,8 @@ export default function UsuariosSuperAdmin() {
     const [modoEdicion, setModoEdicion] = useState(false)
     const [usuarioEditar, setUsuarioEditar] = useState(null)
     const [erroresForm, setErroresForm] = useState({})
+    const [mostrarTerminos, setMostrarTerminos] = useState(false)
+    const [aceptaTerminos, setAceptaTerminos] = useState(false)
 
     const [formData, setFormData] = useState({
         empresa_id: '',
@@ -127,6 +129,10 @@ export default function UsuariosSuperAdmin() {
             errores.password = 'La contrasena debe tener al menos 6 caracteres'
         }
 
+        if (!modoEdicion && !aceptaTerminos) {
+            errores.terminos = 'Debes aceptar los términos y condiciones'
+        }
+
         setErroresForm(errores)
         return Object.keys(errores).length === 0
     }
@@ -143,6 +149,7 @@ export default function UsuariosSuperAdmin() {
             tipo: 'vendedor'
         })
         setErroresForm({})
+        setAceptaTerminos(false)
         setMostrarModal(true)
     }
 
@@ -166,6 +173,8 @@ export default function UsuariosSuperAdmin() {
         setModoEdicion(false)
         setUsuarioEditar(null)
         setErroresForm({})
+        setAceptaTerminos(false)
+        setMostrarTerminos(false)
     }
 
     const manejarCambioInput = (e) => {
@@ -236,12 +245,51 @@ export default function UsuariosSuperAdmin() {
     }
 
     const manejarEliminar = async (usuarioId, nombreUsuario) => {
-        if (!confirm(`Estas seguro de eliminar al usuario "${nombreUsuario}"? Esta accion no se puede deshacer.`)) {
-            return
-        }
-
+        // Paso 1: Obtener conteo de registros asociados
         setProcesando(true)
         try {
+            const resultadoConteo = await obtenerConteoRegistrosUsuario(usuarioId)
+            if (!resultadoConteo.success) {
+                alert(resultadoConteo.mensaje || 'Error al obtener información del usuario')
+                setProcesando(false)
+                return
+            }
+
+            const { ventas, cajas, gastos, compras, movimientos, despachos } = resultadoConteo.conteo
+            const totalRegistros = ventas + cajas + gastos + compras + movimientos + despachos
+
+            // Construir mensaje de advertencia
+            let mensajeAdvertencia = `⚠️ ELIMINACIÓN DEFINITIVA\n\n`
+            mensajeAdvertencia += `Esta acción eliminará PERMANENTEMENTE:\n\n`
+            mensajeAdvertencia += `• El usuario: ${nombreUsuario}\n`
+            
+            if (totalRegistros > 0) {
+                if (ventas > 0) mensajeAdvertencia += `• ${ventas} venta(s)\n`
+                if (cajas > 0) mensajeAdvertencia += `• ${cajas} caja(s)\n`
+                if (gastos > 0) mensajeAdvertencia += `• ${gastos} gasto(s)\n`
+                if (compras > 0) mensajeAdvertencia += `• ${compras} compra(s)\n`
+                if (movimientos > 0) mensajeAdvertencia += `• ${movimientos} movimiento(s) de inventario\n`
+                if (despachos > 0) mensajeAdvertencia += `• ${despachos} despacho(s)\n`
+                mensajeAdvertencia += `\n`
+            } else {
+                mensajeAdvertencia += `• No tiene registros asociados\n\n`
+            }
+            
+            mensajeAdvertencia += `❗ NO existe recuperación\n\n`
+            mensajeAdvertencia += `Escribe "ELIMINAR DEFINITIVAMENTE" para continuar:`
+
+            // Paso 2: Confirmación explícita con texto requerido
+            const confirmacion = prompt(mensajeAdvertencia)
+            
+            if (confirmacion !== 'ELIMINAR DEFINITIVAMENTE') {
+                if (confirmacion !== null) {
+                    alert('Eliminación cancelada. Debes escribir exactamente "ELIMINAR DEFINITIVAMENTE" para continuar.')
+                }
+                setProcesando(false)
+                return
+            }
+
+            // Paso 3: Ejecutar eliminación total
             const resultado = await eliminarUsuario(usuarioId)
             if (resultado.success) {
                 await cargarUsuarios()

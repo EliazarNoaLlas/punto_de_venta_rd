@@ -2,6 +2,7 @@
 
 import db from "@/_DB/db"
 import { cookies } from 'next/headers'
+import { guardarImagenProducto, eliminarImagenProducto } from '@/services/imageService'
 
 export async function obtenerProducto(productoId) {
     let connection
@@ -114,7 +115,7 @@ export async function actualizarProducto(productoId, datosProducto) {
         await connection.beginTransaction()
 
         const [productoExistente] = await connection.execute(
-            `SELECT id, stock FROM productos WHERE id = ? AND empresa_id = ?`,
+            `SELECT id, stock, imagen_url FROM productos WHERE id = ? AND empresa_id = ?`,
             [productoId, empresaId]
         )
 
@@ -126,6 +127,8 @@ export async function actualizarProducto(productoId, datosProducto) {
                 mensaje: 'Producto no encontrado'
             }
         }
+
+        const imagenAnterior = productoExistente[0].imagen_url
 
         let codigoBarrasFinal = datosProducto.codigo_barras
         let skuFinal = datosProducto.sku
@@ -162,10 +165,26 @@ export async function actualizarProducto(productoId, datosProducto) {
             }
         }
 
-        let imagenFinal = datosProducto.imagen_url
+        let imagenFinal = datosProducto.imagen_url || imagenAnterior || null
 
+        // Si hay una nueva imagen base64, guardarla localmente
         if (datosProducto.imagen_base64 && !datosProducto.imagen_url) {
-            imagenFinal = datosProducto.imagen_base64
+            try {
+                // Guardar nueva imagen
+                imagenFinal = await guardarImagenProducto(datosProducto.imagen_base64, productoId)
+                
+                // Eliminar imagen anterior si existe y es local
+                if (imagenAnterior && imagenAnterior.startsWith('/images/productos/')) {
+                    await eliminarImagenProducto(imagenAnterior)
+                }
+            } catch (error) {
+                await connection.rollback()
+                connection.release()
+                return {
+                    success: false,
+                    mensaje: 'Error al guardar la imagen del producto: ' + error.message
+                }
+            }
         }
 
         await connection.execute(

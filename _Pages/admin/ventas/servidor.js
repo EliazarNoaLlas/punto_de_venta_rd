@@ -173,7 +173,7 @@ export async function abrirCaja(montoInicial) {
     }
 }
 
-export async function obtenerVentas() {
+export async function obtenerVentas(pagina = 1, limite = 10, filtroEstado = 'todos', filtroMetodo = 'todos', fechaInicio = null, fechaFin = null) {
     let connection
     try {
         const cookieStore = await cookies()
@@ -188,8 +188,54 @@ export async function obtenerVentas() {
             }
         }
 
+        // Validar y normalizar parámetros
+        const paginaNum = Math.max(1, parseInt(pagina) || 1)
+        const limiteNum = Math.max(1, Math.min(100, parseInt(limite) || 10))
+        const offset = (paginaNum - 1) * limiteNum
+
         connection = await db.getConnection()
 
+        // Construir condiciones WHERE
+        const condiciones = ['v.empresa_id = ?']
+        const parametros = [empresaId]
+
+        if (filtroEstado !== 'todos') {
+            condiciones.push('v.estado = ?')
+            parametros.push(filtroEstado)
+        }
+
+        if (filtroMetodo !== 'todos') {
+            condiciones.push('v.metodo_pago = ?')
+            parametros.push(filtroMetodo)
+        }
+
+        if (fechaInicio) {
+            condiciones.push('DATE(v.fecha_venta) >= ?')
+            parametros.push(fechaInicio)
+        }
+
+        if (fechaFin) {
+            condiciones.push('DATE(v.fecha_venta) <= ?')
+            parametros.push(fechaFin)
+        }
+
+        const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : 'WHERE v.empresa_id = ?'
+
+        // Obtener total de ventas para paginación
+        const [totalResult] = await connection.execute(
+            `SELECT COUNT(*) as total
+            FROM ventas v
+            LEFT JOIN clientes c ON v.cliente_id = c.id
+            LEFT JOIN usuarios u ON v.usuario_id = u.id
+            LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
+            ${whereClause}`,
+            parametros
+        )
+
+        const totalVentas = totalResult[0].total
+        const totalPaginas = Math.ceil(totalVentas / limiteNum)
+
+        // Obtener ventas paginadas
         const [ventas] = await connection.execute(
             `SELECT 
                 v.id,
@@ -216,17 +262,23 @@ export async function obtenerVentas() {
             LEFT JOIN clientes c ON v.cliente_id = c.id
             LEFT JOIN usuarios u ON v.usuario_id = u.id
             LEFT JOIN tipos_comprobante tc ON v.tipo_comprobante_id = tc.id
-            WHERE v.empresa_id = ?
+            ${whereClause}
             ORDER BY v.fecha_venta DESC
-            LIMIT 1000`,
-            [empresaId]
+            LIMIT ? OFFSET ?`,
+            [...parametros, limiteNum, offset]
         )
 
         connection.release()
 
         return {
             success: true,
-            ventas: ventas
+            ventas: ventas,
+            paginacion: {
+                pagina: paginaNum,
+                limite: limiteNum,
+                total: totalVentas,
+                totalPaginas: totalPaginas
+            }
         }
 
     } catch (error) {

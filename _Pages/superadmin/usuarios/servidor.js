@@ -389,6 +389,61 @@ export async function toggleEstadoUsuario(usuarioId, nuevoEstado) {
     }
 }
 
+export async function obtenerConteoRegistrosUsuario(usuarioId) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
+
+        if (!userId || userTipo !== 'superadmin') {
+            return {
+                success: false,
+                mensaje: 'Acceso no autorizado'
+            }
+        }
+
+        connection = await db.getConnection()
+
+        const [conteo] = await connection.execute(
+            `SELECT 
+                (SELECT COUNT(*) FROM ventas WHERE usuario_id = ?) AS ventas,
+                (SELECT COUNT(*) FROM cajas WHERE usuario_id = ?) AS cajas,
+                (SELECT COUNT(*) FROM gastos WHERE usuario_id = ?) AS gastos,
+                (SELECT COUNT(*) FROM compras WHERE usuario_id = ?) AS compras,
+                (SELECT COUNT(*) FROM movimientos_inventario WHERE usuario_id = ?) AS movimientos,
+                (SELECT COUNT(*) FROM despachos WHERE usuario_id = ?) AS despachos`,
+            [usuarioId, usuarioId, usuarioId, usuarioId, usuarioId, usuarioId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            conteo: {
+                ventas: conteo[0].ventas,
+                cajas: conteo[0].cajas,
+                gastos: conteo[0].gastos,
+                compras: conteo[0].compras,
+                movimientos: conteo[0].movimientos,
+                despachos: conteo[0].despachos
+            }
+        }
+
+    } catch (error) {
+        console.error('Error al obtener conteo de registros:', error)
+        
+        if (connection) {
+            connection.release()
+        }
+
+        return {
+            success: false,
+            mensaje: 'Error al obtener conteo de registros'
+        }
+    }
+}
+
 export async function eliminarUsuario(usuarioId) {
     let connection
     try {
@@ -426,54 +481,125 @@ export async function eliminarUsuario(usuarioId) {
             }
         }
 
-        const [ventasAsociadas] = await connection.execute(
-            `SELECT COUNT(*) as total FROM ventas WHERE usuario_id = ?`,
-            [usuarioId]
-        )
+        // Iniciar transacción para eliminación atómica
+        await connection.beginTransaction()
 
-        if (ventasAsociadas[0].total > 0) {
+        try {
+            // Deshabilitar temporalmente las verificaciones de foreign keys para permitir eliminación
+            await connection.execute(`SET FOREIGN_KEY_CHECKS = 0`)
+
+            // Orden correcto: del más dependiente al principal
+            // 1. Eliminar detalle_despachos (más dependiente)
+            await connection.execute(
+                `DELETE dd FROM detalle_despachos dd
+                INNER JOIN despachos d ON dd.despacho_id = d.id
+                WHERE d.usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 2. Eliminar despachos (tiene usuario_id y venta_id)
+            await connection.execute(
+                `DELETE FROM despachos WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 3. Eliminar detalle_ventas (se elimina automáticamente con ventas por CASCADE, pero por si acaso)
+            await connection.execute(
+                `DELETE dv FROM detalle_ventas dv
+                INNER JOIN ventas v ON dv.venta_id = v.id
+                WHERE v.usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 4. Eliminar detalle_compras (se elimina automáticamente con compras por CASCADE, pero por si acaso)
+            await connection.execute(
+                `DELETE dc FROM detalle_compras dc
+                INNER JOIN compras c ON dc.compra_id = c.id
+                WHERE c.usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 5. Eliminar movimientos_inventario
+            await connection.execute(
+                `DELETE FROM movimientos_inventario WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 6. Eliminar compras (esto automáticamente eliminará detalle_compras por CASCADE)
+            await connection.execute(
+                `DELETE FROM compras WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 7. Eliminar gastos
+            await connection.execute(
+                `DELETE FROM gastos WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 8. Eliminar ventas (esto automáticamente eliminará detalle_ventas por CASCADE)
+            await connection.execute(
+                `DELETE FROM ventas WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 9. Eliminar cajas (después de ventas porque ventas tiene caja_id)
+            await connection.execute(
+                `DELETE FROM cajas WHERE usuario_id = ?`,
+                [usuarioId]
+            )
+
+            // 10. Eliminar usuario (principal)
+            await connection.execute(
+                `DELETE FROM usuarios WHERE id = ?`,
+                [usuarioId]
+            )
+
+            // Rehabilitar las verificaciones de foreign keys
+            await connection.execute(`SET FOREIGN_KEY_CHECKS = 1`)
+
+            // Confirmar transacción
+            await connection.commit()
             connection.release()
+
             return {
-                success: false,
-                mensaje: 'No se puede eliminar el usuario porque tiene ventas registradas'
+                success: true,
+                mensaje: 'Usuario y TODOS sus registros fueron eliminados permanentemente'
             }
-        }
 
-        const [cajasAsociadas] = await connection.execute(
-            `SELECT COUNT(*) as total FROM cajas WHERE usuario_id = ?`,
-            [usuarioId]
-        )
-
-        if (cajasAsociadas[0].total > 0) {
-            connection.release()
-            return {
-                success: false,
-                mensaje: 'No se puede eliminar el usuario porque tiene cajas registradas'
-            }
-        }
-
-        await connection.execute(
-            `DELETE FROM usuarios WHERE id = ?`,
-            [usuarioId]
-        )
-
-        connection.release()
-
-        return {
-            success: true,
-            mensaje: 'Usuario eliminado exitosamente'
+        } catch (error) {
+            // Revertir transacción en caso de error
+            await connection.rollback()
+            throw error
         }
 
     } catch (error) {
         console.error('Error al eliminar usuario:', error)
+        console.error('Error detallado:', {
+            message: error.message,
+            code: error.code,
+            sqlState: error.sqlState,
+            sqlMessage: error.sqlMessage
+        })
         
         if (connection) {
             connection.release()
         }
 
+        // Mensaje más descriptivo basado en el tipo de error
+        let mensajeError = 'Error al eliminar el usuario y sus registros'
+        
+        if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === 'ER_NO_REFERENCED_ROW_2') {
+            mensajeError = 'No se puede eliminar el usuario porque tiene registros asociados que no se pueden eliminar. Verifique las restricciones de la base de datos.'
+        } else if (error.sqlMessage) {
+            mensajeError = `Error de base de datos: ${error.sqlMessage}`
+        } else if (error.message) {
+            mensajeError = `Error: ${error.message}`
+        }
+
         return {
             success: false,
-            mensaje: 'Error al eliminar el usuario'
+            mensaje: mensajeError
         }
     }
 }

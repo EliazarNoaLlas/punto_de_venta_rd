@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { obtenerEmpresas, toggleEstadoEmpresa, crearEmpresa, actualizarEmpresa, eliminarEmpresa } from './servidor'
+import { obtenerEmpresas, toggleEstadoEmpresa, crearEmpresa, actualizarEmpresa, eliminarEmpresa, obtenerConteoRegistrosEmpresa } from './servidor'
 import estilos from './empresas.module.css'
 
 export default function EmpresasSuperAdmin() {
@@ -241,12 +241,56 @@ export default function EmpresasSuperAdmin() {
     }
 
     const manejarEliminar = async (empresaId, nombreEmpresa) => {
-        if (!confirm(`Estas seguro de eliminar la empresa "${nombreEmpresa}"? Esta accion no se puede deshacer.`)) {
-            return
-        }
-
+        // Paso 1: Obtener conteo de registros asociados
         setProcesando(true)
         try {
+            const resultadoConteo = await obtenerConteoRegistrosEmpresa(empresaId)
+            if (!resultadoConteo.success) {
+                alert(resultadoConteo.mensaje || 'Error al obtener información de la empresa')
+                setProcesando(false)
+                return
+            }
+
+            const { usuarios, productos, clientes, proveedores, ventas, compras, cajas, gastos, categorias, marcas, movimientos } = resultadoConteo.conteo
+            const totalRegistros = usuarios + productos + clientes + proveedores + ventas + compras + cajas + gastos + categorias + marcas + movimientos
+
+            // Construir mensaje de advertencia
+            let mensajeAdvertencia = `⚠️ ELIMINACIÓN DEFINITIVA\n\n`
+            mensajeAdvertencia += `Esta acción eliminará PERMANENTEMENTE:\n\n`
+            mensajeAdvertencia += `• La empresa: ${nombreEmpresa}\n`
+            
+            if (totalRegistros > 0) {
+                if (usuarios > 0) mensajeAdvertencia += `• ${usuarios} usuario(s) y TODOS sus registros\n`
+                if (productos > 0) mensajeAdvertencia += `• ${productos} producto(s)\n`
+                if (clientes > 0) mensajeAdvertencia += `• ${clientes} cliente(s)\n`
+                if (proveedores > 0) mensajeAdvertencia += `• ${proveedores} proveedor(es)\n`
+                if (ventas > 0) mensajeAdvertencia += `• ${ventas} venta(s)\n`
+                if (compras > 0) mensajeAdvertencia += `• ${compras} compra(s)\n`
+                if (cajas > 0) mensajeAdvertencia += `• ${cajas} caja(s)\n`
+                if (gastos > 0) mensajeAdvertencia += `• ${gastos} gasto(s)\n`
+                if (categorias > 0) mensajeAdvertencia += `• ${categorias} categoría(s)\n`
+                if (marcas > 0) mensajeAdvertencia += `• ${marcas} marca(s)\n`
+                if (movimientos > 0) mensajeAdvertencia += `• ${movimientos} movimiento(s) de inventario\n`
+                mensajeAdvertencia += `\n`
+            } else {
+                mensajeAdvertencia += `• No tiene registros asociados\n\n`
+            }
+            
+            mensajeAdvertencia += `❗ NO existe recuperación\n\n`
+            mensajeAdvertencia += `Escribe "ELIMINAR DEFINITIVAMENTE" para continuar:`
+
+            // Paso 2: Confirmación explícita con texto requerido
+            const confirmacion = prompt(mensajeAdvertencia)
+            
+            if (confirmacion !== 'ELIMINAR DEFINITIVAMENTE') {
+                if (confirmacion !== null) {
+                    alert('Eliminación cancelada. Debes escribir exactamente "ELIMINAR DEFINITIVAMENTE" para continuar.')
+                }
+                setProcesando(false)
+                return
+            }
+
+            // Paso 3: Ejecutar eliminación total
             const resultado = await eliminarEmpresa(empresaId)
             if (resultado.success) {
                 await cargarEmpresas()

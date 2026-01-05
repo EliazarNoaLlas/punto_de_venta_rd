@@ -18,6 +18,7 @@ export default function HeaderAdmin() {
 
     const navegacionPrincipal = [
         { href: '/admin/ventas', icon: 'cart-outline', label: 'Ventas' },
+        { href: '/admin/catalogo/pedidos', icon: 'receipt-outline', label: 'Pedidos' },
         { href: '/admin/productos', icon: 'cube-outline', label: 'Productos' },
         { href: '/admin/clientes', icon: 'people-outline', label: 'Clientes' },
         { href: '/admin/dashboard', icon: 'speedometer-outline', label: 'Dashboard' }
@@ -33,6 +34,8 @@ export default function HeaderAdmin() {
         { href: '/admin/gastos', icon: 'wallet-outline', label: 'Gastos' },
         { href: '/admin/reportes', icon: 'stats-chart-outline', label: 'Reportes' },
         { href: '/admin/usuarios', icon: 'person-outline', label: 'Usuarios' },
+        { href: '/admin/catalogo', icon: 'albums-outline', label: 'Catálogo Online' },
+        { href: '/admin/tienda-isiweek', icon: 'storefront-outline', label: 'Tienda IsiWeek' },
         { href: '/admin/configuracion', icon: 'settings-outline', label: 'Configuracion' }
     ]
 

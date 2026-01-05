@@ -435,11 +435,16 @@ const toggleAplicaItbis = (productoId) => {
             let efectivoRecibidoFinal = null
             let cambioFinal = null
 
-            if (metodoPago === 'efectivo') {
+            // Guardar monto recibido para todos los métodos de pago
+            if (efectivoRecibido) {
                 const recibido = parseFloat(efectivoRecibido)
-                const total = parseFloat(totales.total)
                 efectivoRecibidoFinal = recibido
-                cambioFinal = recibido - total
+                
+                // Solo calcular cambio para efectivo
+                if (metodoPago === 'efectivo') {
+                    const total = parseFloat(totales.total)
+                    cambioFinal = recibido - total
+                }
             }
 
             const hayDespachoParcial = productosVenta.some(p => p.despacho_parcial)
@@ -470,7 +475,7 @@ const toggleAplicaItbis = (productoId) => {
                 metodo_pago: metodoPago,
                 efectivo_recibido: efectivoRecibidoFinal,
                 cambio: cambioFinal,
-                notas: notasVenta.trim() || null,
+                notas: null,
                 tipo_entrega: hayDespachoParcial ? 'parcial' : 'completa'
             }
 
@@ -493,6 +498,30 @@ const toggleAplicaItbis = (productoId) => {
     const cambio = metodoPago === 'efectivo' && efectivoRecibido
         ? (parseFloat(efectivoRecibido) - parseFloat(totales.total)).toFixed(2)
         : '0.00'
+
+    // Helper para obtener label del campo según método de pago
+    const getLabelMontoRecibido = () => {
+        const labels = {
+            efectivo: 'Efectivo Recibido (RD$)',
+            tarjeta_debito: 'Monto Cobrado por T. Débito (RD$)',
+            tarjeta_credito: 'Monto Cobrado por T. Crédito (RD$)',
+            transferencia: 'Monto Confirmado en Transferencia (RD$)',
+            cheque: 'Monto del Cheque (RD$)'
+        }
+        return labels[metodoPago] || 'Monto Recibido (RD$)'
+    }
+
+    // Helper para obtener texto de ayuda según método de pago
+    const getHelperText = () => {
+        const helpers = {
+            efectivo: 'Verifica el monto entregado por el cliente. El sistema calculará el cambio automáticamente.',
+            tarjeta_debito: 'Ingresa el monto cobrado por la tarjeta. Debe coincidir con el voucher del POS.',
+            tarjeta_credito: 'Ingresa el monto cobrado por la tarjeta. Debe coincidir con el voucher del POS.',
+            transferencia: 'Ingresa el monto confirmado en la operación de transferencia.',
+            cheque: 'Ingresa el monto del cheque recibido.'
+        }
+        return helpers[metodoPago] || ''
+    }
 
     if (cargando) {
         return (
@@ -906,36 +935,29 @@ const toggleAplicaItbis = (productoId) => {
                             </button>
                         </div>
 
-                        {metodoPago === 'efectivo' && (
-                            <div className={estilos.grupoInput}>
-                                <label>Efectivo Recibido (RD$)</label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0"
-                                    value={efectivoRecibido}
-                                    onChange={(e) => setEfectivoRecibido(e.target.value)}
-                                    placeholder="0.00"
-                                    className={estilos.input}
-                                />
-                                {efectivoRecibido && parseFloat(cambio) >= 0 && (
-                                    <div className={`${estilos.cambioBox} ${estilos[tema]}`}>
-                                        <span>Cambio:</span>
-                                        <strong>RD$ {cambio}</strong>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
                         <div className={estilos.grupoInput}>
-                            <label>Notas (Opcional)</label>
-                            <textarea
-                                value={notasVenta}
-                                onChange={(e) => setNotasVenta(e.target.value)}
-                                placeholder="Observaciones sobre la venta..."
-                                className={estilos.textarea}
-                                rows="3"
+                            <label>{getLabelMontoRecibido()}</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={efectivoRecibido}
+                                onChange={(e) => setEfectivoRecibido(e.target.value)}
+                                placeholder="0.00"
+                                className={estilos.input}
                             />
+                            {getHelperText() && (
+                                <div className={`${estilos.helperText} ${estilos[tema]}`}>
+                                    <ion-icon name="information-circle-outline"></ion-icon>
+                                    <span>{getHelperText()}</span>
+                                </div>
+                            )}
+                            {metodoPago === 'efectivo' && efectivoRecibido && parseFloat(cambio) >= 0 && (
+                                <div className={`${estilos.cambioBox} ${estilos[tema]}`}>
+                                    <span>Cambio:</span>
+                                    <strong>RD$ {cambio}</strong>
+                                </div>
+                            )}
                         </div>
                     </div>
 

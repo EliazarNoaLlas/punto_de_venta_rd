@@ -2,6 +2,7 @@
 
 import db from "@/_DB/db"
 import { cookies } from 'next/headers'
+import { eliminarImagenProducto } from '@/services/imageService'
 
 export async function obtenerProductos() {
     let connection
@@ -68,11 +69,49 @@ export async function obtenerProductos() {
 
         connection.release()
 
+        // Filtrar datos según el rol del usuario
+        let productosFiltrados = productos
+        
+        if (userTipo === 'vendedor') {
+            // Para vendedores: ocultar información sensible
+            productosFiltrados = productos.map(producto => {
+                // Calcular estado de stock operativo
+                let estadoStock = 'disponible'
+                if (producto.stock <= 0) {
+                    estadoStock = 'agotado'
+                } else if (producto.stock <= producto.stock_minimo || producto.stock <= 5) {
+                    estadoStock = 'bajo'
+                }
+                
+                return {
+                    id: producto.id,
+                    codigo_barras: producto.codigo_barras,
+                    sku: producto.sku,
+                    nombre: producto.nombre,
+                    descripcion: producto.descripcion,
+                    categoria_id: producto.categoria_id,
+                    marca_id: producto.marca_id,
+                    // ❌ NO incluir precio_compra
+                    precio_venta: producto.precio_venta,
+                    precio_oferta: producto.precio_oferta,
+                    // ❌ NO incluir stock, stock_minimo, stock_maximo numéricos
+                    estado_stock: estadoStock, // ✅ Solo estado operativo
+                    imagen_url: producto.imagen_url,
+                    aplica_itbis: producto.aplica_itbis,
+                    activo: producto.activo,
+                    categoria_nombre: producto.categoria_nombre,
+                    marca_nombre: producto.marca_nombre,
+                    unidad_medida_abreviatura: producto.unidad_medida_abreviatura
+                }
+            })
+        }
+
         return {
             success: true,
-            productos: productos,
+            productos: productosFiltrados,
             categorias: categorias,
-            marcas: marcas
+            marcas: marcas,
+            userTipo: userTipo // Incluir tipo de usuario para el frontend
         }
 
     } catch (error) {
@@ -106,8 +145,9 @@ export async function eliminarProducto(productoId) {
 
         connection = await db.getConnection()
 
+        // Obtener imagen antes de eliminar producto
         const [producto] = await connection.execute(
-            `SELECT id FROM productos WHERE id = ? AND empresa_id = ?`,
+            `SELECT id, imagen_url FROM productos WHERE id = ? AND empresa_id = ?`,
             [productoId, empresaId]
         )
 
@@ -119,12 +159,19 @@ export async function eliminarProducto(productoId) {
             }
         }
 
+        // Soft delete del producto
         await connection.execute(
             `UPDATE productos SET activo = FALSE WHERE id = ? AND empresa_id = ?`,
             [productoId, empresaId]
         )
 
         connection.release()
+
+        // Eliminar imagen física si es local
+        const imagenUrl = producto[0].imagen_url
+        if (imagenUrl && imagenUrl.startsWith('/images/productos/')) {
+            await eliminarImagenProducto(imagenUrl)
+        }
 
         return {
             success: true,

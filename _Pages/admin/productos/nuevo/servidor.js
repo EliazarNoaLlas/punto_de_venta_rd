@@ -2,9 +2,7 @@
 
 import db from "@/_DB/db"
 import { cookies } from 'next/headers'
-
-const VPS_UPLOAD_URL = process.env.VPS_UPLOAD_URL
-const VPS_IMAGE_BASE_URL = process.env.VPS_IMAGE_BASE_URL
+import { guardarImagenProducto } from '@/services/imageService'
 
 export async function obtenerDatosProducto() {
     let connection
@@ -37,13 +35,31 @@ export async function obtenerDatosProducto() {
             `SELECT id, codigo, nombre, abreviatura FROM unidades_medida WHERE activo = TRUE ORDER BY nombre ASC`
         )
 
+        const [empresa] = await connection.execute(
+            `SELECT moneda, simbolo_moneda, impuesto_nombre, impuesto_porcentaje FROM empresas WHERE id = ?`,
+            [empresaId]
+        )
+
         connection.release()
+
+        const configuracion = empresa.length > 0 ? {
+            moneda: empresa[0].moneda || 'DOP',
+            simbolo_moneda: empresa[0].simbolo_moneda || 'RD$',
+            impuesto_nombre: empresa[0].impuesto_nombre || 'ITBIS',
+            impuesto_porcentaje: empresa[0].impuesto_porcentaje !== undefined && empresa[0].impuesto_porcentaje !== null ? parseFloat(empresa[0].impuesto_porcentaje) : 0.00
+        } : {
+            moneda: 'DOP',
+            simbolo_moneda: 'RD$',
+            impuesto_nombre: 'ITBIS',
+            impuesto_porcentaje: 0.00
+        }
 
         return {
             success: true,
             categorias: categorias,
             marcas: marcas,
-            unidadesMedida: unidadesMedida
+            unidadesMedida: unidadesMedida,
+            configuracion: configuracion
         }
 
     } catch (error) {
@@ -60,42 +76,6 @@ export async function obtenerDatosProducto() {
     }
 }
 
-async function subirImagenAVPS(imagenBase64) {
-    try {
-        const base64Data = imagenBase64.split(',')[1]
-        const mimeType = imagenBase64.split(';')[0].split(':')[1]
-        const extension = mimeType.split('/')[1]
-        
-        const buffer = Buffer.from(base64Data, 'base64')
-        const blob = new Blob([buffer], { type: mimeType })
-        const file = new File([blob], `producto_${Date.now()}.${extension}`, { type: mimeType })
-
-        const formData = new FormData()
-        formData.append('file', file)
-        formData.append('folder', 'productos')
-
-        const response = await fetch(VPS_UPLOAD_URL, {
-            method: 'POST',
-            body: formData
-        })
-
-        if (!response.ok) {
-            throw new Error('Error en la respuesta del servidor VPS')
-        }
-
-        const resultado = await response.json()
-
-        if (!resultado.success) {
-            throw new Error(resultado.mensaje || 'Error al subir imagen')
-        }
-
-        return `${VPS_IMAGE_BASE_URL}/${resultado.filename}`
-
-    } catch (error) {
-        console.error('Error al subir imagen a VPS:', error)
-        throw error
-    }
-}
 
 export async function crearProducto(datosProducto) {
     let connection
@@ -177,21 +157,7 @@ export async function crearProducto(datosProducto) {
             }
         }
 
-        let imagenFinal = datosProducto.imagen_url
-
-        if (datosProducto.imagen_base64 && !datosProducto.imagen_url) {
-            try {
-                imagenFinal = await subirImagenAVPS(datosProducto.imagen_base64)
-            } catch (error) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'Error al subir la imagen del producto'
-                }
-            }
-        }
-
+        // Crear producto primero (sin imagen) para obtener el ID
         const [resultado] = await connection.execute(
             `INSERT INTO productos (
                 empresa_id,
@@ -234,7 +200,7 @@ export async function crearProducto(datosProducto) {
                 datosProducto.stock,
                 datosProducto.stock_minimo,
                 datosProducto.stock_maximo,
-                imagenFinal,
+                datosProducto.imagen_url || null, // URL externa si existe, si no null
                 datosProducto.aplica_itbis,
                 datosProducto.activo,
                 datosProducto.fecha_vencimiento,
@@ -242,6 +208,27 @@ export async function crearProducto(datosProducto) {
                 datosProducto.ubicacion_bodega
             ]
         )
+
+        // Guardar imagen local si existe imagen_base64
+        if (datosProducto.imagen_base64 && !datosProducto.imagen_url) {
+            try {
+                const productoId = resultado.insertId
+                const imagenFinal = await guardarImagenProducto(datosProducto.imagen_base64, productoId)
+                
+                // Actualizar producto con la ruta de la imagen
+                await connection.execute(
+                    `UPDATE productos SET imagen_url = ? WHERE id = ? AND empresa_id = ?`,
+                    [imagenFinal, productoId, empresaId]
+                )
+            } catch (error) {
+                await connection.rollback()
+                connection.release()
+                return {
+                    success: false,
+                    mensaje: 'Error al guardar la imagen del producto: ' + error.message
+                }
+            }
+        }
 
         if (datosProducto.stock > 0) {
             await connection.execute(

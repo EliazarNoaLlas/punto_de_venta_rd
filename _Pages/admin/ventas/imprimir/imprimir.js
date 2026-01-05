@@ -1,7 +1,8 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Barcode from 'react-barcode'
+import html2canvas from 'html2canvas'
 import { obtenerVentaImprimir } from './servidor'
 import estilos from './imprimir.module.css'
 import { generarTicketESCPOS } from '@/utils/escpos'
@@ -26,6 +27,9 @@ export default function ImprimirVenta() {
     const [impresoraSeleccionada, setImpresoraSeleccionada] = useState('')
     const [qzDisponible, setQzDisponible] = useState(false)
     const [imprimiendo, setImprimiendo] = useState(false)
+    const [mostrarModalWhatsApp, setMostrarModalWhatsApp] = useState(false)
+    const [numeroWhatsApp, setNumeroWhatsApp] = useState('')
+    const boucherRef = useRef(null)
     
     const [opciones, setOpciones] = useState({
         mostrarDatosEmpresa: true,
@@ -269,6 +273,233 @@ export default function ImprimirVenta() {
         }).format(monto)
     }
 
+    const esMobile = () => {
+        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth <= 768
+    }
+
+    const capturarComprobanteComoImagen = async () => {
+        if (!boucherRef.current) {
+            throw new Error('No se pudo encontrar el comprobante')
+        }
+
+        try {
+            const canvas = await html2canvas(boucherRef.current, {
+                backgroundColor: '#ffffff',
+                scale: 2,
+                logging: false,
+                useCORS: true,
+                width: boucherRef.current.scrollWidth,
+                height: boucherRef.current.scrollHeight
+            })
+
+            return new Promise((resolve) => {
+                canvas.toBlob((blob) => {
+                    resolve(blob)
+                }, 'image/png', 0.95)
+            })
+        } catch (error) {
+            console.error('Error al capturar comprobante:', error)
+            throw error
+        }
+    }
+
+    const generarTextoComprobante = () => {
+        if (!venta || !empresa) return ''
+
+        let texto = `*${empresa.nombre_empresa || empresa.razon_social}*\n\n`
+        texto += `${venta.tipo_comprobante_nombre}\n`
+        texto += `NCF: ${venta.ncf}\n`
+        texto += `No. ${venta.numero_interno}\n\n`
+        texto += `Fecha: ${formatearFecha(venta.fecha_venta)}\n`
+        if (venta.cliente_nombre) {
+            texto += `Cliente: ${venta.cliente_nombre}\n`
+        }
+        texto += `\n*Productos:*\n`
+        venta.productos.forEach(p => {
+            texto += `${p.cantidad} x ${p.nombre_producto} - ${formatearMoneda(p.total)}\n`
+        })
+        texto += `\n*Total: ${formatearMoneda(venta.total)}*\n`
+        texto += `Método de Pago: ${venta.metodo_pago_texto}\n`
+        texto += `\n¡GRACIAS POR SU COMPRA!`
+
+        return texto
+    }
+
+    const compartirPorWhatsApp = async () => {
+        try {
+            const esMobileDevice = esMobile()
+            
+            if (esMobileDevice) {
+                // En mobile, intentar usar Web Share API con imagen
+                await compartirWhatsAppMobileConImagen()
+            } else {
+                // En desktop, mostrar modal para ingresar número
+                setNumeroWhatsApp(venta?.cliente_telefono || '')
+                setMostrarModalWhatsApp(true)
+            }
+        } catch (error) {
+            console.error('Error al compartir por WhatsApp:', error)
+            // Si falla, mostrar modal como fallback
+            setNumeroWhatsApp(venta?.cliente_telefono || '')
+            setMostrarModalWhatsApp(true)
+        }
+    }
+
+    const compartirWhatsAppDesktop = async (numeroTelefono) => {
+        try {
+            // Limpiar número (solo números)
+            const numeroLimpio = numeroTelefono.replace(/\D/g, '')
+            
+            // 1. Abrir WhatsApp Web con el número y texto del comprobante
+            const textoComprobante = generarTextoComprobante()
+            const textoCodificado = encodeURIComponent(textoComprobante)
+            const urlWhatsApp = `https://web.whatsapp.com/send?phone=${numeroLimpio}&text=${textoCodificado}`
+            window.open(urlWhatsApp, '_blank')
+            
+            // 2. Capturar y descargar imagen del comprobante
+            try {
+                const imageBlob = await capturarComprobanteComoImagen()
+                
+                // Crear URL de la imagen
+                const imageUrl = URL.createObjectURL(imageBlob)
+                
+                // Crear enlace de descarga
+                const link = document.createElement('a')
+                link.href = imageUrl
+                link.download = `comprobante_${venta.numero_interno}_${Date.now()}.png`
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                
+                // Liberar URL después de un tiempo
+                setTimeout(() => URL.revokeObjectURL(imageUrl), 100)
+                
+                // 3. Mostrar mensaje con instrucciones
+                setTimeout(() => {
+                    alert('✅ WhatsApp Web abierto con el texto del comprobante.\n✅ Imagen del comprobante descargada.\n\n📸 Para enviar la imagen:\n1. En WhatsApp Web, el contacto ya está seleccionado\n2. Arrastra el archivo descargado a la conversación\n3. O haz clic en el botón de adjuntar y selecciona el archivo\n\n💡 El texto ya está en el mensaje, puedes enviarlo ahora o agregar la imagen.')
+                }, 500)
+            } catch (error) {
+                console.error('Error al capturar imagen:', error)
+                // Si falla la imagen, el texto ya se envió
+                alert('✅ WhatsApp Web abierto con el texto del comprobante.\n\n⚠️ No se pudo descargar la imagen, pero puedes compartir el texto del comprobante.')
+            }
+        } catch (error) {
+            console.error('Error al compartir por WhatsApp Desktop:', error)
+            alert('Error al compartir el comprobante. Intenta nuevamente.')
+        }
+    }
+
+    const compartirWhatsAppMobileConImagen = async () => {
+        try {
+            // Verificar si Web Share API está disponible
+            if (!navigator.share) {
+                // Fallback: mostrar modal para compartir por número
+                setNumeroWhatsApp(venta?.cliente_telefono || '')
+                setMostrarModalWhatsApp(true)
+                return
+            }
+
+            // Capturar imagen del comprobante
+            const imageBlob = await capturarComprobanteComoImagen()
+            
+            // Crear archivo para compartir
+            const file = new File([imageBlob], `comprobante_${venta.numero_interno}.png`, { type: 'image/png' })
+            
+            // Verificar si se puede compartir el archivo
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                // Compartir con Web Share API (incluye imagen)
+                await navigator.share({
+                    files: [file],
+                    title: 'Comprobante de Venta',
+                    text: `Comprobante ${venta.numero_interno} - ${empresa.nombre_empresa || empresa.razon_social}`
+                })
+            } else {
+                // Si no se puede compartir archivo, compartir texto con número
+                setNumeroWhatsApp(venta?.cliente_telefono || '')
+                setMostrarModalWhatsApp(true)
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                // Usuario canceló, no hacer nada
+                return
+            }
+            console.error('Error al compartir con Web Share API:', error)
+            // Fallback: mostrar modal para compartir por número
+            setNumeroWhatsApp(venta?.cliente_telefono || '')
+            setMostrarModalWhatsApp(true)
+        }
+    }
+
+    const compartirWhatsAppMobile = async () => {
+        if (!numeroWhatsApp.trim()) {
+            alert('Por favor ingresa un número de teléfono')
+            return
+        }
+
+        // Limpiar número (solo números)
+        const numeroLimpio = numeroWhatsApp.replace(/\D/g, '')
+        if (numeroLimpio.length < 8) {
+            alert('Por favor ingresa un número de teléfono válido')
+            return
+        }
+
+        try {
+            const textoComprobante = generarTextoComprobante()
+            const textoCodificado = encodeURIComponent(textoComprobante)
+            
+            // URL de WhatsApp con número y texto
+            const urlWhatsApp = `https://wa.me/${numeroLimpio}?text=${textoCodificado}`
+            
+            // Abrir WhatsApp App
+            window.location.href = urlWhatsApp
+            
+            setMostrarModalWhatsApp(false)
+            setNumeroWhatsApp('')
+        } catch (error) {
+            console.error('Error al compartir por WhatsApp Mobile:', error)
+            alert('Error al compartir el comprobante. Intenta nuevamente.')
+        }
+    }
+
+    const manejarEnviarWhatsApp = async () => {
+        if (!numeroWhatsApp.trim()) {
+            alert('Por favor ingresa un número de teléfono')
+            return
+        }
+
+        // Limpiar número (solo números)
+        const numeroLimpio = numeroWhatsApp.replace(/\D/g, '')
+        if (numeroLimpio.length < 8) {
+            alert('Por favor ingresa un número de teléfono válido')
+            return
+        }
+
+        const esMobileDevice = esMobile()
+        const numeroParaEnviar = numeroWhatsApp
+
+        // Cerrar modal antes de redirigir
+        setMostrarModalWhatsApp(false)
+        setNumeroWhatsApp('')
+
+        if (esMobileDevice) {
+            // En mobile, usar WhatsApp App
+            // Nota: compartirWhatsAppMobile usa el estado numeroWhatsApp que ya resetamos
+            // Necesitamos pasar el número directamente
+            const textoComprobante = generarTextoComprobante()
+            const textoCodificado = encodeURIComponent(textoComprobante)
+            const urlWhatsApp = `https://wa.me/${numeroLimpio}?text=${textoCodificado}`
+            window.location.href = urlWhatsApp
+        } else {
+            // En desktop, usar WhatsApp Web
+            await compartirWhatsAppDesktop(numeroParaEnviar)
+        }
+    }
+
+    const cerrarModalWhatsApp = () => {
+        setMostrarModalWhatsApp(false)
+        setNumeroWhatsApp('')
+    }
+
     if (cargando) {
         return (
             <div className={`${estilos.contenedor} ${estilos[tema]}`}>
@@ -359,6 +590,11 @@ export default function ImprimirVenta() {
                     
                     <button onClick={manejarImprimirNavegador} className={estilos.btnImprimirNav}>
                         Imprimir Normal
+                    </button>
+                    
+                    <button onClick={compartirPorWhatsApp} className={estilos.btnWhatsApp}>
+                        <ion-icon name="logo-whatsapp"></ion-icon>
+                        <span>Compartir por WhatsApp</span>
                     </button>
                     
                     <button onClick={() => router.push('/admin/ventas')} className={estilos.btnCerrar}>
@@ -453,7 +689,7 @@ export default function ImprimirVenta() {
                     </div>
                 </div>
 
-                <div className={`${estilos.boucher} ${estilos[tamañoPapel]}`} data-size={tamañoPapel}>
+                <div ref={boucherRef} className={`${estilos.boucher} ${estilos[tamañoPapel]}`} data-size={tamañoPapel}>
                     {opciones.mostrarDatosEmpresa && (
                         <>
                             <div className={estilos.encabezado}>
@@ -660,6 +896,47 @@ export default function ImprimirVenta() {
                     )}
                 </div>
             </div>
+
+            {/* Modal WhatsApp para Mobile */}
+            {mostrarModalWhatsApp && (
+                <div className={estilos.modalOverlay} onClick={cerrarModalWhatsApp}>
+                    <div className={`${estilos.modalWhatsApp} ${estilos[tema]}`} onClick={(e) => e.stopPropagation()}>
+                        <div className={estilos.modalHeader}>
+                            <h3>Compartir por WhatsApp</h3>
+                            <button onClick={cerrarModalWhatsApp} className={estilos.btnCerrarModal}>
+                                <ion-icon name="close"></ion-icon>
+                            </button>
+                        </div>
+                        <div className={estilos.modalBody}>
+                            <p className={estilos.modalTexto}>
+                                Ingresa el número de teléfono del cliente (con código de país, sin +):
+                            </p>
+                            <input
+                                type="tel"
+                                value={numeroWhatsApp}
+                                onChange={(e) => setNumeroWhatsApp(e.target.value)}
+                                placeholder="Ej: 18091234567 o 8091234567"
+                                className={`${estilos.inputWhatsApp} ${estilos[tema]}`}
+                                autoFocus
+                            />
+                            <p className={estilos.modalAyuda}>
+                                {esMobile() 
+                                    ? 'El comprobante se abrirá en WhatsApp con el número ingresado'
+                                    : 'WhatsApp Web se abrirá con el texto y se descargará la imagen del comprobante'}
+                            </p>
+                        </div>
+                        <div className={estilos.modalFooter}>
+                            <button onClick={cerrarModalWhatsApp} className={estilos.btnCancelar}>
+                                Cancelar
+                            </button>
+                            <button onClick={manejarEnviarWhatsApp} className={estilos.btnEnviarWhatsApp}>
+                                <ion-icon name="logo-whatsapp"></ion-icon>
+                                <span>Enviar</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

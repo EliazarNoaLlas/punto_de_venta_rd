@@ -1,0 +1,24 @@
+✅ COMANDOS SCP CORREGIDOS PARA POWERSHELL
+
+Problema: PowerShell interpreta los paréntesis () en las rutas como comandos
+Solución: Usar comillas dobles "..." alrededor de las rutas
+
+═══════════════════════════════════════════════════════════════════
+
+COMANDOS CORRECTOS (Copy & Paste):
+
+1. Subir servidor de login:
+scp "_Pages\main\login\servidor.js" root@72.62.128.63:/var/www/punto_de_venta_2025/_Pages/main/login/
+
+2. Subir layout de admin:
+scp "app\(admin)\admin\layout.js" root@72.62.128.63:/var/www/punto_de_venta_2025/app/(admin)/admin/
+
+3. Subir layout de superadmin:
+scp "app\(superadmin)\superadmin\layout.js" root@72.62.128.63:/var/www/punto_de_venta_2025/app/(superadmin)/superadmin/
+
+═══════════════════════════════════════════════════════════════════
+
+NOTA: Las rutas con paréntesis () DEBEN ir entre comillas dobles "..."
+
+Contraseña VPS: MEDICENELAMIGO082001a@
+

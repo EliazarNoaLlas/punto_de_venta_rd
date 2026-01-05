@@ -37,7 +37,7 @@ export default function ConfiguracionAdmin() {
         moneda: 'DOP',
         simbolo_moneda: 'RD$',
         impuesto_nombre: 'ITBIS',
-        impuesto_porcentaje: 18.00,
+        impuesto_porcentaje: 0.00,
         mensaje_factura: ''
     })
 
@@ -121,7 +121,7 @@ export default function ConfiguracionAdmin() {
                     moneda: resultadoConfig.empresa.moneda || 'DOP',
                     simbolo_moneda: resultadoConfig.empresa.simbolo_moneda || 'RD$',
                     impuesto_nombre: resultadoConfig.empresa.impuesto_nombre || 'ITBIS',
-                    impuesto_porcentaje: resultadoConfig.empresa.impuesto_porcentaje || 18.00,
+                    impuesto_porcentaje: resultadoConfig.empresa.impuesto_porcentaje !== undefined && resultadoConfig.empresa.impuesto_porcentaje !== null ? resultadoConfig.empresa.impuesto_porcentaje : 0.00,
                     mensaje_factura: resultadoConfig.empresa.mensaje_factura || ''
                 })
             }

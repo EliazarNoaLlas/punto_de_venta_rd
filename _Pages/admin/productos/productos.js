@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerProductos, eliminarProducto } from './servidor'
+import { ImagenProducto } from '@/utils/imageUtils'
 import estilos from './productos.module.css'
 
 export default function ProductosAdmin() {
@@ -234,17 +235,13 @@ export default function ProductosAdmin() {
                     {productosFiltrados.map((producto) => (
                         <div key={producto.id} className={`${estilos.card} ${estilos[tema]}`}>
                             <div className={estilos.cardHeader}>
-                                {producto.imagen_url ? (
-                                    <img 
-                                        src={producto.imagen_url} 
-                                        alt={producto.nombre}
-                                        className={estilos.imagen}
-                                    />
-                                ) : (
-                                    <div className={estilos.imagenPlaceholder}>
-                                        <ion-icon name="image-outline"></ion-icon>
-                                    </div>
-                                )}
+                                <ImagenProducto
+                                    src={producto.imagen_url}
+                                    alt={producto.nombre}
+                                    className={estilos.imagen}
+                                    placeholder={true}
+                                    placeholderClassName={estilos.imagenPlaceholder}
+                                />
                                 {producto.stock <= producto.stock_minimo && (
                                     <span className={estilos.badgeBajoStock}>Bajo Stock</span>
                                 )}

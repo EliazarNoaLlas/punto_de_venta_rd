@@ -21,6 +21,9 @@ export default function VentasAdmin() {
     const [fechaInicio, setFechaInicio] = useState('')
     const [fechaFin, setFechaFin] = useState('')
     const [vistaMovil, setVistaMovil] = useState(false)
+    const [paginaActual, setPaginaActual] = useState(1)
+    const [totalPaginas, setTotalPaginas] = useState(1)
+    const [totalVentas, setTotalVentas] = useState(0)
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -57,9 +60,17 @@ export default function VentasAdmin() {
 
     useEffect(() => {
         if (cajaAbierta) {
-            cargarVentas()
+            setPaginaActual(1) // Reset a primera página cuando se abre la caja
+            cargarVentas(1)
         }
     }, [cajaAbierta])
+
+    useEffect(() => {
+        if (cajaAbierta) {
+            setPaginaActual(1) // Reset a primera página cuando cambian los filtros
+            cargarVentas(1)
+        }
+    }, [filtroEstado, filtroMetodo, fechaInicio, fechaFin])
 
     const verificarCaja = async () => {
         try {
@@ -80,12 +91,24 @@ export default function VentasAdmin() {
         }
     }
 
-    const cargarVentas = async () => {
+    const cargarVentas = async (pagina = paginaActual) => {
         setCargando(true)
         try {
-            const resultado = await obtenerVentas()
+            const resultado = await obtenerVentas(
+                pagina,
+                10, // límite fijo de 10 por página
+                filtroEstado,
+                filtroMetodo,
+                fechaInicio || null,
+                fechaFin || null
+            )
             if (resultado.success) {
                 setVentas(resultado.ventas)
+                if (resultado.paginacion) {
+                    setPaginaActual(resultado.paginacion.pagina)
+                    setTotalPaginas(resultado.paginacion.totalPaginas)
+                    setTotalVentas(resultado.paginacion.total)
+                }
             }
         } catch (error) {
             console.error('Error al cargar ventas:', error)
@@ -150,23 +173,13 @@ export default function VentasAdmin() {
         }
     }
 
+    // Filtro de búsqueda en el cliente (para búsqueda rápida sin recargar)
     const ventasFiltradas = ventas.filter(venta => {
-        const cumpleBusqueda = busqueda === '' ||
-                               venta.vendedor_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-                               venta.numero_interno.toLowerCase().includes(busqueda.toLowerCase()) ||
-                               venta.cliente_nombre?.toLowerCase().includes(busqueda.toLowerCase())
+        if (!busqueda) return true
         
-        const cumpleEstado = filtroEstado === 'todos' || venta.estado === filtroEstado
-        
-        const cumpleMetodo = filtroMetodo === 'todos' || venta.metodo_pago === filtroMetodo
-        
-        let cumpleFecha = true
-        if (fechaInicio && fechaFin) {
-            const fechaVenta = new Date(venta.fecha_venta).toISOString().split('T')[0]
-            cumpleFecha = fechaVenta >= fechaInicio && fechaVenta <= fechaFin
-        }
-        
-        return cumpleBusqueda && cumpleEstado && cumpleMetodo && cumpleFecha
+        return venta.vendedor_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
+               venta.numero_interno.toLowerCase().includes(busqueda.toLowerCase()) ||
+               venta.cliente_nombre?.toLowerCase().includes(busqueda.toLowerCase())
     })
 
     const formatearMoneda = (monto) => {
@@ -421,19 +434,28 @@ export default function VentasAdmin() {
                         <option value="mixto">Mixto</option>
                     </select>
 
-                    <input
-                        type="date"
-                        value={fechaInicio}
-                        onChange={(e) => setFechaInicio(e.target.value)}
-                        className={estilos.inputFecha}
-                    />
+                    <div className={estilos.grupoFecha}>
+                        <label className={estilos.labelFecha}>Fecha Inicio</label>
+                        <input
+                            type="date"
+                            value={fechaInicio}
+                            onChange={(e) => setFechaInicio(e.target.value)}
+                            className={estilos.inputFecha}
+                            placeholder="Fecha de inicio"
+                        />
+                    </div>
 
-                    <input
-                        type="date"
-                        value={fechaFin}
-                        onChange={(e) => setFechaFin(e.target.value)}
-                        className={estilos.inputFecha}
-                    />
+                    <div className={estilos.grupoFecha}>
+                        <label className={estilos.labelFecha}>Fecha Fin</label>
+                        <input
+                            type="date"
+                            value={fechaFin}
+                            onChange={(e) => setFechaFin(e.target.value)}
+                            className={estilos.inputFecha}
+                            placeholder="Fecha de fin"
+                            min={fechaInicio || undefined}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -622,6 +644,73 @@ export default function VentasAdmin() {
                                 </div>
                             )
                         })}
+                    </div>
+                </div>
+            )}
+
+            {/* Paginación */}
+            {!cargando && ventasFiltradas.length > 0 && totalPaginas > 1 && (
+                <div className={`${estilos.paginacion} ${estilos[tema]}`}>
+                    <div className={estilos.paginacionInfo}>
+                        <span>
+                            Mostrando {(paginaActual - 1) * 10 + 1}-{Math.min(paginaActual * 10, totalVentas)} de {totalVentas} ventas
+                        </span>
+                    </div>
+                    <div className={estilos.paginacionControles}>
+                        <button
+                            className={estilos.btnPaginacion}
+                            onClick={() => {
+                                const nuevaPagina = paginaActual - 1
+                                setPaginaActual(nuevaPagina)
+                                cargarVentas(nuevaPagina)
+                            }}
+                            disabled={paginaActual === 1 || cargando}
+                            title="Página anterior"
+                        >
+                            <ion-icon name="chevron-back-outline"></ion-icon>
+                        </button>
+                        
+                        <div className={estilos.numerosPagina}>
+                            {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
+                                let numeroPagina
+                                if (totalPaginas <= 5) {
+                                    numeroPagina = i + 1
+                                } else if (paginaActual <= 3) {
+                                    numeroPagina = i + 1
+                                } else if (paginaActual >= totalPaginas - 2) {
+                                    numeroPagina = totalPaginas - 4 + i
+                                } else {
+                                    numeroPagina = paginaActual - 2 + i
+                                }
+                                
+                                return (
+                                    <button
+                                        key={numeroPagina}
+                                        className={`${estilos.btnNumeroPagina} ${paginaActual === numeroPagina ? estilos.activa : ''}`}
+                                        onClick={() => {
+                                            setPaginaActual(numeroPagina)
+                                            cargarVentas(numeroPagina)
+                                        }}
+                                        disabled={cargando}
+                                    >
+                                        {numeroPagina}
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        
+                        <button
+                            className={estilos.btnPaginacion}
+                            onClick={() => {
+                                const nuevaPagina = paginaActual + 1
+                                setPaginaActual(nuevaPagina)
+                                cargarVentas(nuevaPagina)
+                            }}
+                            disabled={paginaActual === totalPaginas || cargando}
+                            title="Página siguiente"
+                        >
+                            <ion-icon name="chevron-forward-outline"></ion-icon>
+                        </button>
                     </div>
                 </div>
             )}

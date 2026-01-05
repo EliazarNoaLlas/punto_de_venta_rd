@@ -895,7 +895,8 @@ body[data-print-size="A4"] {
     }
 
     .btnImprimir,
-    .btnCerrar {
+    .btnCerrar,
+    .btnWhatsApp {
         width: 100%;
         padding: 11px 28px;
         font-size: 14px;
@@ -1018,9 +1019,29 @@ body[data-print-size="A4"] {
     }
 
     .btnImprimir,
-    .btnCerrar {
+    .btnCerrar,
+    .btnWhatsApp {
         padding: 10px 24px;
         font-size: 13px;
+    }
+
+    .modalWhatsApp {
+        max-width: 100%;
+        margin: 10px;
+    }
+
+    .modalBody {
+        padding: 20px;
+    }
+
+    .modalFooter {
+        padding: 16px 20px;
+        flex-direction: column;
+    }
+
+    .btnCancelar,
+    .btnEnviarWhatsApp {
+        width: 100%;
     }
 
     .vistaPrevia {
@@ -1282,4 +1303,262 @@ body[data-print-size="A4"] {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none !important;
+}
+
+.btnWhatsApp {
+    padding: 12px 32px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #25D366;
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btnWhatsApp:hover {
+    background: #128C7E;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.btnWhatsApp ion-icon {
+    font-size: 20px;
+}
+
+/* Modal WhatsApp */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.modalWhatsApp {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 500px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.light .modalWhatsApp {
+    background: #ffffff;
+}
+
+.dark .modalWhatsApp {
+    background: #1e293b;
+}
+
+.modalHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid;
+}
+
+.light .modalHeader {
+    border-color: #e5e7eb;
+}
+
+.dark .modalHeader {
+    border-color: #334155;
+}
+
+.modalHeader h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.light .modalHeader h3 {
+    color: #1e293b;
+}
+
+.dark .modalHeader h3 {
+    color: #f1f5f9;
+}
+
+.btnCerrarModal {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.light .btnCerrarModal {
+    color: #64748b;
+}
+
+.dark .btnCerrarModal {
+    color: #94a3b8;
+}
+
+.btnCerrarModal:hover {
+    background: #f1f5f9;
+}
+
+.dark .btnCerrarModal:hover {
+    background: #334155;
+}
+
+.modalBody {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+.modalTexto {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+}
+
+.light .modalTexto {
+    color: #475569;
+}
+
+.dark .modalTexto {
+    color: #cbd5e1;
+}
+
+.inputWhatsApp {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid;
+    border-radius: 8px;
+    font-size: 16px;
+    font-family: inherit;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.light .inputWhatsApp {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #1e293b;
+}
+
+.dark .inputWhatsApp {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+.light .inputWhatsApp:focus {
+    outline: none;
+    border-color: #25D366;
+}
+
+.dark .inputWhatsApp:focus {
+    outline: none;
+    border-color: #25D366;
+}
+
+.modalAyuda {
+    margin: 12px 0 0 0;
+    font-size: 12px;
+}
+
+.light .modalAyuda {
+    color: #64748b;
+}
+
+.dark .modalAyuda {
+    color: #94a3b8;
+}
+
+.modalFooter {
+    display: flex;
+    gap: 12px;
+    padding: 20px 24px;
+    border-top: 1px solid;
+}
+
+.light .modalFooter {
+    border-color: #e5e7eb;
+}
+
+.dark .modalFooter {
+    border-color: #334155;
+}
+
+.btnCancelar {
+    flex: 1;
+    padding: 12px 24px;
+    border: 2px solid;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: transparent;
+}
+
+.light .btnCancelar {
+    border-color: #cbd5e1;
+    color: #64748b;
+}
+
+.dark .btnCancelar {
+    border-color: #475569;
+    color: #94a3b8;
+}
+
+.btnCancelar:hover {
+    background: #f1f5f9;
+}
+
+.dark .btnCancelar:hover {
+    background: #334155;
+}
+
+.btnEnviarWhatsApp {
+    flex: 1;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: #25D366;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btnEnviarWhatsApp:hover {
+    background: #128C7E;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(37, 211, 102, 0.4);
+}
+
+.btnEnviarWhatsApp ion-icon {
+    font-size: 20px;
 }

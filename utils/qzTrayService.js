@@ -104,19 +104,29 @@ export async function conectarQZTray() {
 
     try {
         await cargarQZ();
+        if (!qz) {
+            throw new Error('QZ Tray no está disponible');
+        }
+        
         configurarQZ();
         
         if (!qz.websocket.isActive()) {
             await qz.websocket.connect({
-                retries: 5,
+                retries: 3,
                 delay: 1
             });
         }
         isConnected = true;
         return true;
     } catch (error) {
-        console.error('Error conectando QZ Tray:', error);
-        throw new Error('No se pudo conectar con QZ Tray. Asegúrate de que esté instalado y ejecutándose.');
+        // Suprimir errores de WebSocket cuando QZ Tray no está disponible
+        if (error.message && error.message.includes('WebSocket')) {
+            console.warn('QZ Tray no está disponible. La funcionalidad de impresión estará deshabilitada.');
+        } else {
+            console.warn('QZ Tray no disponible:', error.message || error);
+        }
+        isConnected = false;
+        throw error;
     }
 }
 
@@ -134,22 +144,36 @@ export async function desconectarQZTray() {
 export async function obtenerImpresoras() {
     try {
         await conectarQZTray();
+        if (!qz || !qz.printers) {
+            throw new Error('QZ Tray no está disponible');
+        }
         const printers = await qz.printers.find();
         return printers;
     } catch (error) {
-        console.error('Error obteniendo impresoras:', error);
-        throw error;
+        // No mostrar error ruidoso, solo retornar array vacío
+        if (error.message && (error.message.includes('WebSocket') || error.message.includes('no está disponible'))) {
+            return [];
+        }
+        console.warn('Error obteniendo impresoras:', error.message || error);
+        return [];
     }
 }
 
 export async function obtenerImpresoraPredeterminada() {
     try {
         await conectarQZTray();
+        if (!qz || !qz.printers) {
+            throw new Error('QZ Tray no está disponible');
+        }
         const printer = await qz.printers.getDefault();
         return printer;
     } catch (error) {
-        console.error('Error obteniendo impresora predeterminada:', error);
-        throw error;
+        // No mostrar error ruidoso
+        if (error.message && (error.message.includes('WebSocket') || error.message.includes('no está disponible'))) {
+            return null;
+        }
+        console.warn('Error obteniendo impresora predeterminada:', error.message || error);
+        return null;
     }
 }
 

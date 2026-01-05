@@ -484,8 +484,7 @@
     width: 100%;
 }
 
-.selectFiltro,
-.inputFecha {
+.selectFiltro {
     padding: 12px 16px;
     border: 2px solid;
     border-radius: 10px;
@@ -495,6 +494,40 @@
     transition: all 0.2s ease;
     flex: 1 1 auto;
     min-width: 0;
+    box-sizing: border-box;
+}
+
+.grupoFecha {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.labelFecha {
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 4px;
+}
+
+.light .labelFecha {
+    color: #475569;
+}
+
+.dark .labelFecha {
+    color: #94a3b8;
+}
+
+.inputFecha {
+    padding: 12px 16px;
+    border: 2px solid;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    width: 100%;
     box-sizing: border-box;
 }
 
@@ -579,6 +612,132 @@
 
 .vacio ion-icon {
     font-size: 64px;
+}
+
+/* ===================================
+   PAGINACIÓN
+   =================================== */
+
+.paginacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 20px;
+    padding: 16px 20px;
+    border-radius: 12px;
+    border: 1px solid;
+}
+
+.light .paginacion {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.dark .paginacion {
+    background: #161b22;
+    border-color: #30363d;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+}
+
+.paginacionInfo {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.light .paginacionInfo {
+    color: #6b7280;
+}
+
+.dark .paginacionInfo {
+    color: #8b949e;
+}
+
+.paginacionControles {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btnPaginacion {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+}
+
+.light .btnPaginacion {
+    border-color: #d1d5db;
+    color: #6b7280;
+}
+
+.dark .btnPaginacion {
+    border-color: #30363d;
+    color: #8b949e;
+}
+
+.btnPaginacion:hover:not(:disabled) {
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.btnPaginacion:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.btnPaginacion ion-icon {
+    font-size: 18px;
+}
+
+.numerosPagina {
+    display: flex;
+    gap: 4px;
+}
+
+.btnNumeroPagina {
+    min-width: 32px;
+    height: 32px;
+    padding: 0 8px;
+    border-radius: 6px;
+    border: 1px solid;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    font-weight: 600;
+    background: transparent;
+}
+
+.light .btnNumeroPagina {
+    border-color: #d1d5db;
+    color: #6b7280;
+}
+
+.dark .btnNumeroPagina {
+    border-color: #30363d;
+    color: #8b949e;
+}
+
+.btnNumeroPagina:hover:not(:disabled) {
+    border-color: #2563eb;
+    color: #2563eb;
+}
+
+.btnNumeroPagina.activa {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
 }
 
 .tabla {
@@ -808,14 +967,48 @@
     font-size: 20px;
 }
 
+/* Botón Ver (por defecto) - Azul */
 .light .btnIcono {
-    background: #f1f5f9;
-    color: #64748b;
+    background: #dbeafe;
+    color: #2563eb;
 }
 
 .dark .btnIcono {
-    background: #0f172a;
-    color: #94a3b8;
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+/* Botón Imprimir - Morado/Violeta */
+.light .btnIcono.imprimir {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.dark .btnIcono.imprimir {
+    background: #4c1d95;
+    color: #c4b5fd;
+}
+
+/* Botón Anular - Rojo */
+.light .btnIcono.anular {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.dark .btnIcono.anular {
+    background: #991b1b;
+    color: #fca5a5;
+}
+
+/* Botón Despachar - Naranja/Ámbar */
+.light .btnIcono.despachar {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.dark .btnIcono.despachar {
+    background: #92400e;
+    color: #fcd34d;
 }
 
 .btnIcono:hover:not(:disabled) {
@@ -823,26 +1016,41 @@
 }
 
 .light .btnIcono:hover:not(:disabled) {
-    background: #0ea5e9;
+    background: #2563eb;
     color: #ffffff;
 }
 
 .dark .btnIcono:hover:not(:disabled) {
-    background: #38bdf8;
-    color: #0f172a;
+    background: #3b82f6;
+    color: #ffffff;
 }
 
-.btnIcono.imprimir:hover:not(:disabled) {
+.light .btnIcono.imprimir:hover:not(:disabled) {
+    background: #7c3aed;
+    color: #ffffff;
+}
+
+.dark .btnIcono.imprimir:hover:not(:disabled) {
     background: #8b5cf6;
     color: #ffffff;
 }
 
-.btnIcono.anular:hover:not(:disabled) {
+.light .btnIcono.anular:hover:not(:disabled) {
+    background: #dc2626;
+    color: #ffffff;
+}
+
+.dark .btnIcono.anular:hover:not(:disabled) {
     background: #ef4444;
     color: #ffffff;
 }
 
-.btnIcono.despachar:hover:not(:disabled) {
+.light .btnIcono.despachar:hover:not(:disabled) {
+    background: #d97706;
+    color: #ffffff;
+}
+
+.dark .btnIcono.despachar:hover:not(:disabled) {
     background: #f59e0b;
     color: #ffffff;
 }
@@ -1301,8 +1509,12 @@
         min-width: 0;
     }
 
-    .selectFiltro,
-    .inputFecha {
+    .selectFiltro {
+        flex: 1 1 calc(50% - 6px);
+        min-width: 0;
+    }
+    
+    .grupoFecha {
         flex: 1 1 calc(50% - 6px);
         min-width: 0;
     }
@@ -1437,11 +1649,33 @@
         gap: 10px;
     }
 
-    .selectFiltro,
-    .inputFecha {
+    .selectFiltro {
         width: 100%;
         flex: 1 1 100%;
         min-width: 0;
+    }
+    
+    .grupoFecha {
+        width: 100%;
+        flex: 1 1 100%;
+        min-width: 0;
+    }
+    
+    .labelFecha {
+        font-size: 12px;
+    }
+    
+    .paginacion {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .paginacionInfo {
+        text-align: center;
+    }
+    
+    .paginacionControles {
+        justify-content: center;
     }
 
     .modal {

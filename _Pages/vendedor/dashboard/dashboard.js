@@ -138,7 +138,11 @@ export default function DashboardAdmin() {
                     </div>
                     <div className={estilos.estadInfo}>
                         <span className={estilos.estadLabel}>Ventas Hoy</span>
-                        <span className={estilos.estadValor}>{formatearMoneda(datos.resumen.ventasHoy)}</span>
+                        {datos.resumen.ventasHoy !== null ? (
+                            <span className={estilos.estadValor}>{formatearMoneda(datos.resumen.ventasHoy)}</span>
+                        ) : (
+                            <span className={estilos.estadValor}>-</span>
+                        )}
                         <span className={estilos.estadDetalle}>{datos.resumen.cantidadVentasHoy} ventas</span>
                     </div>
                 </div>
@@ -165,16 +169,19 @@ export default function DashboardAdmin() {
                     </div>
                 </div>
 
-                <div className={`${estilos.estadCard} ${estilos.inventario}`}>
-                    <div className={estilos.estadIcono}>
-                        <ion-icon name="file-tray-stacked-outline"></ion-icon>
+                {/* ❌ Ocultar tarjeta de Inventario para vendedores */}
+                {datos.resumen.valorInventario !== null && (
+                    <div className={`${estilos.estadCard} ${estilos.inventario}`}>
+                        <div className={estilos.estadIcono}>
+                            <ion-icon name="file-tray-stacked-outline"></ion-icon>
+                        </div>
+                        <div className={estilos.estadInfo}>
+                            <span className={estilos.estadLabel}>Inventario</span>
+                            <span className={estilos.estadValor}>{formatearMoneda(datos.resumen.valorInventario)}</span>
+                            <span className={estilos.estadDetalle}>{datos.resumen.productosBajoStock} bajo stock</span>
+                        </div>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Inventario</span>
-                        <span className={estilos.estadValor}>{formatearMoneda(datos.resumen.valorInventario)}</span>
-                        <span className={estilos.estadDetalle}>{datos.resumen.productosBajoStock} bajo stock</span>
-                    </div>
-                </div>
+                )}
             </div>
 
             <div className={estilos.fila}>
@@ -217,7 +224,7 @@ export default function DashboardAdmin() {
                                 {ventasMostrar.map((venta) => (
                                     <Link 
                                         key={venta.id} 
-                                        href={`/admin/ventas/ver/${venta.id}`}
+                                        href={`/vendedor/ventas/ver/${venta.id}`}
                                         className={estilos.ventaItem}
                                     >
                                         <div className={estilos.ventaIcono}>
@@ -230,7 +237,9 @@ export default function DashboardAdmin() {
                                             </span>
                                         </div>
                                         <div className={estilos.ventaDetalles}>
-                                            <span className={estilos.ventaMonto}>{formatearMoneda(venta.total)}</span>
+                                            {venta.total !== null && (
+                                                <span className={estilos.ventaMonto}>{formatearMoneda(venta.total)}</span>
+                                            )}
                                             <span className={estilos.ventaFecha}>{formatearFecha(venta.fecha_venta)}</span>
                                         </div>
                                     </Link>
@@ -240,7 +249,7 @@ export default function DashboardAdmin() {
                     </div>
 
                     <div className={estilos.panelFooter}>
-                        <Link href="/admin/ventas" className={estilos.btnVerTodo}>
+                        <Link href="/vendedor/ventas" className={estilos.btnVerTodo}>
                             Ver todas las ventas
                             <ion-icon name="arrow-forward-outline"></ion-icon>
                         </Link>
@@ -280,7 +289,7 @@ export default function DashboardAdmin() {
                                 {productosMostrar.map((producto) => (
                                     <Link 
                                         key={producto.id} 
-                                        href={`/admin/productos/ver/${producto.id}`}
+                                        href={`/vendedor/productos/ver/${producto.id}`}
                                         className={estilos.productoItem}
                                     >
                                         <div className={estilos.productoIcono}>
@@ -298,14 +307,23 @@ export default function DashboardAdmin() {
                                             {periodoProductos === 'top' ? (
                                                 <>
                                                     <span className={estilos.productoVendido}>{producto.total_vendido} vendidos</span>
-                                                    <span className={estilos.productoMonto}>{formatearMoneda(producto.monto_total)}</span>
+                                                    {producto.monto_total !== null && (
+                                                        <span className={estilos.productoMonto}>{formatearMoneda(producto.monto_total)}</span>
+                                                    )}
                                                 </>
                                             ) : (
                                                 <>
-                                                    <span className={`${estilos.productoStock} ${producto.stock <= producto.stock_minimo ? estilos.critico : ''}`}>
-                                                        Stock: {producto.stock}
-                                                    </span>
-                                                    <span className={estilos.productoMinimo}>Min: {producto.stock_minimo}</span>
+                                                    {/* ❌ Para vendedores: no mostrar stock numérico */}
+                                                    {producto.stock !== null ? (
+                                                        <>
+                                                            <span className={`${estilos.productoStock} ${producto.stock <= producto.stock_minimo ? estilos.critico : ''}`}>
+                                                                Stock: {producto.stock}
+                                                            </span>
+                                                            <span className={estilos.productoMinimo}>Min: {producto.stock_minimo}</span>
+                                                        </>
+                                                    ) : (
+                                                        <span className={estilos.productoStock}>Últimas unidades</span>
+                                                    )}
                                                 </>
                                             )}
                                         </div>
@@ -316,7 +334,7 @@ export default function DashboardAdmin() {
                     </div>
 
                     <div className={estilos.panelFooter}>
-                        <Link href="/admin/productos" className={estilos.btnVerTodo}>
+                        <Link href="/vendedor/productos" className={estilos.btnVerTodo}>
                             Ver todos los productos
                             <ion-icon name="arrow-forward-outline"></ion-icon>
                         </Link>
@@ -337,27 +355,42 @@ export default function DashboardAdmin() {
                         <div className={estilos.resumenVentas}>
                             <div className={estilos.resumenItem}>
                                 <span className={estilos.resumenLabel}>Ventas del Dia</span>
-                                <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasHoy)}</span>
+                                {datos.resumen.ventasHoy !== null ? (
+                                    <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasHoy)}</span>
+                                ) : (
+                                    <span className={estilos.resumenValor}>-</span>
+                                )}
                                 <span className={estilos.resumenCantidad}>{datos.resumen.cantidadVentasHoy} ventas</span>
                             </div>
 
                             <div className={estilos.resumenItem}>
                                 <span className={estilos.resumenLabel}>Ventas de la Semana</span>
-                                <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasSemana)}</span>
+                                {datos.resumen.ventasSemana !== null ? (
+                                    <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasSemana)}</span>
+                                ) : (
+                                    <span className={estilos.resumenValor}>-</span>
+                                )}
                                 <span className={estilos.resumenCantidad}>{datos.resumen.cantidadVentasSemana} ventas</span>
                             </div>
 
                             <div className={estilos.resumenItem}>
                                 <span className={estilos.resumenLabel}>Ventas del Mes</span>
-                                <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasMes)}</span>
+                                {datos.resumen.ventasMes !== null ? (
+                                    <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.ventasMes)}</span>
+                                ) : (
+                                    <span className={estilos.resumenValor}>-</span>
+                                )}
                                 <span className={estilos.resumenCantidad}>{datos.resumen.cantidadVentasMes} ventas</span>
                             </div>
 
-                            <div className={estilos.resumenItem}>
-                                <span className={estilos.resumenLabel}>Promedio por Venta</span>
-                                <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.promedioVenta)}</span>
-                                <span className={estilos.resumenCantidad}>Ticket promedio</span>
-                            </div>
+                            {/* ❌ Ocultar promedio para vendedores */}
+                            {datos.resumen.promedioVenta !== null && (
+                                <div className={estilos.resumenItem}>
+                                    <span className={estilos.resumenLabel}>Promedio por Venta</span>
+                                    <span className={estilos.resumenValor}>{formatearMoneda(datos.resumen.promedioVenta)}</span>
+                                    <span className={estilos.resumenCantidad}>Ticket promedio</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -372,8 +405,9 @@ export default function DashboardAdmin() {
 
                     <div className={estilos.panelBody}>
                         <div className={estilos.alertas}>
-                            {datos.resumen.productosBajoStock > 0 && (
-                                <Link href="/admin/productos?filtro=bajo_stock" className={`${estilos.alerta} ${estilos.warning}`}>
+                            {/* ❌ Ocultar alerta de bajo stock para vendedores */}
+                            {datos.resumen.productosBajoStock !== null && datos.resumen.productosBajoStock > 0 && (
+                                <Link href="/vendedor/productos?filtro=bajo_stock" className={`${estilos.alerta} ${estilos.warning}`}>
                                     <ion-icon name="warning-outline"></ion-icon>
                                     <div className={estilos.alertaInfo}>
                                         <span className={estilos.alertaTitulo}>Productos Bajo Stock</span>
@@ -391,14 +425,15 @@ export default function DashboardAdmin() {
                                     <div className={estilos.alertaInfo}>
                                         <span className={estilos.alertaTitulo}>Caja Abierta</span>
                                         <span className={estilos.alertaDescripcion}>
-                                            Caja {datos.alertas.numeroCaja} - {formatearMoneda(datos.alertas.montoInicial)} inicial
+                                            Caja {datos.alertas.numeroCaja}
+                                            {datos.alertas.montoInicial !== null && ` - ${formatearMoneda(datos.alertas.montoInicial)} inicial`}
                                         </span>
                                     </div>
                                 </div>
                             )}
 
                             {!datos.alertas?.cajaAbierta && (
-                                <Link href="/admin/ventas" className={`${estilos.alerta} ${estilos.info}`}>
+                                <Link href="/vendedor/ventas" className={`${estilos.alerta} ${estilos.info}`}>
                                     <ion-icon name="information-circle-outline"></ion-icon>
                                     <div className={estilos.alertaInfo}>
                                         <span className={estilos.alertaTitulo}>Caja Cerrada</span>
@@ -411,7 +446,7 @@ export default function DashboardAdmin() {
                             )}
 
                             {datos.resumen.productosActivos === 0 && (
-                                <Link href="/admin/productos/nuevo" className={`${estilos.alerta} ${estilos.danger}`}>
+                                <Link href="/vendedor/productos/nuevo" className={`${estilos.alerta} ${estilos.danger}`}>
                                     <ion-icon name="close-circle-outline"></ion-icon>
                                     <div className={estilos.alertaInfo}>
                                         <span className={estilos.alertaTitulo}>Sin Productos</span>
@@ -483,7 +518,7 @@ export default function DashboardAdmin() {
                 </div>
 
                 <div className={estilos.panelFooter}>
-                    <Link href="/admin/clientes" className={estilos.btnVerTodo}>
+                    <Link href="/vendedor/clientes" className={estilos.btnVerTodo}>
                         Ver todos los clientes
                         <ion-icon name="arrow-forward-outline"></ion-icon>
                     </Link>

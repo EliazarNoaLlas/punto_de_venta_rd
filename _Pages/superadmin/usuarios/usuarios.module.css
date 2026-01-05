@@ -1183,3 +1183,281 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* ===================================
+   TÉRMINOS Y CONDICIONES
+   =================================== */
+
+.grupoTerminos {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+    border-radius: 8px;
+    border: 2px solid;
+}
+
+.light .grupoTerminos {
+    background: #f8fafc;
+    border-color: #e5e7eb;
+}
+
+.dark .grupoTerminos {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.terminosCheckbox {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.terminosCheckbox input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    flex-shrink: 0;
+    accent-color: #0ea5e9;
+}
+
+.labelTerminos {
+    font-size: 14px;
+    line-height: 1.5;
+    cursor: pointer;
+    user-select: none;
+}
+
+.light .labelTerminos {
+    color: #475569;
+}
+
+.dark .labelTerminos {
+    color: #cbd5e1;
+}
+
+.linkTerminos {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: underline;
+    transition: all 0.2s ease;
+}
+
+.light .linkTerminos {
+    color: #0ea5e9;
+}
+
+.dark .linkTerminos {
+    color: #38bdf8;
+}
+
+.linkTerminos:hover {
+    opacity: 0.8;
+}
+
+.modalTerminos {
+    width: 100%;
+    max-width: 800px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.light .modalTerminos {
+    background: #ffffff;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.dark .modalTerminos {
+    background: #1e293b;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+.terminosContent {
+    flex: 1;
+    overflow-y: auto;
+    padding: 30px;
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.terminosFecha {
+    font-size: 13px;
+    font-weight: 500;
+    padding-bottom: 16px;
+    border-bottom: 2px solid;
+}
+
+.light .terminosFecha {
+    color: #64748b;
+    border-color: #e5e7eb;
+}
+
+.dark .terminosFecha {
+    color: #94a3b8;
+    border-color: #334155;
+}
+
+.terminosSeccion {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.terminosSeccion h3 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0;
+    padding-bottom: 12px;
+    border-bottom: 2px solid;
+}
+
+.light .terminosSeccion h3 {
+    color: #0f172a;
+    border-color: #e5e7eb;
+}
+
+.dark .terminosSeccion h3 {
+    color: #f1f5f9;
+    border-color: #334155;
+}
+
+.terminosSeccion h4 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    margin-top: 8px;
+}
+
+.light .terminosSeccion h4 {
+    color: #1e293b;
+}
+
+.dark .terminosSeccion h4 {
+    color: #e2e8f0;
+}
+
+.terminosSeccion p {
+    font-size: 14px;
+    line-height: 1.7;
+    margin: 0;
+}
+
+.light .terminosSeccion p {
+    color: #475569;
+}
+
+.dark .terminosSeccion p {
+    color: #cbd5e1;
+}
+
+.terminosSeccion ul {
+    margin: 8px 0;
+    padding-left: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.terminosSeccion li {
+    font-size: 14px;
+    line-height: 1.7;
+}
+
+.light .terminosSeccion li {
+    color: #475569;
+}
+
+.dark .terminosSeccion li {
+    color: #cbd5e1;
+}
+
+.btnDeclinar,
+.btnAceptarTerminos {
+    padding: 12px 24px;
+    border-radius: 8px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+}
+
+.btnDeclinar {
+    background: #f1f5f9;
+    color: #64748b;
+    border: 2px solid #e5e7eb;
+}
+
+.dark .btnDeclinar {
+    background: #334155;
+    color: #94a3b8;
+    border-color: #475569;
+}
+
+.btnDeclinar:hover {
+    background: #e2e8f0;
+    transform: translateY(-1px);
+}
+
+.dark .btnDeclinar:hover {
+    background: #475569;
+}
+
+.btnAceptarTerminos {
+    background: #0ea5e9;
+    color: #ffffff;
+}
+
+.btnAceptarTerminos:hover {
+    background: #0284c7;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3);
+}
+
+@media (max-width: 768px) {
+    .modalTerminos {
+        max-width: 95vw;
+        max-height: 95vh;
+    }
+
+    .terminosContent {
+        padding: 20px;
+        gap: 24px;
+    }
+
+    .terminosSeccion h3 {
+        font-size: 20px;
+    }
+
+    .terminosSeccion h4 {
+        font-size: 16px;
+    }
+
+    .terminosSeccion p,
+    .terminosSeccion li {
+        font-size: 13px;
+    }
+
+    .labelTerminos {
+        font-size: 13px;
+    }
+
+    .modalFooter {
+        flex-direction: column;
+    }
+
+    .btnDeclinar,
+    .btnAceptarTerminos {
+        width: 100%;
+    }
+}

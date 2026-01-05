@@ -132,7 +132,7 @@ export async function actualizarEmpresa(datosEmpresa) {
                 datosEmpresa.moneda || 'DOP',
                 datosEmpresa.simbolo_moneda || 'RD$',
                 datosEmpresa.impuesto_nombre?.trim() || 'ITBIS',
-                parseFloat(datosEmpresa.impuesto_porcentaje) || 18.00,
+                datosEmpresa.impuesto_porcentaje !== undefined && datosEmpresa.impuesto_porcentaje !== null && datosEmpresa.impuesto_porcentaje !== '' ? parseFloat(datosEmpresa.impuesto_porcentaje) : 0.00,
                 datosEmpresa.mensaje_factura?.trim() || null,
                 empresaId
             ]

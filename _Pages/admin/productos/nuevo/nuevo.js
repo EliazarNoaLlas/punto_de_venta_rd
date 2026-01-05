@@ -13,6 +13,12 @@ export default function NuevoProductoAdmin() {
     const [categorias, setCategorias] = useState([])
     const [marcas, setMarcas] = useState([])
     const [unidadesMedida, setUnidadesMedida] = useState([])
+    const [configuracion, setConfiguracion] = useState({
+        moneda: 'DOP',
+        simbolo_moneda: 'RD$',
+        impuesto_nombre: 'ITBIS',
+        impuesto_porcentaje: 0.00
+    })
     
     const [codigoBarras, setCodigoBarras] = useState('')
     const [sku, setSku] = useState('')
@@ -92,10 +98,10 @@ export default function NuevoProductoAdmin() {
         const archivo = e.target.files?.[0]
         if (!archivo) return
 
-        const maxSize = 2 * 1024 * 1024
+        const maxSize = 5 * 1024 * 1024
 
         if (archivo.size > maxSize) {
-            alert('La imagen no debe superar los 2MB. Tu archivo pesa: ' + (archivo.size / 1024 / 1024).toFixed(2) + 'MB')
+            alert('La imagen no debe superar los 5MB. Tu archivo pesa: ' + (archivo.size / 1024 / 1024).toFixed(2) + 'MB')
             e.target.value = ''
             setImagenArchivo(null)
             setVistaPrevia(null)
@@ -131,6 +137,9 @@ export default function NuevoProductoAdmin() {
                 setCategorias(resultado.categorias)
                 setMarcas(resultado.marcas)
                 setUnidadesMedida(resultado.unidadesMedida)
+                if (resultado.configuracion) {
+                    setConfiguracion(resultado.configuracion)
+                }
             } else {
                 alert(resultado.mensaje || 'Error al cargar datos')
                 router.push('/admin/productos')
@@ -246,7 +255,7 @@ export default function NuevoProductoAdmin() {
                 >
                     <ion-icon name="close-outline"></ion-icon>
                     <span>Cancelar</span>
-                </button>
+                </button> 
             </div>
 
             <form onSubmit={manejarSubmit} className={estilos.formulario}>
@@ -361,7 +370,7 @@ export default function NuevoProductoAdmin() {
                                 <div className={estilos.grupoInput}>
                                     <label>Precio de Compra *</label>
                                     <div className={estilos.inputMoneda}>
-                                        <span className={estilos.simbolo}>RD$</span>
+                                        <span className={estilos.simbolo}>{configuracion.simbolo_moneda}</span>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -378,7 +387,7 @@ export default function NuevoProductoAdmin() {
                                 <div className={estilos.grupoInput}>
                                     <label>Precio de Venta *</label>
                                     <div className={estilos.inputMoneda}>
-                                        <span className={estilos.simbolo}>RD$</span>
+                                        <span className={estilos.simbolo}>{configuracion.simbolo_moneda}</span>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -397,7 +406,7 @@ export default function NuevoProductoAdmin() {
                                 <div className={estilos.grupoInput}>
                                     <label>Precio de Oferta</label>
                                     <div className={estilos.inputMoneda}>
-                                        <span className={estilos.simbolo}>RD$</span>
+                                        <span className={estilos.simbolo}>{configuracion.simbolo_moneda}</span>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -413,7 +422,7 @@ export default function NuevoProductoAdmin() {
                                 <div className={estilos.grupoInput}>
                                     <label>Precio Mayorista</label>
                                     <div className={estilos.inputMoneda}>
-                                        <span className={estilos.simbolo}>RD$</span>
+                                        <span className={estilos.simbolo}>{configuracion.simbolo_moneda}</span>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -559,7 +568,7 @@ export default function NuevoProductoAdmin() {
                                 </div>
                             ) : (
                                 <div className={estilos.grupoInput}>
-                                    <label>Seleccionar Archivo (máx. 2MB)</label>
+                                    <label>Seleccionar Archivo (máx. 5MB)</label>
                                     <div className={estilos.contenedorArchivo}>
                                         <input
                                             type="file"
@@ -612,7 +621,12 @@ export default function NuevoProductoAdmin() {
                                         className={estilos.switchInput}
                                     />
                                     <span className={estilos.switchSlider}></span>
-                                    <span className={estilos.switchTexto}>Aplica ITBIS (18%)</span>
+                                    <span className={estilos.switchTexto}>
+                                        Aplica {configuracion.impuesto_nombre}
+                                        {configuracion.impuesto_porcentaje !== undefined && configuracion.impuesto_porcentaje !== null && configuracion.impuesto_porcentaje !== 0
+                                            ? ` (${configuracion.impuesto_porcentaje}%)`
+                                            : ''}
+                                    </span>
                                 </label>
                             </div>
 

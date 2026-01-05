@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerDetalleProducto } from './servidor'
+import { ImagenProducto } from '@/utils/imageUtils'
 import estilos from './ver.module.css'
 
 export default function VerProductoAdmin() {
@@ -112,18 +113,13 @@ export default function VerProductoAdmin() {
                 <div className={estilos.columnaIzquierda}>
                     <div className={`${estilos.seccion} ${estilos[tema]}`}>
                         <div className={estilos.imagenContainer}>
-                            {producto.imagen_url ? (
-                                <img 
-                                    src={producto.imagen_url} 
-                                    alt={producto.nombre}
-                                    className={estilos.imagen}
-                                />
-                            ) : (
-                                <div className={estilos.imagenPlaceholder}>
-                                    <ion-icon name="image-outline"></ion-icon>
-                                    <span>Sin imagen</span>
-                                </div>
-                            )}
+                            <ImagenProducto
+                                src={producto.imagen_url}
+                                alt={producto.nombre}
+                                className={estilos.imagen}
+                                placeholder={true}
+                                placeholderClassName={estilos.imagenPlaceholder}
+                            />
                         </div>
 
                         <div className={estilos.estado}>
