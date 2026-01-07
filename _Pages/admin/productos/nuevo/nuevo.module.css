@@ -245,6 +245,16 @@
     box-sizing: border-box;
 }
 
+.select {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    appearance: none; /* Quita estilo nativo en algunos navegadores */
+    padding-right: 40px; /* Para espacio de icono */
+    overflow: hidden;
+}
+
+
 .light .input,
 .light .select,
 .light .textarea {
@@ -361,13 +371,20 @@
     gap: 16px;
 }
 
-@media (min-width: 768px) {
-    .gridDosColumnas {
-        grid-template-columns: repeat(2, 1fr);
-    }
 
+/* Móvil extra seguro */
+@media (max-width: 768px) {
+    .gridTresColumnas {
+        grid-template-columns: 1fr !important;
+        gap: 12px;
+    }
+}
+
+/* Tablet/desktop */
+@media (min-width: 769px) {
     .gridTresColumnas {
         grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
     }
 }
 
@@ -440,6 +457,80 @@
 .contenedorArchivo {
     position: relative;
 }
+
+/* Estilos base del input de fecha */
+.inputFecha {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    box-sizing: border-box;
+    transition: all 0.25s ease;
+    appearance: none; /* Quita estilo nativo del navegador */
+    cursor: pointer;
+}
+
+/* Modo claro */
+.light .inputFecha {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+    color: #0f172a;
+}
+
+/* Modo oscuro */
+.dark .inputFecha {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+/* Placeholder y texto */
+.inputFecha::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+}
+
+/* Focus profesional */
+.inputFecha:focus {
+    outline: none;
+    border-width: 2px;
+    box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+}
+
+/* Focus modo claro */
+.light .inputFecha:focus {
+    border-color: #0ea5e9;
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(14,165,233,0.15);
+}
+
+/* Focus modo oscuro */
+.dark .inputFecha:focus {
+    border-color: #38bdf8;
+    background: #1e293b;
+    box-shadow: 0 0 0 3px rgba(56,189,248,0.2);
+}
+
+/* Ajuste para móviles */
+@media (max-width: 768px) {
+    .inputFecha {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+}
+
+.inputFecha {
+    position: relative;
+    padding-right: 40px; /* espacio para el ícono */
+}
+
+.inputFecha::-webkit-calendar-picker-indicator {
+    filter: invert(0.6); /* cambia color según tema */
+    cursor: pointer;
+}
+
 
 .inputFile {
     position: absolute;

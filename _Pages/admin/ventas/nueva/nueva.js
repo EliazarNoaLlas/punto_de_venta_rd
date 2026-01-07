@@ -1,7 +1,7 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta } from './servidor'
+import {useEffect, useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta} from './servidor'
 import estilos from './nueva.module.css'
 
 export default function NuevaVentaOptimizada() {
@@ -12,24 +12,24 @@ export default function NuevaVentaOptimizada() {
     const [datosEmpresa, setDatosEmpresa] = useState(null)
     const [tiposComprobante, setTiposComprobante] = useState([])
     const [tiposDocumento, setTiposDocumento] = useState([])
-    
+
     const [busquedaProducto, setBusquedaProducto] = useState('')
     const [productos, setProductos] = useState([])
     const [mostrarDropdownProductos, setMostrarDropdownProductos] = useState(false)
     const [productosVenta, setProductosVenta] = useState([])
-    
+
     const [busquedaCliente, setBusquedaCliente] = useState('')
     const [clientes, setClientes] = useState([])
     const [mostrarDropdownClientes, setMostrarDropdownClientes] = useState(false)
     const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
     const [mostrarModalCliente, setMostrarModalCliente] = useState(false)
     const [nombreClienteRapido, setNombreClienteRapido] = useState('')
-    
+
     const [tipoComprobanteId, setTipoComprobanteId] = useState('')
     const [metodoPago, setMetodoPago] = useState('efectivo')
     const [efectivoRecibido, setEfectivoRecibido] = useState('')
     const [descuentoGlobal, setDescuentoGlobal] = useState('')
-    
+
     const [mostrarModalExtra, setMostrarModalExtra] = useState(false)
     const [productosExtra, setProductosExtra] = useState([])
     const [mostrarExtras, setMostrarExtras] = useState(false)
@@ -43,10 +43,10 @@ export default function NuevaVentaOptimizada() {
     })
 
     const tiposExtra = [
-        { valor: 'ingrediente', nombre: 'Ingrediente Extra' },
-        { valor: 'delivery', nombre: 'Delivery' },
-        { valor: 'propina', nombre: 'Propina' },
-        { valor: 'otro', nombre: 'Otro' }
+        {valor: 'ingrediente', nombre: 'Ingrediente Extra'},
+        {valor: 'delivery', nombre: 'Delivery'},
+        {valor: 'propina', nombre: 'Propina'},
+        {valor: 'otro', nombre: 'Otro'}
     ]
 
     useEffect(() => {
@@ -126,9 +126,9 @@ export default function NuevaVentaOptimizada() {
     const agregarProducto = (producto) => {
         const existe = productosVenta.find(p => p.id === producto.id)
         if (existe) {
-            setProductosVenta(productosVenta.map(p => 
-                p.id === producto.id 
-                    ? { ...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1 }
+            setProductosVenta(productosVenta.map(p =>
+                p.id === producto.id
+                    ? {...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1}
                     : p
             ))
         } else {
@@ -158,8 +158,8 @@ export default function NuevaVentaOptimizada() {
         setProductosVenta(productosVenta.map(p => {
             if (p.id === productoId) {
                 const nuevaCantidadDespachar = p.despacho_parcial ? p.cantidadDespachar : nuevaCantidad
-                return { 
-                    ...p, 
+                return {
+                    ...p,
                     cantidad: nuevaCantidad,
                     cantidadDespachar: nuevaCantidadDespachar > nuevaCantidad ? nuevaCantidad : nuevaCantidadDespachar
                 }
@@ -170,7 +170,7 @@ export default function NuevaVentaOptimizada() {
 
     const actualizarPrecio = (productoId, nuevoPrecio) => {
         setProductosVenta(productosVenta.map(p =>
-            p.id === productoId ? { ...p, precio_venta_usado: parseFloat(nuevoPrecio) || 0 } : p
+            p.id === productoId ? {...p, precio_venta_usado: parseFloat(nuevoPrecio) || 0} : p
         ))
     }
 
@@ -190,7 +190,7 @@ export default function NuevaVentaOptimizada() {
 
     const toggleAplicaItbis = (productoId) => {
         setProductosVenta(productosVenta.map(p =>
-            p.id === productoId ? { ...p, aplica_itbis: !p.aplica_itbis } : p
+            p.id === productoId ? {...p, aplica_itbis: !p.aplica_itbis} : p
         ))
     }
 
@@ -198,7 +198,7 @@ export default function NuevaVentaOptimizada() {
         setProductosVenta(productosVenta.map(p => {
             if (p.id === productoId) {
                 const cantidadValida = Math.min(Math.max(1, nuevaCantidad), p.cantidad)
-                return { ...p, cantidadDespachar: cantidadValida }
+                return {...p, cantidadDespachar: cantidadValida}
             }
             return p
         }))
@@ -334,9 +334,7 @@ export default function NuevaVentaOptimizada() {
             subtotalExtras += extra.precio_unitario * extra.cantidad
         })
 
-        const subtotalConDescuento = subtotal + subtotalExtras - descuento
-        const montoGravado = subtotalConDescuento
-        
+        // Calcular ITBIS antes del descuento
         let itbisProductos = 0
         productosVenta.forEach(producto => {
             if (producto.aplica_itbis) {
@@ -354,7 +352,9 @@ export default function NuevaVentaOptimizada() {
         })
 
         const itbis = itbisProductos + itbisExtras
-        const total = subtotalConDescuento + itbis
+        const subtotalConImpuesto = subtotal + subtotalExtras + itbis
+        const total = subtotalConImpuesto - descuento
+        const montoGravado = subtotal + subtotalExtras
 
         return {
             subtotal: subtotal.toFixed(2),
@@ -451,7 +451,7 @@ export default function NuevaVentaOptimizada() {
             }
 
             const resultado = await crearVenta(datosVenta)
-            
+
             if (resultado.success) {
                 router.push(`/admin/ventas/imprimir/${resultado.venta.id}`)
             } else {
@@ -493,20 +493,19 @@ export default function NuevaVentaOptimizada() {
     }
 
     return (
-    <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>            
-            {/* TÍTULO DE LA PÁGINA */}
-        
-        <div className={estilos.pageHeader}>
-            <div className={estilos.pageTitle}>
-                <ion-icon name="cart-outline"></ion-icon>
-                <h1>Registro de Venta</h1>
-            </div>
-            <span className={estilos.pageSubtitle}>
-                Punto de venta · Emisión de comprobantes
-            </span>
-        </div>
+        <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>
             {/* HEADER STICKY CON ACCIONES PRINCIPALES */}
             <div className={`${estilos.headerSticky} ${estilos[tema]}`}>
+                <div className={`${estilos.pageHeader} ${estilos[tema]}`}>
+                    <div className={estilos.pageTitle}>
+                        <ion-icon name="cart-outline"></ion-icon>
+                        <h1>Registro de Venta</h1>
+                    </div>
+                    <span className={estilos.pageSubtitle}>
+                    Punto de venta · Emisión de comprobantes
+                </span>
+                </div>
+
                 <div className={estilos.headerLeft}>
                     <div className={estilos.infoHeader}>
                         <span className={estilos.labelTotal}>Total:</span>
@@ -520,7 +519,7 @@ export default function NuevaVentaOptimizada() {
                 </div>
 
                 <div className={estilos.headerActions}>
-                    <button 
+                    <button
                         onClick={() => router.push('/admin/ventas')}
                         className={estilos.btnCancelarHeader}
                         disabled={procesando}
@@ -553,14 +552,6 @@ export default function NuevaVentaOptimizada() {
             <div className={`${estilos.barraInfo} ${estilos[tema]}`}>
                 <div className={estilos.infoCompacta}>
                     <div className={estilos.itemInfo}>
-                        <ion-icon name="person-outline"></ion-icon>
-                        <span>Cliente:</span>
-                        <strong>{clienteSeleccionado ? clienteSeleccionado.nombre : 'Sin cliente'}</strong>
-                    </div>
-
-                    <div className={estilos.separadorVertical}></div>
-
-                    <div className={estilos.itemInfo}>
                         <ion-icon name="document-text-outline"></ion-icon>
                         <span>Comprobante:</span>
                         <select
@@ -579,114 +570,114 @@ export default function NuevaVentaOptimizada() {
                     <div className={estilos.separadorVertical}></div>
 
                     <div className={estilos.metodosPagoWrapper}>
-                    <span className={estilos.labelMetodoPago}>Metodo de Pago</span>
+                        <span className={estilos.labelMetodoPago}>Método de Pago</span>
 
-                    <div className={estilos.metodosPagoGrid}>
-                        <button
-                            type="button"
-                            className={`${estilos.metodoPagoItem} ${estilos.efectivo} ${metodoPago === 'efectivo' ? estilos.activo : ''}`}
-                            onClick={() => setMetodoPago('efectivo')}
-                        >
-                            <ion-icon name="cash-outline"></ion-icon>
-                            <span>Efectivo</span>
-                        </button>
+                        <div className={estilos.metodosPagoGrid}>
+                            <button
+                                type="button"
+                                className={`${estilos.metodoPagoItem} ${estilos.efectivo} ${metodoPago === 'efectivo' ? estilos.activo : ''}`}
+                                onClick={() => setMetodoPago('efectivo')}
+                            >
+                                <ion-icon name="cash-outline"></ion-icon>
+                                <span>Efectivo</span>
+                            </button>
 
-                        <button
-                            type="button"
-                            className={`${estilos.metodoPagoItem} ${estilos.debito} ${metodoPago === 'tarjeta_debito' ? estilos.activo : ''}`}
-                            onClick={() => setMetodoPago('tarjeta_debito')}
-                        >
-                            <ion-icon name="card-outline"></ion-icon>
-                            <span>Débito</span>
-                        </button>
+                            <button
+                                type="button"
+                                className={`${estilos.metodoPagoItem} ${estilos.debito} ${metodoPago === 'tarjeta_debito' ? estilos.activo : ''}`}
+                                onClick={() => setMetodoPago('tarjeta_debito')}
+                            >
+                                <ion-icon name="card-outline"></ion-icon>
+                                <span>Débito</span>
+                            </button>
 
-                        <button
-                            type="button"
-                            className={`${estilos.metodoPagoItem} ${estilos.credito} ${metodoPago === 'tarjeta_credito' ? estilos.activo : ''}`}
-                            onClick={() => setMetodoPago('tarjeta_credito')}
-                        >
-                            <ion-icon name="card-outline"></ion-icon>
-                            <span>Crédito</span>
-                        </button>
+                            <button
+                                type="button"
+                                className={`${estilos.metodoPagoItem} ${estilos.credito} ${metodoPago === 'tarjeta_credito' ? estilos.activo : ''}`}
+                                onClick={() => setMetodoPago('tarjeta_credito')}
+                            >
+                                <ion-icon name="card-outline"></ion-icon>
+                                <span>Crédito</span>
+                            </button>
 
-                        <button
-                            type="button"
-                            className={`${estilos.metodoPagoItem} ${estilos.transferencia} ${metodoPago === 'transferencia' ? estilos.activo : ''}`}
-                            onClick={() => setMetodoPago('transferencia')}
-                        >
-                            <ion-icon name="swap-horizontal-outline"></ion-icon>
-                            <span>Transfer.</span>
-                        </button>
+                            <button
+                                type="button"
+                                className={`${estilos.metodoPagoItem} ${estilos.transferencia} ${metodoPago === 'transferencia' ? estilos.activo : ''}`}
+                                onClick={() => setMetodoPago('transferencia')}
+                            >
+                                <ion-icon name="swap-horizontal-outline"></ion-icon>
+                                <span>Transfer.</span>
+                            </button>
 
-                        <button
-                            type="button"
-                            className={`${estilos.metodoPagoItem} ${estilos.cheque} ${metodoPago === 'cheque' ? estilos.activo : ''}`}
-                            onClick={() => setMetodoPago('cheque')}
-                        >
-                            <ion-icon name="document-text-outline"></ion-icon>
-                            <span>Cheque</span>
-                        </button>
+                            <button
+                                type="button"
+                                className={`${estilos.metodoPagoItem} ${estilos.cheque} ${metodoPago === 'cheque' ? estilos.activo : ''}`}
+                                onClick={() => setMetodoPago('cheque')}
+                            >
+                                <ion-icon name="document-text-outline"></ion-icon>
+                                <span>Cheque</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
-                </div>
-                 {/* BLOQUE CLIENTE */}
-    <div className={estilos.bloqueClienteBarra}>
-        {/* BUSCAR CLIENTE (IZQUIERDA) */}
-        <div className={estilos.busquedaClienteContainer}>
-            <div className={estilos.busquedaCliente}>
-                <ion-icon name="search-outline"></ion-icon>
-                <input
-                    type="text"
-                    placeholder="Buscar cliente..."
-                    value={busquedaCliente}
-                    onChange={manejarBusquedaCliente}
-                    className={estilos.inputBusquedaCompacto}
-                    disabled={!!clienteSeleccionado}
-                />
+                {/* BLOQUE CLIENTE */}
+                <div className={estilos.bloqueClienteBarra}>
+                    {/* BUSCAR CLIENTE (IZQUIERDA) */}
+                    <div className={estilos.busquedaClienteContainer}>
+                        <div className={estilos.busquedaCliente}>
+                            <ion-icon name="search-outline"></ion-icon>
+                            <input
+                                type="text"
+                                placeholder="Buscar cliente..."
+                                value={busquedaCliente}
+                                onChange={manejarBusquedaCliente}
+                                className={estilos.inputBusquedaCompacto}
+                                disabled={!!clienteSeleccionado}
+                            />
 
-                {clienteSeleccionado && (
-                    <button
-                        type="button"
-                        onClick={limpiarCliente}
-                        className={estilos.btnLimpiarCliente}
-                        title="Cambiar cliente"
-                    >
-                        <ion-icon name="close-circle"></ion-icon>
-                    </button>
-                )}
-            </div>
+                            {clienteSeleccionado && (
+                                <button
+                                    type="button"
+                                    onClick={limpiarCliente}
+                                    className={estilos.btnLimpiarCliente}
+                                    title="Cambiar cliente"
+                                >
+                                    <ion-icon name="close-circle"></ion-icon>
+                                </button>
+                            )}
+                        </div>
 
-            {mostrarDropdownClientes && clientes.length > 0 && !clienteSeleccionado && (
-                <div className={`${estilos.dropdownClientes} ${estilos[tema]}`}>
-                    {clientes.map(cliente => (
-                        <div
-                            key={cliente.id}
-                            className={estilos.dropdownItemCliente}
-                            onClick={() => seleccionarCliente(cliente)}
-                        >
-                            <div className={estilos.clienteInfo}>
+                        {mostrarDropdownClientes && clientes.length > 0 && !clienteSeleccionado && (
+                            <div className={`${estilos.dropdownClientes} ${estilos[tema]}`}>
+                                {clientes.map(cliente => (
+                                    <div
+                                        key={cliente.id}
+                                        className={estilos.dropdownItemCliente}
+                                        onClick={() => seleccionarCliente(cliente)}
+                                    >
+                                        <div className={estilos.clienteInfo}>
                                 <span className={estilos.clienteNombre}>
                                     {cliente.nombre}
                                 </span>
-                                <span className={estilos.clienteDoc}>
+                                            <span className={estilos.clienteDoc}>
                                     {cliente.numero_documento}
                                 </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </div>
+                        )}
+                    </div>
 
-        {/* CLIENTE RÁPIDO (DERECHA) */}
-        <button 
-            onClick={abrirModalClienteRapido}
-            className={estilos.btnAccionRapida}
-        >
-            <ion-icon name="person-add-outline"></ion-icon>
-            Cliente Rápido
-        </button>
-    </div>
+                    {/* CLIENTE RÁPIDO (DERECHA) */}
+                    <button
+                        onClick={abrirModalClienteRapido}
+                        className={estilos.btnAccionRapida}
+                    >
+                        <ion-icon name="person-add-outline"></ion-icon>
+                        Cliente Rápido
+                    </button>
+                </div>
             </div>
 
             {/* LAYOUT PRINCIPAL - DOS COLUMNAS */}
@@ -757,7 +748,8 @@ export default function NuevaVentaOptimizada() {
                                         <div key={producto.id}>
                                             <div className={`${estilos.filaProducto} ${estilos[tema]}`}>
                                                 <div className={estilos.infoProductoFila}>
-                                                    <span className={estilos.nombreProductoFila}>{producto.nombre}</span>
+                                                    <span
+                                                        className={estilos.nombreProductoFila}>{producto.nombre}</span>
                                                     <span className={estilos.detalleProductoFila}>
                                                         Stock: {producto.stock} | {producto.codigo_barras || producto.sku}
                                                     </span>
@@ -882,7 +874,7 @@ export default function NuevaVentaOptimizada() {
                     </div>
 
                     {/* Sección Extras (colapsable) */}
-                    <details 
+                    <details
                         className={`${estilos.seccionExtras} ${estilos[tema]}`}
                         open={mostrarExtras}
                         onToggle={(e) => setMostrarExtras(e.target.open)}
@@ -922,9 +914,10 @@ export default function NuevaVentaOptimizada() {
                                         const base = cantidad * precio
                                         const impuesto = extra.aplica_itbis ? (base * parseFloat(datosEmpresa?.impuesto_porcentaje || 18)) / 100 : 0
                                         const total = base + impuesto
-                                        
+
                                         return (
-                                            <div key={extra.id} className={`${estilos.itemExtraCompacto} ${estilos[tema]}`}>
+                                            <div key={extra.id}
+                                                 className={`${estilos.itemExtraCompacto} ${estilos[tema]}`}>
                                                 <div className={estilos.infoExtraCompacto}>
                                                     <span className={estilos.nombreExtraCompacto}>{extra.nombre}</span>
                                                     <span className={estilos.detalleExtraCompacto}>
@@ -932,7 +925,8 @@ export default function NuevaVentaOptimizada() {
                                                         {extra.aplica_itbis && ` + ${datosEmpresa?.impuesto_porcentaje || 18}%`}
                                                     </span>
                                                 </div>
-                                                <span className={estilos.totalExtraCompacto}>RD$ {total.toFixed(2)}</span>
+                                                <span
+                                                    className={estilos.totalExtraCompacto}>RD$ {total.toFixed(2)}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => eliminarProductoExtra(extra.id)}
@@ -975,6 +969,14 @@ export default function NuevaVentaOptimizada() {
                                 </div>
                             </div>
 
+                            {/* Cambio - debajo del monto recibido */}
+                            {metodoPago === 'efectivo' && efectivoRecibido && parseFloat(cambio) >= 0 && (
+                                <div className={`${estilos.cambioInfo} ${estilos[tema]}`}>
+                                    <span>Cambio:</span>
+                                    <strong>RD$ {cambio}</strong>
+                                </div>
+                            )}
+
                             <div className={estilos.campoCompacto}>
                                 <label>Descuento Global</label>
                                 <div className={estilos.inputConIcono}>
@@ -1006,17 +1008,17 @@ export default function NuevaVentaOptimizada() {
                                 </div>
                             )}
 
+                            <div className={estilos.lineaTotalCompacta}>
+                                <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'}:</span>
+                                <span>RD$ {totales.itbis}</span>
+                            </div>
+
                             {parseFloat(totales.descuento) > 0 && (
                                 <div className={`${estilos.lineaTotalCompacta} ${estilos.descuento}`}>
                                     <span>Descuento:</span>
                                     <span>- RD$ {totales.descuento}</span>
                                 </div>
                             )}
-
-                            <div className={estilos.lineaTotalCompacta}>
-                                <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'}:</span>
-                                <span>RD$ {totales.itbis}</span>
-                            </div>
 
                             <div className={estilos.separadorTotal}></div>
 
@@ -1026,7 +1028,7 @@ export default function NuevaVentaOptimizada() {
                             </div>
 
                             {metodoPago === 'efectivo' && efectivoRecibido && parseFloat(cambio) >= 0 && (
-                                <div className={`${estilos.cambioInfo} ${estilos[tema]}`}>
+                                <div className={`${estilos.cambioBox} ${estilos[tema]}`}>
                                     <span>Cambio:</span>
                                     <strong>RD$ {cambio}</strong>
                                 </div>
@@ -1056,7 +1058,7 @@ export default function NuevaVentaOptimizada() {
                             <p className={estilos.infoModal}>
                                 Crea un cliente rápido con solo el nombre. Podrás completar sus datos más tarde.
                             </p>
-                            
+
                             <div className={estilos.grupoInput}>
                                 <label>Nombre del Cliente *</label>
                                 <input
@@ -1070,7 +1072,7 @@ export default function NuevaVentaOptimizada() {
                                     autoFocus
                                 />
                             </div>
-                            
+
                             <div className={estilos.modalFooter}>
                                 <button
                                     type="button"
@@ -1140,7 +1142,10 @@ export default function NuevaVentaOptimizada() {
                                     <input
                                         type="number"
                                         value={formExtra.cantidad}
-                                        onChange={(e) => setFormExtra({...formExtra, cantidad: parseFloat(e.target.value) || 1})}
+                                        onChange={(e) => setFormExtra({
+                                            ...formExtra,
+                                            cantidad: parseFloat(e.target.value) || 1
+                                        })}
                                         className={estilos.inputExtra}
                                         min="0.01"
                                         step="0.01"
@@ -1157,7 +1162,10 @@ export default function NuevaVentaOptimizada() {
                                         <input
                                             type="number"
                                             value={formExtra.precioUnitario}
-                                            onChange={(e) => setFormExtra({...formExtra, precioUnitario: e.target.value})}
+                                            onChange={(e) => setFormExtra({
+                                                ...formExtra,
+                                                precioUnitario: e.target.value
+                                            })}
                                             className={estilos.inputExtraPrecio}
                                             placeholder="0.00"
                                             min="0"

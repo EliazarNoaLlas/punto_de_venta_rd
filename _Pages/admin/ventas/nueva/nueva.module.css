@@ -12,7 +12,7 @@
     --spacing-md: 16px;
     --spacing-lg: 24px;
     --transition: all 0.2s ease;
-    
+
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -59,41 +59,87 @@
     box-sizing: border-box;
 }
 
+/* ==========================================
+   HEADER - TÍTULO Y SUBTÍTULO CON TEMA
+   ========================================== */
+
 .pageHeader {
     display: flex;
     flex-direction: column;
-    gap: 2px;
-    margin-bottom: 8px;
+    gap: 4px;
+    margin-bottom: 12px;
+    transition: color 0.3s ease;
+    color: var(--text-primary); /* Hereda del tema */
 }
 
 .pageTitle {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
 .pageTitle ion-icon {
-    font-size: 22px;
+    font-size: 24px;
     color: var(--accent-color);
+    transition: color 0.3s ease;
 }
 
 .pageTitle h1 {
-    font-size: 18px;
+    font-size: 22px;
     font-weight: 700;
     margin: 0;
+    color: inherit; /* Hereda del pageHeader */
+    transition: color 0.3s ease;
 }
 
 .pageSubtitle {
-    font-size: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    transition: color 0.3s ease;
+}
+
+/* ==========================================
+   HEADER STICKY
+   ========================================== */
+.headerSticky {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 24px;
+    border-bottom: 2px solid var(--border-color);
+    background: var(--bg-primary);
+    box-shadow: var(--shadow-sm);
+    min-height: var(--header-height);
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* INFO TOTAL DE VENTA */
+.infoHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    color: var(--text-primary);
+}
+
+.labelTotal {
+    font-weight: 500;
     color: var(--text-secondary);
 }
 
-.light .pageTitle h1 {
-    color: #111827;
+.montoTotal {
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--success-color);
+    letter-spacing: -0.5px;
 }
 
-.dark .pageTitle h1 {
-    color: #f9fafb;
+.cantidadItems {
+    font-size: 13px;
+    color: var(--text-tertiary);
 }
 
 /* ==========================================
@@ -219,26 +265,28 @@
    ========================================== */
 .barraInfo {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 24px;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px 16px;
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
-    min-height: var(--info-bar-height);
+    transition: background 0.3s ease, border-color 0.3s ease;
 }
 
+/* Info Compacta: cliente y comprobante */
 .infoCompacta {
     display: flex;
-    align-items: center;
-    gap: 20px;
     flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
 }
 
 .itemInfo {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     font-size: 14px;
+    flex-shrink: 0;
 }
 
 .itemInfo ion-icon {
@@ -255,12 +303,14 @@
     font-weight: 600;
 }
 
+/* Separador vertical */
 .separadorVertical {
     width: 1px;
     height: 24px;
     background: var(--border-color);
 }
 
+/* Select compacto */
 .selectCompacto {
     padding: 6px 12px;
     border: 1px solid var(--border-color);
@@ -271,6 +321,10 @@
     font-weight: 500;
     cursor: pointer;
     transition: var(--transition);
+    min-width: 120px; /* mínimo para desktop */
+    max-width: 250px; /* limita tamaño máximo */
+    width: 100%; /* se adapta al contenedor */
+    box-sizing: border-box;
 }
 
 .selectCompacto:hover {
@@ -406,14 +460,23 @@
     align-items: center;
     background: var(--bg-primary);
     border-radius: var(--border-radius);
-    padding: 16px;
+    padding: 12px 16px;
     margin-bottom: 16px;
     box-shadow: var(--shadow-sm);
+    width: 100%;
+    box-sizing: border-box;
 }
 
-.busquedaProductoContainer,
+/* Contenedores independientes */
+.busquedaProductoContainer{
+    flex: 1; /* que ocupen proporcionalmente el espacio disponible */
+    min-width: 200px; /* tamaño mínimo para que no se achique demasiado */
+    max-width: 600px; /* tamaño máximo en desktop */
+    position: relative;
+}
+
 .busquedaClienteContainer {
-    max-width: 320px; 
+    max-width: 500px;
 }
 
 .busquedaProducto,
@@ -1225,27 +1288,45 @@
     letter-spacing: -0.5px;
 }
 
+/* Cambio visible debajo del monto recibido, con estilo profesional */
 .cambioInfo {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 12px 16px;
-    border-radius: 8px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-top: 6px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent; /* borde neutro por defecto */
+}
+
+/* Tema claro */
+.light .cambioInfo {
     background: linear-gradient(135deg, rgba(251, 191, 36, 0.15) 0%, rgba(245, 158, 11, 0.1) 100%);
-    border: 2px solid #f59e0b;
-    font-size: 15px;
+    color: #92400e; /* marrón oscuro para el texto */
+    border-color: #f59e0b; /* borde naranja */
+}
+
+/* Tema oscuro */
+.dark .cambioInfo {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(251, 191, 36, 0.05) 100%);
+    color: #fcd34d; /* amarillo brillante para el texto */
+    border-color: #f59e0b; /* borde naranja más suave */
 }
 
 .cambioInfo span {
-    color: var(--text-secondary);
     font-weight: 500;
 }
 
 .cambioInfo strong {
-    font-size: 18px;
+    font-size: 1.1rem;
     font-weight: 700;
-    color: #f59e0b;
+    color: inherit; /* toma el color del tema */
 }
+
 
 /* ==========================================
    MODALES

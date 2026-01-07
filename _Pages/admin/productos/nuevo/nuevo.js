@@ -1,7 +1,7 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { obtenerDatosProducto, crearProducto } from './servidor'
+import {useEffect, useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {obtenerDatosProducto, crearProducto} from './servidor'
 import estilos from './nuevo.module.css'
 
 export default function NuevoProductoAdmin() {
@@ -9,7 +9,7 @@ export default function NuevoProductoAdmin() {
     const [tema, setTema] = useState('light')
     const [cargando, setCargando] = useState(true)
     const [procesando, setProcesando] = useState(false)
-    
+
     const [categorias, setCategorias] = useState([])
     const [marcas, setMarcas] = useState([])
     const [unidadesMedida, setUnidadesMedida] = useState([])
@@ -19,7 +19,7 @@ export default function NuevoProductoAdmin() {
         impuesto_nombre: 'ITBIS',
         impuesto_porcentaje: 0.00
     })
-    
+
     const [codigoBarras, setCodigoBarras] = useState('')
     const [sku, setSku] = useState('')
     const [nombre, setNombre] = useState('')
@@ -249,13 +249,13 @@ export default function NuevoProductoAdmin() {
                     <h1 className={estilos.titulo}>Nuevo Producto</h1>
                     <p className={estilos.subtitulo}>Registra un nuevo producto en el inventario</p>
                 </div>
-                <button 
+                <button
                     className={estilos.btnCancelar}
                     onClick={() => router.push('/admin/productos')}
                 >
                     <ion-icon name="close-outline"></ion-icon>
                     <span>Cancelar</span>
-                </button> 
+                </button>
             </div>
 
             <form onSubmit={manejarSubmit} className={estilos.formulario}>
@@ -342,7 +342,6 @@ export default function NuevoProductoAdmin() {
                                         ))}
                                     </select>
                                 </div>
-
                                 <div className={estilos.grupoInput}>
                                     <label>Unidad *</label>
                                     <select
@@ -500,7 +499,7 @@ export default function NuevoProductoAdmin() {
                                         type="date"
                                         value={fechaVencimiento}
                                         onChange={(e) => setFechaVencimiento(e.target.value)}
-                                        className={estilos.input}
+                                        className={`${estilos.inputFecha} ${tema === 'dark' ? estilos.dark : estilos.light}`}
                                     />
                                 </div>
 
@@ -589,7 +588,7 @@ export default function NuevoProductoAdmin() {
                                 <div className={estilos.vistaPrevia}>
                                     <label>Vista Previa</label>
                                     <div className={estilos.contenedorImagen}>
-                                        <img src={vistaPrevia} alt="Vista previa" />
+                                        <img src={vistaPrevia} alt="Vista previa"/>
                                         <button
                                             type="button"
                                             className={estilos.btnEliminarImagen}
