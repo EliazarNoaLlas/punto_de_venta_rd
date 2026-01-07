@@ -1,79 +1,84 @@
 "use server"
 
 import db from "@/_DB/db"
-import { cookies } from 'next/headers'
+import {cookies} from 'next/headers'
+
 
 /**
- * Obtener productos visibles de la tienda IsiWeek para empresas cliente
+ * 🛒 Obtener productos B2B de la tienda IsiWeek
+ * Visible para empresas cliente (admin / vendedor)
  */
-export async function obtenerProductosTiendaIsiWeek(filtroCategoria = null) {
+/**
+ * 🛒 Obtener productos B2B de la tienda IsiWeek
+ * Uso: Server Action o API Route
+ */
+export async function obtenerProductosTiendaIsiWeek(categoriaId = null) {
     let connection
+
     try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('userId')?.value
-        const empresaId = cookieStore.get('empresaId')?.value
-        const userTipo = cookieStore.get('userTipo')?.value
-
-        if (!userId || !empresaId || (userTipo !== 'admin' && userTipo !== 'vendedor')) {
-            return {
-                success: false,
-                mensaje: 'Sesión inválida o sin permisos'
-            }
-        }
-
         connection = await db.getConnection()
-
-        // Verificar que la empresa está activa
-        const [empresas] = await connection.execute(
-            `SELECT activo FROM empresas WHERE id = ?`,
-            [empresaId]
-        )
-
-        if (empresas.length === 0 || !empresas[0].activo) {
-            connection.release()
-            return {
-                success: false,
-                mensaje: 'Empresa no activa'
-            }
-        }
 
         let query = `
             SELECT 
-                ip.*,
-                ic.nombre as categoria_nombre
+                ip.id,
+                ip.nombre,
+                ip.descripcion,
+                ip.precio,
+                ip.precio_volumen,
+                ip.cantidad_volumen,
+                ip.stock,
+                ip.imagen_url,
+                ip.sku,
+                ip.tiempo_entrega,
+                ip.destacado,
+
+                ic.id     AS categoria_id,
+                ic.nombre AS categoria_nombre,
+
+                (ip.precio_volumen IS NOT NULL 
+                 AND ip.cantidad_volumen IS NOT NULL) AS tiene_precio_volumen,
+
+                (ip.tiempo_entrega IS NULL 
+                 OR ip.tiempo_entrega = '0'
+                 OR ip.tiempo_entrega = '0 días') AS entrega_inmediata
+
             FROM isiweek_productos ip
-            LEFT JOIN isiweek_categorias ic ON ip.categoria_id = ic.id
+            INNER JOIN isiweek_categorias ic 
+                ON ic.id = ip.categoria_id
+               AND ic.activo = TRUE
             WHERE ip.activo = TRUE
         `
+
         const params = []
 
-        if (filtroCategoria) {
+        if (categoriaId !== null) {
             query += ` AND ip.categoria_id = ?`
-            params.push(filtroCategoria)
+            params.push(categoriaId)
         }
 
-        query += ` ORDER BY ip.destacado DESC, ip.nombre ASC`
+        query += `
+            ORDER BY 
+                ip.destacado DESC,
+                ic.orden ASC,
+                ip.nombre ASC
+        `
 
         const [productos] = await connection.execute(query, params)
 
-        connection.release()
-
         return {
             success: true,
-            productos: productos
+            productos
         }
 
     } catch (error) {
-        console.error('Error al obtener productos tienda IsiWeek:', error)
-        
-        if (connection) {
-            connection.release()
-        }
-
+        console.error("❌ Error tienda IsiWeek:", error)
         return {
             success: false,
-            mensaje: 'Error al cargar productos de la tienda'
+            productos: [],
+            mensaje: "Error al cargar tienda IsiWeek"
         }
+    } finally {
+        if (connection) connection.release()
     }
 }
 
@@ -82,49 +87,40 @@ export async function obtenerProductosTiendaIsiWeek(filtroCategoria = null) {
  */
 export async function obtenerCategoriasTiendaIsiWeek() {
     let connection
+
     try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('userId')?.value
-        const empresaId = cookieStore.get('empresaId')?.value
-
-        if (!userId || !empresaId) {
-            return {
-                success: false,
-                mensaje: 'Sesión inválida'
-            }
-        }
-
         connection = await db.getConnection()
 
-        const [categorias] = await connection.execute(
-            `SELECT DISTINCT
-                ic.*,
-                COUNT(DISTINCT ip.id) as cantidad_productos
+        const [categorias] = await connection.execute(`
+            SELECT
+                ic.id,
+                ic.nombre,
+                ic.descripcion,
+                ic.orden,
+                COUNT(ip.id) AS cantidad_productos
             FROM isiweek_categorias ic
-            LEFT JOIN isiweek_productos ip ON ic.id = ip.categoria_id AND ip.activo = TRUE
+                     LEFT JOIN isiweek_productos ip
+                               ON ip.categoria_id = ic.id
+                                   AND ip.activo = TRUE
             WHERE ic.activo = TRUE
             GROUP BY ic.id
-            ORDER BY ic.orden ASC, ic.nombre ASC`
-        )
-
-        connection.release()
+            ORDER BY ic.orden ASC, ic.nombre ASC
+        `)
 
         return {
             success: true,
-            categorias: categorias
+            categorias
         }
 
     } catch (error) {
-        console.error('Error al obtener categorías tienda:', error)
-        
-        if (connection) {
-            connection.release()
-        }
-
+        console.error("❌ Error categorías IsiWeek:", error)
         return {
             success: false,
-            mensaje: 'Error al cargar categorías'
+            categorias: [],
+            mensaje: "Error al cargar categorías"
         }
+    } finally {
+        if (connection) connection.release()
     }
 }
 
@@ -160,12 +156,13 @@ export async function crearPedidoB2B(datos) {
         const año = fecha.getFullYear()
         const mes = String(fecha.getMonth() + 1).padStart(2, '0')
         const dia = String(fecha.getDate()).padStart(2, '0')
-        
+
         // Obtener el último número del día
         const [ultimos] = await connection.execute(
-            `SELECT numero_pedido FROM pedidos_b2b 
-            WHERE numero_pedido LIKE ? 
-            ORDER BY id DESC LIMIT 1`,
+            `SELECT numero_pedido
+             FROM pedidos_b2b
+             WHERE numero_pedido LIKE ?
+             ORDER BY id DESC LIMIT 1`,
             [`B2B-${año}${mes}${dia}-%`]
         )
 
@@ -193,10 +190,9 @@ export async function crearPedidoB2B(datos) {
 
         // Crear pedido
         const [resultadoPedido] = await connection.execute(
-            `INSERT INTO pedidos_b2b (
-                numero_pedido, empresa_id, usuario_id, metodo_pago,
-                subtotal, descuento, impuesto, total, estado, notas
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+            `INSERT INTO pedidos_b2b (numero_pedido, empresa_id, usuario_id, metodo_pago,
+                                      subtotal, descuento, impuesto, total, estado, notas)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
             [
                 numeroPedido,
                 empresaId,
@@ -220,10 +216,9 @@ export async function crearPedidoB2B(datos) {
             }
 
             await connection.execute(
-                `INSERT INTO pedidos_b2b_items (
-                    pedido_id, producto_id, cantidad, precio_unitario,
-                    precio_aplicado, subtotal
-                ) VALUES (?, ?, ?, ?, ?, ?)`,
+                `INSERT INTO pedidos_b2b_items (pedido_id, producto_id, cantidad, precio_unitario,
+                                                precio_aplicado, subtotal)
+                 VALUES (?, ?, ?, ?, ?, ?)`,
                 [
                     pedidoId,
                     item.producto_id,
@@ -246,7 +241,7 @@ export async function crearPedidoB2B(datos) {
 
     } catch (error) {
         console.error('Error al crear pedido B2B:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -258,143 +253,4 @@ export async function crearPedidoB2B(datos) {
     }
 }
 
-/**
- * Obtener historial de pedidos B2B de la empresa
- */
-export async function obtenerHistorialPedidosB2B() {
-    let connection
-    try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('userId')?.value
-        const empresaId = cookieStore.get('empresaId')?.value
-        const userTipo = cookieStore.get('userTipo')?.value
-
-        if (!userId || !empresaId || (userTipo !== 'admin' && userTipo !== 'vendedor')) {
-            return {
-                success: false,
-                mensaje: 'Sesión inválida o sin permisos'
-            }
-        }
-
-        connection = await db.getConnection()
-
-        const [pedidos] = await connection.execute(
-            `SELECT 
-                pb.*,
-                COUNT(pbi.id) as cantidad_items
-            FROM pedidos_b2b pb
-            LEFT JOIN pedidos_b2b_items pbi ON pb.id = pbi.pedido_id
-            WHERE pb.empresa_id = ?
-            GROUP BY pb.id
-            ORDER BY pb.fecha_pedido DESC
-            LIMIT 50`,
-            [empresaId]
-        )
-
-        // Obtener items para cada pedido
-        for (let pedido of pedidos) {
-            const [items] = await connection.execute(
-                `SELECT 
-                    pbi.*,
-                    ip.nombre as producto_nombre,
-                    ip.imagen_url
-                FROM pedidos_b2b_items pbi
-                LEFT JOIN isiweek_productos ip ON pbi.producto_id = ip.id
-                WHERE pbi.pedido_id = ?`,
-                [pedido.id]
-            )
-            pedido.items = items
-        }
-
-        connection.release()
-
-        return {
-            success: true,
-            pedidos: pedidos
-        }
-
-    } catch (error) {
-        console.error('Error al obtener historial pedidos B2B:', error)
-        
-        if (connection) {
-            connection.release()
-        }
-
-        return {
-            success: false,
-            mensaje: 'Error al cargar historial de pedidos'
-        }
-    }
-}
-
-/**
- * Obtener detalle de un pedido B2B (para empresa cliente)
- */
-export async function obtenerDetallePedidoB2BCliente(pedidoId) {
-    let connection
-    try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('userId')?.value
-        const empresaId = cookieStore.get('empresaId')?.value
-        const userTipo = cookieStore.get('userTipo')?.value
-
-        if (!userId || !empresaId || (userTipo !== 'admin' && userTipo !== 'vendedor')) {
-            return {
-                success: false,
-                mensaje: 'Sesión inválida o sin permisos'
-            }
-        }
-
-        connection = await db.getConnection()
-
-        const [pedidos] = await connection.execute(
-            `SELECT * FROM pedidos_b2b WHERE id = ? AND empresa_id = ?`,
-            [pedidoId, empresaId]
-        )
-
-        if (pedidos.length === 0) {
-            connection.release()
-            return {
-                success: false,
-                mensaje: 'Pedido no encontrado'
-            }
-        }
-
-        const pedido = pedidos[0]
-
-        // Obtener items
-        const [items] = await connection.execute(
-            `SELECT 
-                pbi.*,
-                ip.nombre as producto_nombre,
-                ip.sku,
-                ip.imagen_url
-            FROM pedidos_b2b_items pbi
-            LEFT JOIN isiweek_productos ip ON pbi.producto_id = ip.id
-            WHERE pbi.pedido_id = ?`,
-            [pedidoId]
-        )
-
-        pedido.items = items
-
-        connection.release()
-
-        return {
-            success: true,
-            pedido: pedido
-        }
-
-    } catch (error) {
-        console.error('Error al obtener detalle pedido B2B:', error)
-        
-        if (connection) {
-            connection.release()
-        }
-
-        return {
-            success: false,
-            mensaje: 'Error al cargar detalle del pedido'
-        }
-    }
-}
 

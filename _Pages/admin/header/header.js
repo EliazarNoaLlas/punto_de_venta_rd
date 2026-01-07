@@ -17,11 +17,12 @@ export default function HeaderAdmin() {
     const [cargando, setCargando] = useState(true)
 
     const navegacionPrincipal = [
-        { href: '/admin/ventas', icon: 'cart-outline', label: 'Ventas' },
+        { href: '/admin/ventas/nuevo', icon: 'cart-outline', label: 'Ventas' },
         { href: '/admin/catalogo/pedidos', icon: 'receipt-outline', label: 'Pedidos' },
         { href: '/admin/productos', icon: 'cube-outline', label: 'Productos' },
         { href: '/admin/clientes', icon: 'people-outline', label: 'Clientes' },
-        { href: '/admin/dashboard', icon: 'speedometer-outline', label: 'Dashboard' }
+        { href: '/admin/dashboard', icon: 'speedometer-outline', label: 'Dashboard' },
+        { href: '/admin/ventas', icon: 'cart-outline', label: 'Mis Ventas' }
     ]
 
     const navegacionMenu = [

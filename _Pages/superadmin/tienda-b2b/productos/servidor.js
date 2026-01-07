@@ -1,7 +1,8 @@
 "use server"
 
 import db from "@/_DB/db"
-import { cookies } from 'next/headers'
+import {cookies} from 'next/headers'
+import {guardarImagenProducto, eliminarImagenProducto} from '@/services/imageService'
 
 /**
  * Obtener todas las categorías B2B
@@ -23,8 +24,9 @@ export async function obtenerCategoriasB2B() {
         connection = await db.getConnection()
 
         const [categorias] = await connection.execute(
-            `SELECT * FROM isiweek_categorias 
-            ORDER BY orden ASC, nombre ASC`
+            `SELECT *
+             FROM isiweek_categorias
+             ORDER BY orden ASC, nombre ASC`
         )
 
         connection.release()
@@ -36,7 +38,7 @@ export async function obtenerCategoriasB2B() {
 
     } catch (error) {
         console.error('Error al obtener categorías B2B:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -49,6 +51,8 @@ export async function obtenerCategoriasB2B() {
 }
 
 /**
+
+ /**
  * Obtener todos los productos B2B con información de categoría
  */
 export async function obtenerProductosB2B(filtroCategoria = null, filtroActivo = null) {
@@ -68,12 +72,11 @@ export async function obtenerProductosB2B(filtroCategoria = null, filtroActivo =
         connection = await db.getConnection()
 
         let query = `
-            SELECT 
-                ip.*,
-                ic.nombre as categoria_nombre
+            SELECT ip.*,
+                   ic.nombre as categoria_nombre
             FROM isiweek_productos ip
-            LEFT JOIN isiweek_categorias ic ON ip.categoria_id = ic.id
-            WHERE 1=1
+                     LEFT JOIN isiweek_categorias ic ON ip.categoria_id = ic.id
+            WHERE 1 = 1
         `
         const params = []
 
@@ -100,7 +103,7 @@ export async function obtenerProductosB2B(filtroCategoria = null, filtroActivo =
 
     } catch (error) {
         console.error('Error al obtener productos B2B:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -123,57 +126,71 @@ export async function crearProductoB2B(datos) {
         const userTipo = cookieStore.get('userTipo')?.value
 
         if (!userId || userTipo !== 'superadmin') {
-            return {
-                success: false,
-                mensaje: 'Acceso no autorizado'
-            }
+            return {success: false, mensaje: 'Acceso no autorizado'}
         }
 
         if (!datos.nombre || !datos.precio) {
-            return {
-                success: false,
-                mensaje: 'Nombre y precio son obligatorios'
-            }
+            return {success: false, mensaje: 'Nombre y precio son obligatorios'}
         }
 
         connection = await db.getConnection()
+        await connection.beginTransaction()
 
-        const [resultado] = await connection.execute(
-            `INSERT INTO isiweek_productos (
-                nombre, descripcion, categoria_id, precio, precio_volumen,
-                cantidad_volumen, stock, imagen_url, sku, tiempo_entrega,
-                activo, destacado
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                datos.nombre,
-                datos.descripcion || null,
-                datos.categoria_id || null,
-                parseFloat(datos.precio),
-                datos.precio_volumen ? parseFloat(datos.precio_volumen) : null,
-                datos.cantidad_volumen || null,
-                datos.stock ? parseInt(datos.stock) : 0,
-                datos.imagen_url || null,
-                datos.sku || null,
-                datos.tiempo_entrega || null,
-                datos.activo !== undefined ? datos.activo : true,
-                datos.destacado !== undefined ? datos.destacado : false
-            ]
-        )
+        try {
+            // 1️⃣ Crear producto SIN imagen (para obtener ID)
+            const [resultado] = await connection.execute(
+                `INSERT INTO isiweek_productos (nombre, descripcion, categoria_id, precio, precio_volumen,
+                                                cantidad_volumen, stock, imagen_url, sku,
+                                                tiempo_entrega, activo, destacado)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [
+                    datos.nombre,
+                    datos.descripcion || null,
+                    datos.categoria_id || null,
+                    parseFloat(datos.precio),
+                    datos.precio_volumen ? parseFloat(datos.precio_volumen) : null,
+                    datos.cantidad_volumen || null,
+                    parseInt(datos.stock || 0),
+                    datos.imagen_url || null, // URL externa
+                    datos.sku || null,
+                    datos.tiempo_entrega || null,
+                    datos.activo ?? true,
+                    datos.destacado ?? false
+                ]
+            )
 
-        connection.release()
+            const productoId = resultado.insertId
+            let imagenFinal = datos.imagen_url || null
 
-        return {
-            success: true,
-            mensaje: 'Producto B2B creado correctamente',
-            productoId: resultado.insertId
+            // 2️⃣ Guardar imagen local si viene en base64
+            if (datos.imagen_base64 && !datos.imagen_url) {
+                imagenFinal = await guardarImagenProducto(datos.imagen_base64, productoId)
+
+                await connection.execute(
+                    `UPDATE isiweek_productos
+                     SET imagen_url = ?
+                     WHERE id = ?`,
+                    [imagenFinal, productoId]
+                )
+            }
+
+            await connection.commit()
+            connection.release()
+
+            return {
+                success: true,
+                mensaje: 'Producto B2B creado correctamente',
+                productoId
+            }
+
+        } catch (error) {
+            await connection.rollback()
+            throw error
         }
 
     } catch (error) {
         console.error('Error al crear producto B2B:', error)
-        
-        if (connection) {
-            connection.release()
-        }
+        if (connection) connection.release()
 
         return {
             success: false,
@@ -193,74 +210,85 @@ export async function actualizarProductoB2B(productoId, datos) {
         const userTipo = cookieStore.get('userTipo')?.value
 
         if (!userId || userTipo !== 'superadmin') {
-            return {
-                success: false,
-                mensaje: 'Acceso no autorizado'
-            }
+            return {success: false, mensaje: 'Acceso no autorizado'}
         }
 
         connection = await db.getConnection()
+        await connection.beginTransaction()
 
-        // Verificar que el producto existe
-        const [productos] = await connection.execute(
-            `SELECT id FROM isiweek_productos WHERE id = ?`,
-            [productoId]
-        )
+        try {
+            // 1️⃣ Obtener imagen actual
+            const [existente] = await connection.execute(
+                `SELECT imagen_url
+                 FROM isiweek_productos
+                 WHERE id = ?`,
+                [productoId]
+            )
 
-        if (productos.length === 0) {
-            connection.release()
-            return {
-                success: false,
-                mensaje: 'Producto no encontrado'
+            if (existente.length === 0) {
+                await connection.rollback()
+                return {success: false, mensaje: 'Producto no encontrado'}
             }
-        }
 
-        await connection.execute(
-            `UPDATE isiweek_productos SET
-                nombre = ?,
-                descripcion = ?,
-                categoria_id = ?,
-                precio = ?,
-                precio_volumen = ?,
-                cantidad_volumen = ?,
-                stock = ?,
-                imagen_url = ?,
-                sku = ?,
-                tiempo_entrega = ?,
-                activo = ?,
-                destacado = ?,
-                fecha_actualizacion = NOW()
-            WHERE id = ?`,
-            [
-                datos.nombre,
-                datos.descripcion || null,
-                datos.categoria_id || null,
-                parseFloat(datos.precio),
-                datos.precio_volumen ? parseFloat(datos.precio_volumen) : null,
-                datos.cantidad_volumen || null,
-                datos.stock ? parseInt(datos.stock) : 0,
-                datos.imagen_url || null,
-                datos.sku || null,
-                datos.tiempo_entrega || null,
-                datos.activo !== undefined ? datos.activo : true,
-                datos.destacado !== undefined ? datos.destacado : false,
-                productoId
-            ]
-        )
+            const imagenAnterior = existente[0].imagen_url
+            let imagenFinal = datos.imagen_url || imagenAnterior || null
 
-        connection.release()
+            // 2️⃣ Guardar nueva imagen base64
+            if (datos.imagen_base64 && !datos.imagen_url) {
+                imagenFinal = await guardarImagenProducto(datos.imagen_base64, productoId)
 
-        return {
-            success: true,
-            mensaje: 'Producto B2B actualizado correctamente'
+                if (imagenAnterior?.startsWith('/images/productos/')) {
+                    await eliminarImagenProducto(imagenAnterior)
+                }
+            }
+
+            // 3️⃣ Actualizar producto
+            await connection.execute(
+                `UPDATE isiweek_productos
+                 SET nombre              = ?,
+                     descripcion         = ?,
+                     categoria_id        = ?,
+                     precio              = ?,
+                     precio_volumen      = ?,
+                     cantidad_volumen    = ?,
+                     stock               = ?,
+                     imagen_url          = ?,
+                     sku                 = ?,
+                     tiempo_entrega      = ?,
+                     activo              = ?,
+                     destacado           = ?,
+                     fecha_actualizacion = NOW()
+                 WHERE id = ?`,
+                [
+                    datos.nombre,
+                    datos.descripcion || null,
+                    datos.categoria_id || null,
+                    parseFloat(datos.precio),
+                    datos.precio_volumen ? parseFloat(datos.precio_volumen) : null,
+                    datos.cantidad_volumen || null,
+                    parseInt(datos.stock || 0),
+                    imagenFinal,
+                    datos.sku || null,
+                    datos.tiempo_entrega || null,
+                    datos.activo ?? true,
+                    datos.destacado ?? false,
+                    productoId
+                ]
+            )
+
+            await connection.commit()
+            connection.release()
+
+            return {success: true, mensaje: 'Producto B2B actualizado correctamente'}
+
+        } catch (error) {
+            await connection.rollback()
+            throw error
         }
 
     } catch (error) {
         console.error('Error al actualizar producto B2B:', error)
-        
-        if (connection) {
-            connection.release()
-        }
+        if (connection) connection.release()
 
         return {
             success: false,
@@ -280,46 +308,37 @@ export async function eliminarProductoB2B(productoId) {
         const userTipo = cookieStore.get('userTipo')?.value
 
         if (!userId || userTipo !== 'superadmin') {
-            return {
-                success: false,
-                mensaje: 'Acceso no autorizado'
-            }
+            return {success: false, mensaje: 'Acceso no autorizado'}
         }
 
         connection = await db.getConnection()
 
-        // Verificar si hay pedidos asociados
-        const [pedidos] = await connection.execute(
-            `SELECT COUNT(*) as cantidad FROM pedidos_b2b_items WHERE producto_id = ?`,
+        const [producto] = await connection.execute(
+            `SELECT imagen_url
+             FROM isiweek_productos
+             WHERE id = ?`,
             [productoId]
         )
 
-        if (pedidos[0].cantidad > 0) {
-            connection.release()
-            return {
-                success: false,
-                mensaje: 'No se puede eliminar el producto porque tiene pedidos asociados'
-            }
-        }
-
         await connection.execute(
-            `DELETE FROM isiweek_productos WHERE id = ?`,
+            `DELETE
+             FROM isiweek_productos
+             WHERE id = ?`,
             [productoId]
         )
 
         connection.release()
 
-        return {
-            success: true,
-            mensaje: 'Producto B2B eliminado correctamente'
+        // Eliminar imagen local si existe
+        if (producto.length && producto[0].imagen_url?.startsWith('/images/productos/')) {
+            await eliminarImagenProducto(producto[0].imagen_url)
         }
+
+        return {success: true, mensaje: 'Producto eliminado correctamente'}
 
     } catch (error) {
         console.error('Error al eliminar producto B2B:', error)
-        
-        if (connection) {
-            connection.release()
-        }
+        if (connection) connection.release()
 
         return {
             success: false,
@@ -348,12 +367,11 @@ export async function obtenerProductoB2B(productoId) {
         connection = await db.getConnection()
 
         const [productos] = await connection.execute(
-            `SELECT 
-                ip.*,
-                ic.nombre as categoria_nombre
-            FROM isiweek_productos ip
-            LEFT JOIN isiweek_categorias ic ON ip.categoria_id = ic.id
-            WHERE ip.id = ?`,
+            `SELECT ip.*,
+                    ic.nombre as categoria_nombre
+             FROM isiweek_productos ip
+                      LEFT JOIN isiweek_categorias ic ON ip.categoria_id = ic.id
+             WHERE ip.id = ?`,
             [productoId]
         )
 
@@ -373,7 +391,7 @@ export async function obtenerProductoB2B(productoId) {
 
     } catch (error) {
         console.error('Error al obtener producto B2B:', error)
-        
+
         if (connection) {
             connection.release()
         }

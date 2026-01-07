@@ -496,3 +496,48 @@
     }
 }
 
+/* Contenedor para dirección + costo delivery editable */
+.direccionConCosto {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.direccionConCosto > .campo {
+    flex: 2; /* Dirección ocupa más espacio */
+    margin-bottom: 0;
+}
+
+.direccionConCosto > .costoDeliveryInput {
+    flex: 1; /* Costo editable ocupa menos espacio */
+}
+
+.costoDeliveryInput input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: right;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.costoDeliveryInput input:focus {
+    outline: none;
+    border-color: #f97316;
+}
+
+/* Responsive: apilar en móviles */
+@media (max-width: 768px) {
+    .direccionConCosto {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .costoDeliveryInput input {
+        text-align: left;
+    }
+}

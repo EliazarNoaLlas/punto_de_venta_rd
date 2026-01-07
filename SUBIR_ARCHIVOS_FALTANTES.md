@@ -40,7 +40,7 @@ scp 'app/(admin)/admin/catalogo/pedidos/ver/[id]/page.js' 'root@72.62.128.63:/va
 
 **Comando de verificación (USANDO COMILLAS SIMPLES):**
 ```powershell
-ssh root@72.62.128.63 'ls -la /var/www/punto_de_venta_2025/app/(admin)/admin/tienda-isiweek/'
+ssh root@72.62.128.63 "ls -la '/var/www/punto_de_venta_2025/app/(admin)/admin/tienda-isiweek/'"
 ```
 
 **Si falta, subirlo (USANDO COMILLAS SIMPLES):**

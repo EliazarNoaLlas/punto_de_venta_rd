@@ -172,7 +172,7 @@ cd /var/www/punto_de_venta_2025
 
 # Ejecutar migración SQL
 # Reemplaza 'nombre_base_datos' con el nombre real de tu base de datos
-mysql -u root -p nombre_base_datos < _DB/migracion_catalogo_b2b.sql
+mysql -u root -p punto_venta_rd < _DB/migracion_catalogo_b2b.sql
 ```
 
 **O desde MySQL directamente:**
@@ -182,7 +182,7 @@ mysql -u root -p nombre_base_datos < _DB/migracion_catalogo_b2b.sql
 mysql -u root -p
 
 # Seleccionar base de datos
-USE nombre_base_datos;
+USE punto_venta_rd;
 
 # Ejecutar script
 source /var/www/punto_de_venta_2025/_DB/migracion_catalogo_b2b.sql;

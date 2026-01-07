@@ -27,6 +27,8 @@ export default function CheckoutPublico() {
         direccion: '',
         notas: ''
     })
+    const [costoDelivery, setCostoDelivery] = useState(0)
+
 
     useEffect(() => {
         if (!slug) return
@@ -40,6 +42,7 @@ export default function CheckoutPublico() {
             const resultado = await respuesta.json()
             if (resultado.success) {
                 setConfig(resultado.config)
+                setCostoDelivery(resultado.config.delivery_precio || 0)
             } else {
                 console.error('Error al cargar config:', resultado.mensaje)
                 router.push(`/catalogo/${slug}`)
@@ -300,49 +303,86 @@ export default function CheckoutPublico() {
                     {paso === 2 && (
                         <div className={estilos.pasoContenido}>
                             <h2>Método de Entrega</h2>
-                            <div className={estilos.opciones}>
-                                <button
-                                    type="button"
-                                    onClick={() => setMetodoEntrega('pickup')}
-                                    className={`${estilos.opcion} ${metodoEntrega === 'pickup' ? estilos.opcionActiva : ''}`}
-                                    style={metodoEntrega === 'pickup' ? { borderColor: config?.color_primario || '#f97316' } : {}}
-                                >
-                                    <ion-icon name="storefront-outline"></ion-icon>
-                                    <div>
-                                        <h3>Recoger en Tienda</h3>
-                                        <p>Gratis</p>
-                                    </div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setMetodoEntrega('delivery')}
-                                    className={`${estilos.opcion} ${metodoEntrega === 'delivery' ? estilos.opcionActiva : ''}`}
-                                    style={metodoEntrega === 'delivery' ? { borderColor: config?.color_primario || '#f97316' } : {}}
-                                >
-                                    <ion-icon name="car-outline"></ion-icon>
-                                    <div>
-                                        <h3>Delivery</h3>
-                                        <p>RD$ 200</p>
-                                    </div>
-                                </button>
-                            </div>
+ <div className={estilos.opciones}>
+    {/* Recoger en Tienda */}
+    <button
+        type="button"
+        onClick={() => setMetodoEntrega('pickup')}
+        className={`${estilos.opcion} ${
+            metodoEntrega === 'pickup' ? estilos.opcionActiva : ''
+        }`}
+        style={
+            metodoEntrega === 'pickup'
+                ? { borderColor: config?.color_primario || '#f97316' }
+                : {}
+        }
+    >
+        <ion-icon name="storefront-outline"></ion-icon>
+        <div>
+            <h3>Recoger en Tienda</h3>
+            <p>Gratis</p>
+        </div>
+    </button>
 
-                            {metodoEntrega === 'delivery' && (
-                                <div className={estilos.campo}>
-                                    <label>
-                                        <ion-icon name="location-outline"></ion-icon>
-                                        Dirección de Entrega *
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="direccion"
-                                        value={formData.direccion}
-                                        onChange={handleInputChange}
-                                        placeholder="Calle, número, sector..."
-                                        required={metodoEntrega === 'delivery'}
-                                    />
-                                </div>
-                            )}
+    {/* Delivery */}
+    <button
+        type="button"
+        onClick={() => setMetodoEntrega('delivery')}
+        className={`${estilos.opcion} ${
+            metodoEntrega === 'delivery' ? estilos.opcionActiva : ''
+        }`}
+        style={
+            metodoEntrega === 'delivery'
+                ? { borderColor: config?.color_primario || '#f97316' }
+                : {}
+        }
+    >
+        <ion-icon name="car-outline"></ion-icon>
+        <div>
+            <h3>Delivery</h3>
+            <p>
+                {costoDelivery === 0
+                    ? 'Gratis'
+                    : formatearMoneda(costoDelivery)}
+            </p>
+        </div>
+    </button>
+</div>
+
+{/* Dirección solo si es delivery */}
+{metodoEntrega === 'delivery' && (
+    <div className={estilos.direccionConCosto}>
+        {/* Input Dirección */}
+        <div className={estilos.campo}>
+            <label>
+                <ion-icon name="location-outline"></ion-icon>
+                Dirección de Entrega *
+            </label>
+            <input
+                type="text"
+                name="direccion"
+                value={formData.direccion}
+                onChange={handleInputChange}
+                placeholder="Dirección, Avenida, Lugar..."
+                required
+            />
+        </div>
+
+        {/* Input Delivery Editable */}
+        <div className={estilos.costoDeliveryInput}>
+            <label>
+                <ion-icon name="cash-outline"></ion-icon>
+                Costo Delivery
+            </label>
+            <input
+                type="number"
+                min={0}
+                value={costoDelivery}
+                onChange={(e) => setCostoDelivery(Number(e.target.value))}
+            />
+        </div>
+    </div>
+)}
 
                             <h2 style={{ marginTop: '32px' }}>Método de Pago</h2>
                             <div className={estilos.opciones}>

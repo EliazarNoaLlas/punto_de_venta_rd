@@ -1,0 +1,43 @@
+name: Deploy POS Production
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:  # Permite ejecución manual desde GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 🔐 Configurar SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.VPS_SSH_KEY }}
+          ssh-known-hosts: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
+      
+      - name: 🚀 Ejecutar deploy en VPS
+        run: |
+          echo "Conectando al VPS y ejecutando deploy..."
+          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} "
+            cd /var/www/punto_de_venta_2025 &&
+            bash deploy.sh
+          "
+      
+      - name: ✅ Verificar deploy
+        run: |
+          ssh -o StrictHostKeyChecking=no deploy@${{ secrets.VPS_HOST }} "
+            cd /var/www/punto_de_venta_2025 &&
+            if [ -L current ] && [ -e current ]; then
+              echo '✅ Symlink current válido'
+              ls -la current | head -5
+            else
+              echo '❌ Error: symlink current no válido'
+              exit 1
+            fi &&
+            pm2 status punto-venta-2025 || echo '⚠️ PM2 no está corriendo'
+          "
+

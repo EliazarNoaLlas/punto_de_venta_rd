@@ -1,36 +1,109 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Punto de Venta RD
 
-## Getting Started
+Sistema de punto de venta desarrollado con Next.js (App Router + Pages legacy), MySQL y PM2.
 
-First, run the development server:
+## 🚀 Inicio Rápido
+
+### Desarrollo Local
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### Configuración
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Crear archivo `.env.local` con las variables de entorno necesarias
+2. Configurar base de datos MySQL (ver `GUIA_DESPLIEGUE_LOCAL.md`)
+3. Ejecutar migraciones SQL desde `_DB/`
 
-## Learn More
+## 📦 CI/CD Automatizado
 
-To learn more about Next.js, take a look at the following resources:
+Este proyecto incluye un sistema de CI/CD completo con GitHub Actions.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### ⚡ Quick Start CI/CD
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Para activar el deploy automático en 15 minutos, sigue: **[QUICK_START_CICD.md](./QUICK_START_CICD.md)**
 
-## Deploy on Vercel
+### 📚 Documentación Completa
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **[METODOLOGIA_CICD_MEJORADA.md](./METODOLOGIA_CICD_MEJORADA.md)** - Guía completa de la metodología CI/CD
+- **[QUICK_START_CICD.md](./QUICK_START_CICD.md)** - Setup rápido en 15 minutos
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Características del CI/CD
+
+- ✅ Deploy automático con `git push`
+- ✅ Sistema de releases (rollback fácil)
+- ✅ Migraciones versionadas (no se repiten)
+- ✅ Usuario dedicado para deploy (seguridad)
+- ✅ Preservación de imágenes y uploads
+
+## 🏗️ Estructura del Proyecto
+
+```
+├── app/              # Next.js App Router
+├── _Pages/           # Pages legacy (compatibilidad)
+├── _DB/              # Migraciones SQL
+├── public/           # Archivos estáticos
+├── services/         # Servicios de negocio
+├── utils/            # Utilidades
+└── deploy.sh         # Script de deploy (VPS)
+```
+
+## 📖 Documentación Adicional
+
+- `GUIA_DESPLIEGUE_LOCAL.md` - Setup local completo
+- `GUIA_DESPLIEGUE_MANUAL_VPS.md` - Deploy manual (legacy)
+- `METODOLOGIA_CICD_MEJORADA.md` - Metodología CI/CD completa
+
+## 🛠️ Stack Tecnológico
+
+- **Framework:** Next.js 16.0.10
+- **Base de Datos:** MySQL
+- **Process Manager:** PM2
+- **CI/CD:** GitHub Actions
+- **Hosting:** VPS (Hostinger)
+- **PWA:** Offline con Bluetooth (en desarrollo)
+
+## 📱 PWA Offline con Bluetooth
+
+El sistema incluye soporte para PWA offline con impresión Bluetooth.
+
+### ⚡ Quick Start PWA
+
+Para implementar PWA offline rápidamente: **[QUICK_START_PWA.md](./QUICK_START_PWA.md)**
+
+### 📚 Documentación Completa
+
+- **[METODOLOGIA_PWA_OFFLINE_BLUETOOTH.md](./METODOLOGIA_PWA_OFFLINE_BLUETOOTH.md)** - Metodología completa de implementación
+- **[RESUMEN_IMPLEMENTACION_PWA.md](./RESUMEN_IMPLEMENTACION_PWA.md)** - Resumen ejecutivo
+
+### Características PWA
+
+- ✅ Instalable como app nativa
+- ✅ Funcionamiento offline completo
+- ✅ Impresión Bluetooth (impresoras térmicas)
+- ✅ Sincronización automática
+- ✅ Todas las funcionalidades offline
+
+## 📝 Scripts Disponibles
+
+```bash
+npm run dev      # Desarrollo local
+npm run build    # Build de producción
+npm run start    # Iniciar servidor de producción
+npm run lint     # Ejecutar linter
+```
+
+## 🔒 Seguridad
+
+- Variables de entorno en `.env` (no versionadas)
+- Usuario MySQL dedicado para deploy
+- Usuario VPS dedicado (no root)
+- Migraciones versionadas y controladas
+
+---
+
+**Última actualización:** 2025-01-05

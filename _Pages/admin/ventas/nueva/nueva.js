@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta } from './servidor'
 import estilos from './nueva.module.css'
 
-export default function NuevaVentaAdmin() {
+export default function NuevaVentaOptimizada() {
     const router = useRouter()
     const [tema, setTema] = useState('light')
     const [cargando, setCargando] = useState(true)
@@ -29,11 +29,10 @@ export default function NuevaVentaAdmin() {
     const [metodoPago, setMetodoPago] = useState('efectivo')
     const [efectivoRecibido, setEfectivoRecibido] = useState('')
     const [descuentoGlobal, setDescuentoGlobal] = useState('')
-    const [notasVenta, setNotasVenta] = useState('')
-
-    // Estados para Productos Extra
+    
     const [mostrarModalExtra, setMostrarModalExtra] = useState(false)
     const [productosExtra, setProductosExtra] = useState([])
+    const [mostrarExtras, setMostrarExtras] = useState(false)
     const [formExtra, setFormExtra] = useState({
         nombre: '',
         tipo: 'otro',
@@ -53,15 +52,12 @@ export default function NuevaVentaAdmin() {
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
         setTema(temaLocal)
-
         const manejarCambioTema = () => {
             const nuevoTema = localStorage.getItem('tema') || 'light'
             setTema(nuevoTema)
         }
-
         window.addEventListener('temaChange', manejarCambioTema)
         window.addEventListener('storage', manejarCambioTema)
-
         return () => {
             window.removeEventListener('temaChange', manejarCambioTema)
             window.removeEventListener('storage', manejarCambioTema)
@@ -81,7 +77,6 @@ export default function NuevaVentaAdmin() {
                 setMostrarDropdownClientes(false)
             }
         }
-
         document.addEventListener('click', manejarClickFuera)
         return () => document.removeEventListener('click', manejarClickFuera)
     }, [])
@@ -112,7 +107,6 @@ export default function NuevaVentaAdmin() {
     const manejarBusquedaProducto = async (e) => {
         const valor = e.target.value
         setBusquedaProducto(valor)
-
         if (valor.length >= 2) {
             try {
                 const resultado = await buscarProductos(valor)
@@ -128,42 +122,39 @@ export default function NuevaVentaAdmin() {
             setMostrarDropdownProductos(false)
         }
     }
-    const agregarProducto = (producto) => {
-    const existe = productosVenta.find(p => p.id === producto.id)
-    
-    if (existe) {
-        setProductosVenta(productosVenta.map(p => 
-            p.id === producto.id 
-                ? { ...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1 }
-                : p
-        ))
-    } else {
-        setProductosVenta([...productosVenta, {
-            ...producto,
-            cantidad: 1,
-            precio_venta_usado: parseFloat(producto.precio_venta),
-            despacho_parcial: false,
-            cantidadDespachar: 1,
-            aplica_itbis: producto.aplica_itbis !== undefined ? producto.aplica_itbis : true // AGREGAR ESTA LÍNEA
-        }])
-    }
 
-    setBusquedaProducto('')
-    setMostrarDropdownProductos(false)
-}
+    const agregarProducto = (producto) => {
+        const existe = productosVenta.find(p => p.id === producto.id)
+        if (existe) {
+            setProductosVenta(productosVenta.map(p => 
+                p.id === producto.id 
+                    ? { ...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1 }
+                    : p
+            ))
+        } else {
+            setProductosVenta([...productosVenta, {
+                ...producto,
+                cantidad: 1,
+                precio_venta_usado: parseFloat(producto.precio_venta),
+                despacho_parcial: false,
+                cantidadDespachar: 1,
+                aplica_itbis: producto.aplica_itbis !== undefined ? producto.aplica_itbis : true
+            }])
+        }
+        setBusquedaProducto('')
+        setMostrarDropdownProductos(false)
+    }
 
     const actualizarCantidad = (productoId, nuevaCantidad) => {
         if (nuevaCantidad <= 0) {
             eliminarProducto(productoId)
             return
         }
-
         const producto = productosVenta.find(p => p.id === productoId)
         if (producto && nuevaCantidad > producto.stock) {
             alert(`Stock disponible: ${producto.stock}`)
             return
         }
-
         setProductosVenta(productosVenta.map(p => {
             if (p.id === productoId) {
                 const nuevaCantidadDespachar = p.despacho_parcial ? p.cantidadDespachar : nuevaCantidad
@@ -196,11 +187,13 @@ export default function NuevaVentaAdmin() {
             return p
         }))
     }
-const toggleAplicaItbis = (productoId) => {
-    setProductosVenta(productosVenta.map(p =>
-        p.id === productoId ? { ...p, aplica_itbis: !p.aplica_itbis } : p
-    ))
-}
+
+    const toggleAplicaItbis = (productoId) => {
+        setProductosVenta(productosVenta.map(p =>
+            p.id === productoId ? { ...p, aplica_itbis: !p.aplica_itbis } : p
+        ))
+    }
+
     const actualizarCantidadDespachar = (productoId, nuevaCantidad) => {
         setProductosVenta(productosVenta.map(p => {
             if (p.id === productoId) {
@@ -218,7 +211,6 @@ const toggleAplicaItbis = (productoId) => {
     const manejarBusquedaCliente = async (e) => {
         const valor = e.target.value
         setBusquedaCliente(valor)
-
         if (valor.length >= 2) {
             try {
                 const resultado = await buscarClientes(valor)
@@ -253,12 +245,10 @@ const toggleAplicaItbis = (productoId) => {
 
     const crearClienteRapidoHandler = async (e) => {
         e.preventDefault()
-
         if (!nombreClienteRapido.trim()) {
             alert('Ingresa el nombre del cliente')
             return
         }
-
         setProcesando(true)
         try {
             const resultado = await crearClienteRapido(nombreClienteRapido.trim())
@@ -277,7 +267,6 @@ const toggleAplicaItbis = (productoId) => {
         }
     }
 
-    // Funciones para Productos Extra
     const abrirModalExtra = () => {
         setFormExtra({
             nombre: '',
@@ -304,18 +293,15 @@ const toggleAplicaItbis = (productoId) => {
 
     const agregarProductoExtra = (e) => {
         e.preventDefault()
-
         if (!formExtra.nombre.trim()) {
             alert('Ingresa el nombre del producto extra')
             return
         }
-
         const precio = parseFloat(formExtra.precioUnitario) || 0
         if (precio <= 0) {
             alert('El precio debe ser mayor a cero')
             return
         }
-
         const nuevoExtra = {
             id: Date.now(),
             nombre: formExtra.nombre.trim(),
@@ -325,7 +311,6 @@ const toggleAplicaItbis = (productoId) => {
             aplica_itbis: formExtra.aplicaItbis,
             notas: formExtra.notas.trim() || null
         }
-
         setProductosExtra([...productosExtra, nuevoExtra])
         cerrarModalExtra()
     }
@@ -338,14 +323,12 @@ const toggleAplicaItbis = (productoId) => {
         let subtotal = 0
         let descuento = parseFloat(descuentoGlobal) || 0
 
-        // Subtotal de productos
         productosVenta.forEach(producto => {
             const precio = producto.precio_venta_usado || 0
             const cantidad = producto.cantidad || 0
             subtotal += precio * cantidad
         })
 
-        // Subtotal de extras
         let subtotalExtras = 0
         productosExtra.forEach(extra => {
             subtotalExtras += extra.precio_unitario * extra.cantidad
@@ -354,7 +337,6 @@ const toggleAplicaItbis = (productoId) => {
         const subtotalConDescuento = subtotal + subtotalExtras - descuento
         const montoGravado = subtotalConDescuento
         
-        // ITBIS de productos
         let itbisProductos = 0
         productosVenta.forEach(producto => {
             if (producto.aplica_itbis) {
@@ -363,7 +345,6 @@ const toggleAplicaItbis = (productoId) => {
             }
         })
 
-        // ITBIS de extras
         let itbisExtras = 0
         productosExtra.forEach(extra => {
             if (extra.aplica_itbis) {
@@ -390,18 +371,15 @@ const toggleAplicaItbis = (productoId) => {
             alert('Agrega al menos un producto o extra a la venta')
             return false
         }
-
         if (!tipoComprobanteId) {
             alert('Selecciona un tipo de comprobante')
             return false
         }
-
         const tipoComprobante = tiposComprobante.find(t => t.id === parseInt(tipoComprobanteId))
         if (tipoComprobante?.requiere_rnc && !clienteSeleccionado) {
             alert('Este tipo de comprobante requiere seleccionar un cliente')
             return false
         }
-
         for (const producto of productosVenta) {
             if (producto.despacho_parcial && producto.cantidadDespachar < 1) {
                 alert(`El producto "${producto.nombre}" debe despachar al menos 1 unidad`)
@@ -412,7 +390,6 @@ const toggleAplicaItbis = (productoId) => {
                 return false
             }
         }
-
         if (metodoPago === 'efectivo') {
             const recibido = parseFloat(efectivoRecibido) || 0
             const total = parseFloat(calcularTotales().total)
@@ -421,26 +398,20 @@ const toggleAplicaItbis = (productoId) => {
                 return false
             }
         }
-
         return true
     }
 
     const procesarVenta = async () => {
         if (!validarVenta()) return
-
         setProcesando(true)
         try {
             const totales = calcularTotales()
-            
             let efectivoRecibidoFinal = null
             let cambioFinal = null
 
-            // Guardar monto recibido para todos los métodos de pago
             if (efectivoRecibido) {
                 const recibido = parseFloat(efectivoRecibido)
                 efectivoRecibidoFinal = recibido
-                
-                // Solo calcular cambio para efectivo
                 if (metodoPago === 'efectivo') {
                     const total = parseFloat(totales.total)
                     cambioFinal = recibido - total
@@ -499,28 +470,15 @@ const toggleAplicaItbis = (productoId) => {
         ? (parseFloat(efectivoRecibido) - parseFloat(totales.total)).toFixed(2)
         : '0.00'
 
-    // Helper para obtener label del campo según método de pago
     const getLabelMontoRecibido = () => {
         const labels = {
-            efectivo: 'Efectivo Recibido (RD$)',
-            tarjeta_debito: 'Monto Cobrado por T. Débito (RD$)',
-            tarjeta_credito: 'Monto Cobrado por T. Crédito (RD$)',
-            transferencia: 'Monto Confirmado en Transferencia (RD$)',
-            cheque: 'Monto del Cheque (RD$)'
+            efectivo: 'Efectivo Recibido',
+            tarjeta_debito: 'Monto T. Débito',
+            tarjeta_credito: 'Monto T. Crédito',
+            transferencia: 'Monto Transferencia',
+            cheque: 'Monto Cheque'
         }
-        return labels[metodoPago] || 'Monto Recibido (RD$)'
-    }
-
-    // Helper para obtener texto de ayuda según método de pago
-    const getHelperText = () => {
-        const helpers = {
-            efectivo: 'Verifica el monto entregado por el cliente. El sistema calculará el cambio automáticamente.',
-            tarjeta_debito: 'Ingresa el monto cobrado por la tarjeta. Debe coincidir con el voucher del POS.',
-            tarjeta_credito: 'Ingresa el monto cobrado por la tarjeta. Debe coincidir con el voucher del POS.',
-            transferencia: 'Ingresa el monto confirmado en la operación de transferencia.',
-            cheque: 'Ingresa el monto del cheque recibido.'
-        }
-        return helpers[metodoPago] || ''
+        return labels[metodoPago] || 'Monto Recibido'
     }
 
     if (cargando) {
@@ -535,38 +493,217 @@ const toggleAplicaItbis = (productoId) => {
     }
 
     return (
-        <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-            <div className={estilos.header}>
-                <div>
-                    <h1 className={estilos.titulo}>Nueva Venta</h1>
-                    <p className={estilos.subtitulo}>Registra una nueva venta y genera el comprobante fiscal</p>
+    <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>            
+            {/* TÍTULO DE LA PÁGINA */}
+        
+        <div className={estilos.pageHeader}>
+            <div className={estilos.pageTitle}>
+                <ion-icon name="cart-outline"></ion-icon>
+                <h1>Registro de Venta</h1>
+            </div>
+            <span className={estilos.pageSubtitle}>
+                Punto de venta · Emisión de comprobantes
+            </span>
+        </div>
+            {/* HEADER STICKY CON ACCIONES PRINCIPALES */}
+            <div className={`${estilos.headerSticky} ${estilos[tema]}`}>
+                <div className={estilos.headerLeft}>
+                    <div className={estilos.infoHeader}>
+                        <span className={estilos.labelTotal}>Total:</span>
+                        <strong className={estilos.montoTotal}>RD$ {totales.total}</strong>
+                        {productosVenta.length > 0 && (
+                            <span className={estilos.cantidadItems}>
+                                ({productosVenta.length} {productosVenta.length === 1 ? 'producto' : 'productos'})
+                            </span>
+                        )}
+                    </div>
                 </div>
-                <button 
-                    className={estilos.btnCancelar}
-                    onClick={() => router.push('/admin/ventas')}
-                >
-                    <ion-icon name="close-outline"></ion-icon>
-                    <span>Cancelar</span>
-                </button>
+
+                <div className={estilos.headerActions}>
+                    <button 
+                        onClick={() => router.push('/admin/ventas')}
+                        className={estilos.btnCancelarHeader}
+                        disabled={procesando}
+                    >
+                        <ion-icon name="close-outline"></ion-icon>
+                        <span>Cancelar</span>
+                    </button>
+
+                    <button
+                        onClick={procesarVenta}
+                        disabled={procesando || (productosVenta.length === 0 && productosExtra.length === 0)}
+                        className={estilos.btnProcesarHeader}
+                    >
+                        {procesando ? (
+                            <>
+                                <ion-icon name="hourglass-outline" className={estilos.iconRotate}></ion-icon>
+                                <span>Procesando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                                <span>Procesar Venta</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
-            <div className={estilos.contenido}>
-                <div className={estilos.columnaIzquierda}>
-                    <div className={`${estilos.seccion} ${estilos[tema]}`}>
-                        <h3 className={estilos.tituloSeccion}>
-                            <ion-icon name="cube-outline"></ion-icon>
-                            <span>Productos</span>
-                        </h3>
+            {/* BARRA DE INFORMACIÓN CONTEXTUAL */}
+            <div className={`${estilos.barraInfo} ${estilos[tema]}`}>
+                <div className={estilos.infoCompacta}>
+                    <div className={estilos.itemInfo}>
+                        <ion-icon name="person-outline"></ion-icon>
+                        <span>Cliente:</span>
+                        <strong>{clienteSeleccionado ? clienteSeleccionado.nombre : 'Sin cliente'}</strong>
+                    </div>
 
+                    <div className={estilos.separadorVertical}></div>
+
+                    <div className={estilos.itemInfo}>
+                        <ion-icon name="document-text-outline"></ion-icon>
+                        <span>Comprobante:</span>
+                        <select
+                            value={tipoComprobanteId}
+                            onChange={(e) => setTipoComprobanteId(e.target.value)}
+                            className={estilos.selectCompacto}
+                        >
+                            {tiposComprobante.map(tipo => (
+                                <option key={tipo.id} value={tipo.id}>
+                                    {tipo.codigo} - {tipo.nombre}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div className={estilos.separadorVertical}></div>
+
+                    <div className={estilos.metodosPagoWrapper}>
+                    <span className={estilos.labelMetodoPago}>Metodo de Pago</span>
+
+                    <div className={estilos.metodosPagoGrid}>
+                        <button
+                            type="button"
+                            className={`${estilos.metodoPagoItem} ${estilos.efectivo} ${metodoPago === 'efectivo' ? estilos.activo : ''}`}
+                            onClick={() => setMetodoPago('efectivo')}
+                        >
+                            <ion-icon name="cash-outline"></ion-icon>
+                            <span>Efectivo</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`${estilos.metodoPagoItem} ${estilos.debito} ${metodoPago === 'tarjeta_debito' ? estilos.activo : ''}`}
+                            onClick={() => setMetodoPago('tarjeta_debito')}
+                        >
+                            <ion-icon name="card-outline"></ion-icon>
+                            <span>Débito</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`${estilos.metodoPagoItem} ${estilos.credito} ${metodoPago === 'tarjeta_credito' ? estilos.activo : ''}`}
+                            onClick={() => setMetodoPago('tarjeta_credito')}
+                        >
+                            <ion-icon name="card-outline"></ion-icon>
+                            <span>Crédito</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`${estilos.metodoPagoItem} ${estilos.transferencia} ${metodoPago === 'transferencia' ? estilos.activo : ''}`}
+                            onClick={() => setMetodoPago('transferencia')}
+                        >
+                            <ion-icon name="swap-horizontal-outline"></ion-icon>
+                            <span>Transfer.</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            className={`${estilos.metodoPagoItem} ${estilos.cheque} ${metodoPago === 'cheque' ? estilos.activo : ''}`}
+                            onClick={() => setMetodoPago('cheque')}
+                        >
+                            <ion-icon name="document-text-outline"></ion-icon>
+                            <span>Cheque</span>
+                        </button>
+                    </div>
+                </div>
+                </div>
+                 {/* BLOQUE CLIENTE */}
+    <div className={estilos.bloqueClienteBarra}>
+        {/* BUSCAR CLIENTE (IZQUIERDA) */}
+        <div className={estilos.busquedaClienteContainer}>
+            <div className={estilos.busquedaCliente}>
+                <ion-icon name="search-outline"></ion-icon>
+                <input
+                    type="text"
+                    placeholder="Buscar cliente..."
+                    value={busquedaCliente}
+                    onChange={manejarBusquedaCliente}
+                    className={estilos.inputBusquedaCompacto}
+                    disabled={!!clienteSeleccionado}
+                />
+
+                {clienteSeleccionado && (
+                    <button
+                        type="button"
+                        onClick={limpiarCliente}
+                        className={estilos.btnLimpiarCliente}
+                        title="Cambiar cliente"
+                    >
+                        <ion-icon name="close-circle"></ion-icon>
+                    </button>
+                )}
+            </div>
+
+            {mostrarDropdownClientes && clientes.length > 0 && !clienteSeleccionado && (
+                <div className={`${estilos.dropdownClientes} ${estilos[tema]}`}>
+                    {clientes.map(cliente => (
+                        <div
+                            key={cliente.id}
+                            className={estilos.dropdownItemCliente}
+                            onClick={() => seleccionarCliente(cliente)}
+                        >
+                            <div className={estilos.clienteInfo}>
+                                <span className={estilos.clienteNombre}>
+                                    {cliente.nombre}
+                                </span>
+                                <span className={estilos.clienteDoc}>
+                                    {cliente.numero_documento}
+                                </span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+
+        {/* CLIENTE RÁPIDO (DERECHA) */}
+        <button 
+            onClick={abrirModalClienteRapido}
+            className={estilos.btnAccionRapida}
+        >
+            <ion-icon name="person-add-outline"></ion-icon>
+            Cliente Rápido
+        </button>
+    </div>
+            </div>
+
+            {/* LAYOUT PRINCIPAL - DOS COLUMNAS */}
+            <div className={estilos.layoutPrincipal}>
+                {/* COLUMNA IZQUIERDA - PRODUCTOS */}
+                <div className={estilos.colProductos}>
+                    {/* Búsqueda de productos */}
+                    <div className={`${estilos.seccionBusqueda} ${estilos[tema]}`}>
                         <div className={estilos.busquedaProductoContainer}>
                             <div className={estilos.busquedaProducto}>
                                 <ion-icon name="search-outline"></ion-icon>
                                 <input
                                     type="text"
-                                    placeholder="Buscar producto por nombre, codigo o SKU..."
+                                    placeholder="Buscar producto por nombre, código o SKU..."
                                     value={busquedaProducto}
                                     onChange={manejarBusquedaProducto}
-                                    className={estilos.inputBusqueda}
+                                    className={estilos.inputBusquedaCompacto}
                                 />
                             </div>
 
@@ -595,442 +732,321 @@ const toggleAplicaItbis = (productoId) => {
                                 </div>
                             )}
                         </div>
-
-                        <div className={estilos.listaProductos}>
-                            {productosVenta.length === 0 ? (
-                                <div className={estilos.sinProductos}>
-                                    <ion-icon name="cart-outline"></ion-icon>
-                                    <span>No hay productos agregados</span>
-                                </div>
-                            ) : (
-                                productosVenta.map(producto => (
-                                    <div key={producto.id} className={`${estilos.productoItem} ${estilos[tema]}`}>
-                                        <div className={estilos.productoDetalles}>
-                                            <span className={estilos.productoNombreItem}>{producto.nombre}</span>
-                                            <span className={estilos.productoStockItem}>
-                                                Stock: {producto.stock} | Cod: {producto.codigo_barras || producto.sku}
-                                            </span>
-                                        </div>
-
-                                        <div className={estilos.productoControles}>
-                                            <div className={estilos.controlCantidad}>
-                                                <button
-                                                    onClick={() => actualizarCantidad(producto.id, producto.cantidad - 1)}
-                                                    className={estilos.btnCantidad}
-                                                >
-                                                    <ion-icon name="remove-outline"></ion-icon>
-                                                </button>
-                                                <input
-                                                    type="number"
-                                                    min="1"
-                                                    max={producto.stock}
-                                                    value={producto.cantidad}
-                                                    onChange={(e) => actualizarCantidad(producto.id, parseInt(e.target.value) || 1)}
-                                                    className={estilos.inputCantidad}
-                                                />
-                                                <button
-                                                    onClick={() => actualizarCantidad(producto.id, producto.cantidad + 1)}
-                                                    className={estilos.btnCantidad}
-                                                    disabled={producto.cantidad >= producto.stock}
-                                                >
-                                                    <ion-icon name="add-outline"></ion-icon>
-                                                </button>
-                                            </div>
-
-                                            <div className={estilos.controlPrecio}>
-                                                <span className={estilos.labelPrecio}>RD$</span>
-                                                <input
-                                                    type="number"
-                                                    step="0.01"
-                                                    min="0"
-                                                    value={producto.precio_venta_usado}
-                                                    onChange={(e) => actualizarPrecio(producto.id, e.target.value)}
-                                                    className={estilos.inputPrecio}
-                                                />
-                                            </div>
-
-                                            <div className={estilos.productoSubtotal}>
-                                                <span>RD$ {(producto.cantidad * producto.precio_venta_usado).toFixed(2)}</span>
-                                            </div>
-
-                                            <button
-                                                onClick={() => eliminarProducto(producto.id)}
-                                                className={estilos.btnEliminar}
-                                            >
-                                                <ion-icon name="trash-outline"></ion-icon>
-                                            </button>
-                                        </div>
-
-                                        <div className={estilos.despachoParcialContainer}>
-                                            <label className={estilos.checkboxDespachoParcial}>
-                                                <input
-                                                    type="checkbox"
-                                                    checked={producto.despacho_parcial}
-                                                    onChange={() => toggleDespachoParcial(producto.id)}
-                                                    className={estilos.checkboxInput}
-                                                />
-                                                <span className={estilos.checkboxTexto}>Despacho Parcial</span>
-                                            </label>
-                                            <label className={estilos.checkboxDespachoParcial}>
-        <input
-            type="checkbox"
-            checked={producto.aplica_itbis !== false}
-            onChange={() => toggleAplicaItbis(producto.id)}
-            className={estilos.checkboxInput}
-        />
-        <span className={estilos.checkboxTexto}>
-            Aplicar {datosEmpresa?.impuesto_nombre || 'ITBIS'} ({datosEmpresa?.impuesto_porcentaje || 18}%)
-        </span>
-    </label>
-                                            {producto.despacho_parcial && (
-                                                <div className={estilos.controlDespacho}>
-                                                    <label className={estilos.labelDespacho}>
-                                                        Entregar ahora:
-                                                    </label>
-                                                    <div className={estilos.inputDespachoContainer}>
-                                                        <button
-                                                            onClick={() => actualizarCantidadDespachar(producto.id, producto.cantidadDespachar - 1)}
-                                                            className={estilos.btnCantidadDespacho}
-                                                            disabled={producto.cantidadDespachar <= 1}
-                                                        >
-                                                            <ion-icon name="remove-outline"></ion-icon>
-                                                        </button>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
-                                                            max={producto.cantidad}
-                                                            value={producto.cantidadDespachar || 1}
-                                                            onChange={(e) => actualizarCantidadDespachar(producto.id, parseInt(e.target.value) || 1)}
-                                                            className={estilos.inputCantidadDespacho}
-                                                        />
-                                                        <button
-                                                            onClick={() => actualizarCantidadDespachar(producto.id, producto.cantidadDespachar + 1)}
-                                                            className={estilos.btnCantidadDespacho}
-                                                            disabled={producto.cantidadDespachar >= producto.cantidad}
-                                                        >
-                                                            <ion-icon name="add-outline"></ion-icon>
-                                                        </button>
-                                                        <span className={estilos.despachoInfo}>
-                                                            de {producto.cantidad}
-                                                        </span>
-                                                    </div>
-                                                    <span className={estilos.despachoPendiente}>
-                                                        Pendiente: {producto.cantidad - producto.cantidadDespachar}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))
-                            )}
-                        </div>
                     </div>
 
-                    {/* Sección de Productos Extra */}
-                    <div className={`${estilos.seccion} ${estilos[tema]}`}>
-                        <div className={estilos.headerSeccionExtra}>
-                            <h3 className={estilos.tituloSeccion}>
+                    {/* Tabla de productos - Vista compacta tipo POS */}
+                    <div className={`${estilos.tablaProductos} ${estilos[tema]}`}>
+                        {productosVenta.length === 0 ? (
+                            <div className={estilos.estadoVacio}>
+                                <ion-icon name="cart-outline"></ion-icon>
+                                <p>No hay productos agregados</p>
+                                <span>Busca y agrega productos para iniciar la venta</span>
+                            </div>
+                        ) : (
+                            <>
+                                <div className={estilos.tablaHeader}>
+                                    <span>Producto</span>
+                                    <span>Cant.</span>
+                                    <span>Precio</span>
+                                    <span>Subtotal</span>
+                                    <span></span>
+                                </div>
+
+                                <div className={estilos.tablaBody}>
+                                    {productosVenta.map(producto => (
+                                        <div key={producto.id}>
+                                            <div className={`${estilos.filaProducto} ${estilos[tema]}`}>
+                                                <div className={estilos.infoProductoFila}>
+                                                    <span className={estilos.nombreProductoFila}>{producto.nombre}</span>
+                                                    <span className={estilos.detalleProductoFila}>
+                                                        Stock: {producto.stock} | {producto.codigo_barras || producto.sku}
+                                                    </span>
+                                                </div>
+
+                                                <div className={estilos.controlCantidadCompacto}>
+                                                    <button
+                                                        onClick={() => actualizarCantidad(producto.id, producto.cantidad - 1)}
+                                                        className={estilos.btnMenos}
+                                                        type="button"
+                                                    >
+                                                        <ion-icon name="remove"></ion-icon>
+                                                    </button>
+                                                    <input
+                                                        type="number"
+                                                        min="1"
+                                                        max={producto.stock}
+                                                        value={producto.cantidad}
+                                                        onChange={(e) => actualizarCantidad(producto.id, parseInt(e.target.value) || 1)}
+                                                        className={estilos.inputCantidadCompacto}
+                                                    />
+                                                    <button
+                                                        onClick={() => actualizarCantidad(producto.id, producto.cantidad + 1)}
+                                                        className={estilos.btnMas}
+                                                        disabled={producto.cantidad >= producto.stock}
+                                                        type="button"
+                                                    >
+                                                        <ion-icon name="add"></ion-icon>
+                                                    </button>
+                                                </div>
+
+                                                <div className={estilos.controlPrecioCompacto}>
+                                                    <span className={estilos.simboloMoneda}>RD$</span>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        min="0"
+                                                        value={producto.precio_venta_usado}
+                                                        onChange={(e) => actualizarPrecio(producto.id, e.target.value)}
+                                                        className={estilos.inputPrecioCompacto}
+                                                    />
+                                                </div>
+
+                                                <span className={estilos.subtotalProducto}>
+                                                    RD$ {(producto.cantidad * producto.precio_venta_usado).toFixed(2)}
+                                                </span>
+
+                                                <button
+                                                    onClick={() => eliminarProducto(producto.id)}
+                                                    className={estilos.btnEliminarCompacto}
+                                                    type="button"
+                                                    title="Eliminar producto"
+                                                >
+                                                    <ion-icon name="trash-outline"></ion-icon>
+                                                </button>
+                                            </div>
+
+                                            {/* Opciones adicionales (colapsables) */}
+                                            <details className={estilos.opcionesAdicionales}>
+                                                <summary className={estilos.summaryOpciones}>
+                                                    <ion-icon name="chevron-forward-outline"></ion-icon>
+                                                    Opciones adicionales
+                                                </summary>
+                                                <div className={estilos.contenidoOpciones}>
+                                                    <label className={estilos.checkboxOpcion}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={producto.despacho_parcial}
+                                                            onChange={() => toggleDespachoParcial(producto.id)}
+                                                        />
+                                                        <span>Despacho Parcial</span>
+                                                    </label>
+
+                                                    <label className={estilos.checkboxOpcion}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={producto.aplica_itbis !== false}
+                                                            onChange={() => toggleAplicaItbis(producto.id)}
+                                                        />
+                                                        <span>Aplicar {datosEmpresa?.impuesto_nombre || 'ITBIS'} ({datosEmpresa?.impuesto_porcentaje || 18}%)</span>
+                                                    </label>
+
+                                                    {producto.despacho_parcial && (
+                                                        <div className={estilos.controlDespachoCompacto}>
+                                                            <label>Entregar ahora:</label>
+                                                            <div className={estilos.inputGroupDespacho}>
+                                                                <button
+                                                                    onClick={() => actualizarCantidadDespachar(producto.id, producto.cantidadDespachar - 1)}
+                                                                    disabled={producto.cantidadDespachar <= 1}
+                                                                    type="button"
+                                                                >
+                                                                    <ion-icon name="remove"></ion-icon>
+                                                                </button>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max={producto.cantidad}
+                                                                    value={producto.cantidadDespachar || 1}
+                                                                    onChange={(e) => actualizarCantidadDespachar(producto.id, parseInt(e.target.value) || 1)}
+                                                                />
+                                                                <button
+                                                                    onClick={() => actualizarCantidadDespachar(producto.id, producto.cantidadDespachar + 1)}
+                                                                    disabled={producto.cantidadDespachar >= producto.cantidad}
+                                                                    type="button"
+                                                                >
+                                                                    <ion-icon name="add"></ion-icon>
+                                                                </button>
+                                                                <span>de {producto.cantidad}</span>
+                                                            </div>
+                                                            <span className={estilos.textoPendiente}>
+                                                                Pendiente: {producto.cantidad - producto.cantidadDespachar}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </details>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Sección Extras (colapsable) */}
+                    <details 
+                        className={`${estilos.seccionExtras} ${estilos[tema]}`}
+                        open={mostrarExtras}
+                        onToggle={(e) => setMostrarExtras(e.target.open)}
+                    >
+                        <summary className={estilos.summaryExtras}>
+                            <div className={estilos.summaryLeft}>
+                                <ion-icon name="chevron-forward-outline"></ion-icon>
                                 <ion-icon name="add-circle-outline"></ion-icon>
                                 <span>Productos Extra</span>
-                            </h3>
+                                {productosExtra.length > 0 && (
+                                    <span className={estilos.badgeExtras}>
+                                        {productosExtra.length}
+                                    </span>
+                                )}
+                            </div>
                             <button
                                 type="button"
-                                onClick={abrirModalExtra}
-                                className={estilos.btnAgregarExtra}
+                                onClick={(e) => {
+                                    e.preventDefault()
+                                    abrirModalExtra()
+                                }}
+                                className={estilos.btnAgregarExtraCompacto}
                             >
                                 <ion-icon name="add"></ion-icon>
-                                Agregar Extra
+                                Agregar
                             </button>
-                        </div>
+                        </summary>
 
-                        {productosExtra.length === 0 ? (
-                            <p className={estilos.sinExtras}>No hay productos extra agregados</p>
-                        ) : (
-                            <div className={estilos.listaExtras}>
-                                {productosExtra.map((extra) => {
-                                    const cantidad = parseFloat(extra.cantidad) || 1
-                                    const precio = parseFloat(extra.precio_unitario) || 0
-                                    const base = cantidad * precio
-                                    const impuesto = extra.aplica_itbis ? (base * parseFloat(datosEmpresa?.impuesto_porcentaje || 18)) / 100 : 0
-                                    const total = base + impuesto
-                                    
-                                    return (
-                                        <div key={extra.id} className={`${estilos.itemExtra} ${estilos[tema]}`}>
-                                            <div className={estilos.infoExtra}>
-                                                <span className={estilos.nombreExtra}>{extra.nombre}</span>
-                                                <span className={estilos.detalleExtra}>
-                                                    {cantidad} x RD$ {precio.toFixed(2)}
-                                                    {extra.aplica_itbis && ` + ${datosEmpresa?.impuesto_porcentaje || 18}%`}
-                                                </span>
-                                                {extra.notas && (
-                                                    <span className={estilos.notasExtra}>{extra.notas}</span>
-                                                )}
-                                            </div>
-                                            <div className={estilos.accionesExtra}>
-                                                <span className={estilos.totalExtra}>RD$ {total.toFixed(2)}</span>
+                        <div className={estilos.contenidoExtras}>
+                            {productosExtra.length === 0 ? (
+                                <p className={estilos.textoSinExtras}>No hay productos extra agregados</p>
+                            ) : (
+                                <div className={estilos.listaExtrasCompacta}>
+                                    {productosExtra.map((extra) => {
+                                        const cantidad = parseFloat(extra.cantidad) || 1
+                                        const precio = parseFloat(extra.precio_unitario) || 0
+                                        const base = cantidad * precio
+                                        const impuesto = extra.aplica_itbis ? (base * parseFloat(datosEmpresa?.impuesto_porcentaje || 18)) / 100 : 0
+                                        const total = base + impuesto
+                                        
+                                        return (
+                                            <div key={extra.id} className={`${estilos.itemExtraCompacto} ${estilos[tema]}`}>
+                                                <div className={estilos.infoExtraCompacto}>
+                                                    <span className={estilos.nombreExtraCompacto}>{extra.nombre}</span>
+                                                    <span className={estilos.detalleExtraCompacto}>
+                                                        {cantidad} x RD$ {precio.toFixed(2)}
+                                                        {extra.aplica_itbis && ` + ${datosEmpresa?.impuesto_porcentaje || 18}%`}
+                                                    </span>
+                                                </div>
+                                                <span className={estilos.totalExtraCompacto}>RD$ {total.toFixed(2)}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => eliminarProductoExtra(extra.id)}
-                                                    className={estilos.btnEliminarExtra}
-                                                    title="Eliminar extra"
+                                                    className={estilos.btnEliminarExtraCompacto}
                                                 >
                                                     <ion-icon name="close-circle"></ion-icon>
                                                 </button>
                                             </div>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        )}
-                    </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </details>
                 </div>
 
-                <div className={estilos.columnaDerecha}>
-                    <div className={`${estilos.seccion} ${estilos[tema]}`}>
-                        <h3 className={estilos.tituloSeccion}>
-                            <ion-icon name="person-outline"></ion-icon>
-                            <span>Cliente</span>
+                {/* COLUMNA DERECHA - RESUMEN STICKY */}
+                <aside className={`${estilos.colResumen} ${estilos[tema]}`}>
+                    <div className={estilos.resumenSticky}>
+                        <h3 className={estilos.tituloResumen}>
+                            <ion-icon name="calculator-outline"></ion-icon>
+                            Resumen de Venta
                         </h3>
 
-                        <div className={estilos.busquedaClienteContainer}>
-                            <div className={estilos.busquedaCliente}>
-                                <ion-icon name="search-outline"></ion-icon>
-                                <input
-                                    type="text"
-                                    placeholder="Buscar cliente..."
-                                    value={busquedaCliente}
-                                    onChange={manejarBusquedaCliente}
-                                    className={estilos.inputBusqueda}
-                                    disabled={clienteSeleccionado !== null}
-                                />
-                                {clienteSeleccionado && (
-                                    <button
-                                        onClick={limpiarCliente}
-                                        className={estilos.btnLimpiarCliente}
-                                    >
-                                        <ion-icon name="close-circle"></ion-icon>
-                                    </button>
-                                )}
+                        {/* Campos de pago y descuento */}
+                        <div className={estilos.camposVenta}>
+                            <div className={estilos.campoCompacto}>
+                                <label>{getLabelMontoRecibido()}</label>
+                                <div className={estilos.inputConIcono}>
+                                    <span className={estilos.iconoMoneda}>RD$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={efectivoRecibido}
+                                        onChange={(e) => setEfectivoRecibido(e.target.value)}
+                                        placeholder="0.00"
+                                        className={estilos.inputMoneda}
+                                    />
+                                </div>
                             </div>
 
-                            {mostrarDropdownClientes && clientes.length > 0 && (
-                                <div className={`${estilos.dropdownClientes} ${estilos[tema]}`}>
-                                    {clientes.map(cliente => (
-                                        <div
-                                            key={cliente.id}
-                                            className={estilos.dropdownItemCliente}
-                                            onClick={() => seleccionarCliente(cliente)}
-                                        >
-                                            <div className={estilos.clienteInfo}>
-                                                <span className={estilos.clienteNombre}>{cliente.nombre}</span>
-                                                <span className={estilos.clienteDoc}>{cliente.numero_documento}</span>
-                                            </div>
-                                        </div>
-                                    ))}
+                            <div className={estilos.campoCompacto}>
+                                <label>Descuento Global</label>
+                                <div className={estilos.inputConIcono}>
+                                    <span className={estilos.iconoMoneda}>RD$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={descuentoGlobal}
+                                        onChange={(e) => setDescuentoGlobal(e.target.value)}
+                                        placeholder="0.00"
+                                        className={estilos.inputMoneda}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Totales */}
+                        <div className={estilos.desgloseTotales}>
+                            <div className={estilos.lineaTotalCompacta}>
+                                <span>Subtotal:</span>
+                                <span>RD$ {totales.subtotal}</span>
+                            </div>
+
+                            {parseFloat(totales.subtotalExtras) > 0 && (
+                                <div className={estilos.lineaTotalCompacta}>
+                                    <span>Extras:</span>
+                                    <span>RD$ {totales.subtotalExtras}</span>
                                 </div>
                             )}
 
-                            <button
-                                onClick={abrirModalClienteRapido}
-                                className={estilos.btnClienteRapido}
-                            >
-                                <ion-icon name="person-add-outline"></ion-icon>
-                                <span>Cliente Rapido</span>
-                            </button>
-                        </div>
-
-                        {clienteSeleccionado && (
-                            <div className={`${estilos.clienteSeleccionado} ${estilos[tema]}`}>
-                                <div className={estilos.clienteData}>
-                                    <span className={estilos.clienteNombreSelec}>{clienteSeleccionado.nombre}</span>
-                                    <span className={estilos.clienteDocSelec}>
-                                        {clienteSeleccionado.tipo_documento}: {clienteSeleccionado.numero_documento}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className={`${estilos.seccion} ${estilos[tema]}`}>
-                        <h3 className={estilos.tituloSeccion}>
-                            <ion-icon name="document-text-outline"></ion-icon>
-                            <span>Comprobante</span>
-                        </h3>
-
-                        <div className={estilos.grupoInput}>
-                            <label>Tipo de Comprobante</label>
-                            <select
-                                value={tipoComprobanteId}
-                                onChange={(e) => setTipoComprobanteId(e.target.value)}
-                                className={estilos.select}
-                            >
-                                {tiposComprobante.map(tipo => (
-                                    <option key={tipo.id} value={tipo.id}>
-                                        {tipo.codigo} - {tipo.nombre}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
-                        <div className={estilos.grupoInput}>
-                            <label>Descuento Global (RD$)</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={descuentoGlobal}
-                                onChange={(e) => setDescuentoGlobal(e.target.value)}
-                                placeholder="0.00"
-                                className={estilos.input}
-                            />
-                        </div>
-                    </div>
-
-                    <div className={`${estilos.seccion} ${estilos[tema]}`}>
-                        <h3 className={estilos.tituloSeccion}>
-                            <ion-icon name="card-outline"></ion-icon>
-                            <span>Metodo de Pago</span>
-                        </h3>
-
-                        <div className={estilos.gridMetodosPago}>
-                            <button
-                                type="button"
-                                className={`${estilos.btnMetodoPago} ${metodoPago === 'efectivo' ? estilos.seleccionado : ''} ${estilos[tema]}`}
-                                onClick={() => setMetodoPago('efectivo')}
-                            >
-                                <ion-icon name="cash-outline"></ion-icon>
-                                <span>Efectivo</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`${estilos.btnMetodoPago} ${metodoPago === 'tarjeta_debito' ? estilos.seleccionado : ''} ${estilos[tema]}`}
-                                onClick={() => setMetodoPago('tarjeta_debito')}
-                            >
-                                <ion-icon name="card-outline"></ion-icon>
-                                <span>T. Debito</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`${estilos.btnMetodoPago} ${metodoPago === 'tarjeta_credito' ? estilos.seleccionado : ''} ${estilos[tema]}`}
-                                onClick={() => setMetodoPago('tarjeta_credito')}
-                            >
-                                <ion-icon name="card-outline"></ion-icon>
-                                <span>T. Credito</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`${estilos.btnMetodoPago} ${metodoPago === 'transferencia' ? estilos.seleccionado : ''} ${estilos[tema]}`}
-                                onClick={() => setMetodoPago('transferencia')}
-                            >
-                                <ion-icon name="swap-horizontal-outline"></ion-icon>
-                                <span>Transferencia</span>
-                            </button>
-                            <button
-                                type="button"
-                                className={`${estilos.btnMetodoPago} ${metodoPago === 'cheque' ? estilos.seleccionado : ''} ${estilos[tema]}`}
-                                onClick={() => setMetodoPago('cheque')}
-                            >
-                                <ion-icon name="document-text-outline"></ion-icon>
-                                <span>Cheque</span>
-                            </button>
-                        </div>
-
-                        <div className={estilos.grupoInput}>
-                            <label>{getLabelMontoRecibido()}</label>
-                            <input
-                                type="number"
-                                step="0.01"
-                                min="0"
-                                value={efectivoRecibido}
-                                onChange={(e) => setEfectivoRecibido(e.target.value)}
-                                placeholder="0.00"
-                                className={estilos.input}
-                            />
-                            {getHelperText() && (
-                                <div className={`${estilos.helperText} ${estilos[tema]}`}>
-                                    <ion-icon name="information-circle-outline"></ion-icon>
-                                    <span>{getHelperText()}</span>
+                            {parseFloat(totales.descuento) > 0 && (
+                                <div className={`${estilos.lineaTotalCompacta} ${estilos.descuento}`}>
+                                    <span>Descuento:</span>
+                                    <span>- RD$ {totales.descuento}</span>
                                 </div>
                             )}
+
+                            <div className={estilos.lineaTotalCompacta}>
+                                <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'}:</span>
+                                <span>RD$ {totales.itbis}</span>
+                            </div>
+
+                            <div className={estilos.separadorTotal}></div>
+
+                            <div className={estilos.totalFinal}>
+                                <span>Total a Pagar:</span>
+                                <span>RD$ {totales.total}</span>
+                            </div>
+
                             {metodoPago === 'efectivo' && efectivoRecibido && parseFloat(cambio) >= 0 && (
-                                <div className={`${estilos.cambioBox} ${estilos[tema]}`}>
+                                <div className={`${estilos.cambioInfo} ${estilos[tema]}`}>
                                     <span>Cambio:</span>
                                     <strong>RD$ {cambio}</strong>
                                 </div>
                             )}
                         </div>
                     </div>
-
-                    <div className={`${estilos.resumenVenta} ${estilos[tema]}`}>
-                        <h3 className={estilos.tituloResumen}>Resumen de Venta</h3>
-                        
-                        <div className={estilos.lineaResumen}>
-                            <span>Subtotal Productos:</span>
-                            <span>RD$ {totales.subtotal}</span>
-                        </div>
-
-                        {parseFloat(totales.subtotalExtras) > 0 && (
-                            <div className={estilos.lineaResumen}>
-                                <span>Subtotal Extras:</span>
-                                <span>RD$ {totales.subtotalExtras}</span>
-                            </div>
-                        )}
-
-                        {parseFloat(totales.descuento) > 0 && (
-                            <div className={estilos.lineaResumen}>
-                                <span>Descuento:</span>
-                                <span className={estilos.descuento}>- RD$ {totales.descuento}</span>
-                            </div>
-                        )}
-
-                        <div className={estilos.lineaResumen}>
-                            <span>Monto Gravado:</span>
-                            <span>RD$ {totales.montoGravado}</span>
-                        </div>
-
-                        <div className={estilos.lineaResumen}>
-                            <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'} ({datosEmpresa?.impuesto_porcentaje || 18}%):</span>
-                            <span>RD$ {totales.itbis}</span>
-                        </div>
-
-                        <div className={estilos.separador}></div>
-
-                        <div className={estilos.lineaTotal}>
-                            <span>Total a Pagar:</span>
-                            <span>RD$ {totales.total}</span>
-                        </div>
-
-                        <button
-                            onClick={procesarVenta}
-                            disabled={procesando || (productosVenta.length === 0 && productosExtra.length === 0)}
-                            className={estilos.btnProcesar}
-                        >
-                            {procesando ? (
-                                <>
-                                    <ion-icon name="hourglass-outline"></ion-icon>
-                                    <span>Procesando...</span>
-                                </>
-                            ) : (
-                                <>
-                                    <ion-icon name="checkmark-circle-outline"></ion-icon>
-                                    <span>Procesar Venta</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
-                </div>
+                </aside>
             </div>
 
-            {/* Modal Cliente Rápido */}
+            {/* MODALES */}
             {mostrarModalCliente && (
                 <div className={estilos.modalOverlay} onClick={() => !procesando && setMostrarModalCliente(false)}>
                     <div className={`${estilos.modal} ${estilos[tema]}`} onClick={(e) => e.stopPropagation()}>
                         <div className={estilos.modalHeader}>
-                            <h2>Cliente Rapido</h2>
+                            <h2>Cliente Rápido</h2>
                             <button
                                 className={estilos.btnCerrarModal}
                                 onClick={() => setMostrarModalCliente(false)}
                                 disabled={procesando}
+                                type="button"
                             >
                                 <ion-icon name="close-outline"></ion-icon>
                             </button>
@@ -1038,7 +1054,7 @@ const toggleAplicaItbis = (productoId) => {
 
                         <form onSubmit={crearClienteRapidoHandler} className={estilos.modalBody}>
                             <p className={estilos.infoModal}>
-                                Crea un cliente rapido con solo el nombre. Podras completar sus datos mas tarde.
+                                Crea un cliente rápido con solo el nombre. Podrás completar sus datos más tarde.
                             </p>
                             
                             <div className={estilos.grupoInput}>
@@ -1047,7 +1063,7 @@ const toggleAplicaItbis = (productoId) => {
                                     type="text"
                                     value={nombreClienteRapido}
                                     onChange={(e) => setNombreClienteRapido(e.target.value)}
-                                    placeholder="Ej: Juan Perez"
+                                    placeholder="Ej: Juan Pérez"
                                     className={estilos.input}
                                     required
                                     disabled={procesando}
@@ -1077,7 +1093,6 @@ const toggleAplicaItbis = (productoId) => {
                 </div>
             )}
 
-            {/* Modal Producto Extra */}
             {mostrarModalExtra && (
                 <div className={estilos.modalOverlay} onClick={cerrarModalExtra}>
                     <div className={`${estilos.modalExtra} ${estilos[tema]}`} onClick={(e) => e.stopPropagation()}>
