@@ -13,6 +13,7 @@
     "dexie": "^4.2.1",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
+    "ionicons": "^8.0.13",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.562.0",
     "mysql2": "^3.16.0",

@@ -501,6 +501,63 @@
     letter-spacing: 1px;
 }
 
+.contenedor {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* ===================================== */
+/* SECCIONES DE IMPRESIÓN */
+/* ===================================== */
+
+.seccionImpresion {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.seccionHeader {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.seccionTitulo {
+    font-size: 18px;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+}
+
+.badgeNuevo {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.seccionDescripcion {
+    color: #666;
+    font-size: 14px;
+    margin: 0 0 16px 0;
+    line-height: 1.5;
+}
+
+.separador {
+    height: 1px;
+    background: linear-gradient(to right, transparent, #e0e0e0, transparent);
+    margin: 24px 0;
+}
+
 .codigoQR {
     display: flex;
     flex-direction: column;
@@ -806,7 +863,9 @@ body[data-print-size="A4"] {
     .listaOpciones {
         grid-template-columns: 1fr;
     }
-}.contenedor *,
+}
+
+.contenedor *,
 .contenedor *::before,
 .contenedor *::after {
     box-sizing: border-box;

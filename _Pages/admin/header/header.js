@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerDatosAdmin, cerrarSesion } from './servidor'
 import estilos from './header.module.css'
+import PrinterButton from '../ventas/imprimir/PrinterButton'
 
 export default function HeaderAdmin() {
     const router = useRouter()
@@ -136,7 +137,7 @@ export default function HeaderAdmin() {
         <>
             <header className={`${estilos.header} ${estilos[tema]}`}>
                 <div className={estilos.contenedor}>
-                    <button 
+                    <button
                         className={estilos.botonMenu}
                         onClick={toggleMenu}
                         aria-label="Abrir menu"
@@ -146,8 +147,8 @@ export default function HeaderAdmin() {
 
                     <Link href="/admin" className={estilos.logo}>
                         {logoPlataforma ? (
-                            <img 
-                                src={logoPlataforma} 
+                            <img
+                                src={logoPlataforma}
                                 alt="Logo"
                                 className={estilos.logoImagen}
                             />
@@ -159,11 +160,11 @@ export default function HeaderAdmin() {
                     <nav className={estilos.navDesktop}>
                         {navegacionPrincipal.map((item) => {
                             const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
-                            
+
                             return (
-                                <Link 
+                                <Link
                                     key={item.href}
-                                    href={item.href} 
+                                    href={item.href}
                                     className={`${estilos.navItem} ${esActivo ? estilos.activo : ''}`}
                                 >
                                     <ion-icon name={item.icon}></ion-icon>
@@ -174,7 +175,10 @@ export default function HeaderAdmin() {
                     </nav>
 
                     <div className={estilos.acciones}>
-                        <button 
+                        {/* Botón Bluetooth Printer */}
+                        <PrinterButton compact={true} />
+
+                        <button
                             className={estilos.botonTema}
                             onClick={toggleTema}
                             aria-label="Cambiar tema"
@@ -184,8 +188,8 @@ export default function HeaderAdmin() {
 
                         <div className={estilos.usuario} onClick={toggleMenuUsuario}>
                             {datosUsuario?.avatar_url ? (
-                                <img 
-                                    src={datosUsuario.avatar_url} 
+                                <img
+                                    src={datosUsuario.avatar_url}
                                     alt={datosUsuario.nombre}
                                     className={estilos.avatar}
                                 />
@@ -202,7 +206,7 @@ export default function HeaderAdmin() {
 
                             {menuUsuarioAbierto && (
                                 <div className={`${estilos.menuDesplegable} ${estilos[tema]}`}>
-                                    <Link 
+                                    <Link
                                         href="/admin/perfil"
                                         className={estilos.menuDesplegableItem}
                                         onClick={() => setMenuUsuarioAbierto(false)}
@@ -215,9 +219,9 @@ export default function HeaderAdmin() {
 
                                     {navegacionMenu.map((item) => {
                                         const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
-                                        
+
                                         return (
-                                            <Link 
+                                            <Link
                                                 key={item.href}
                                                 href={item.href}
                                                 className={`${estilos.menuDesplegableItem} ${esActivo ? estilos.activo : ''}`}
@@ -231,7 +235,7 @@ export default function HeaderAdmin() {
 
                                     <div className={estilos.separadorMenu}></div>
 
-                                    <button 
+                                    <button
                                         className={`${estilos.menuDesplegableItem} ${estilos.itemSalir}`}
                                         onClick={manejarCerrarSesion}
                                     >
@@ -247,13 +251,13 @@ export default function HeaderAdmin() {
 
             {menuAbierto && (
                 <>
-                    <div 
+                    <div
                         className={estilos.overlay}
                         onClick={cerrarMenu}
                     ></div>
-                    
+
                     <div className={`${estilos.menuLateral} ${estilos[tema]}`}>
-                        <button 
+                        <button
                             className={estilos.botonCerrar}
                             onClick={cerrarMenu}
                             aria-label="Cerrar menu"
@@ -265,8 +269,8 @@ export default function HeaderAdmin() {
                             <div className={estilos.menuHeader}>
                                 <div className={estilos.menuEmpresa}>
                                     {datosEmpresa?.logo_url ? (
-                                        <img 
-                                            src={datosEmpresa.logo_url} 
+                                        <img
+                                            src={datosEmpresa.logo_url}
                                             alt={datosEmpresa.nombre_empresa}
                                             className={estilos.menuLogoEmpresa}
                                         />
@@ -283,8 +287,8 @@ export default function HeaderAdmin() {
 
                                 <div className={estilos.menuUsuario}>
                                     {datosUsuario?.avatar_url ? (
-                                        <img 
-                                            src={datosUsuario.avatar_url} 
+                                        <img
+                                            src={datosUsuario.avatar_url}
                                             alt={datosUsuario.nombre}
                                             className={estilos.menuAvatar}
                                         />
@@ -305,12 +309,12 @@ export default function HeaderAdmin() {
                                     <span className={estilos.menuSeccionTitulo}>Principal</span>
                                     {navegacionPrincipal.map((item) => {
                                         const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
-                                        
+
                                         return (
-                                            <Link 
+                                            <Link
                                                 key={item.href}
-                                                href={item.href} 
-                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`} 
+                                                href={item.href}
+                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`}
                                                 onClick={cerrarMenu}
                                             >
                                                 <ion-icon name={item.icon}></ion-icon>
@@ -324,12 +328,12 @@ export default function HeaderAdmin() {
                                     <span className={estilos.menuSeccionTitulo}>Gestion</span>
                                     {navegacionMenu.map((item) => {
                                         const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
-                                        
+
                                         return (
-                                            <Link 
+                                            <Link
                                                 key={item.href}
-                                                href={item.href} 
-                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`} 
+                                                href={item.href}
+                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`}
                                                 onClick={cerrarMenu}
                                             >
                                                 <ion-icon name={item.icon}></ion-icon>

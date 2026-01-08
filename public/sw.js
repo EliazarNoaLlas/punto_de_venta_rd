@@ -1,113 +1,238 @@
-// public/sw.js
+// ============================================
+// SERVICE WORKER OFFLINE-FIRST - ISIWEEK POS
+// ============================================
 
-const CACHE_VERSION = 'pos-rd-v1';
-const STATIC_CACHE = `static-cache-${CACHE_VERSION}`;
-const RUNTIME_CACHE = `runtime-cache-${CACHE_VERSION}`;
-const OFFLINE_URL = '/offline';
+const CACHE_VERSION = 'isiweek-pos-v1.0.0';
+const CACHE_STATIC = `${CACHE_VERSION}-static`;
+const CACHE_DYNAMIC = `${CACHE_VERSION}-dynamic`;
+const CACHE_IMAGES = `${CACHE_VERSION}-images`;
 
-// Archivos estáticos críticos para cachear
-const STATIC_ASSETS = [
+// Archivos críticos a cachear en instalación
+const STATIC_FILES = [
     '/',
-    OFFLINE_URL,
+    '/offline.html',
     '/manifest.json',
-    '/favicon.ico',
-    '/logo.png',
-    '/icons/icon-192x192.png',
-    '/icons/icon-512x512.png',
-    // Next.js static assets
-    '/_next/static/**/*',
+    '/icon-192.png',
+    '/icon-512.png'
 ];
 
-// ---------------------------------------------
-// Instalación del Service Worker
-// ---------------------------------------------
+// ===========================================
+// INSTALACIÓN - Cachear archivos estáticos
+// ===========================================
 self.addEventListener('install', (event) => {
-    console.log('[SW] Instalando...');
+    console.log('[SW] Instalando Service Worker...');
+
     event.waitUntil(
-        caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS))
+        caches.open(CACHE_STATIC)
+            .then((cache) => {
+                console.log('[SW] Cacheando archivos estáticos');
+                return cache.addAll(STATIC_FILES);
+            })
+            .then(() => {
+                console.log('[SW] Instalación completada');
+                return self.skipWaiting(); // Activar inmediatamente
+            })
+            .catch((error) => {
+                console.error('[SW] Error en instalación:', error);
+            })
     );
-    self.skipWaiting();
 });
 
-// ---------------------------------------------
-// Activación: limpiar caches antiguas
-// ---------------------------------------------
+// ===========================================
+// ACTIVACIÓN - Limpiar cachés antiguos
+// ===========================================
 self.addEventListener('activate', (event) => {
-    console.log('[SW] Activando...');
+    console.log('[SW] Activando Service Worker...');
+
     event.waitUntil(
-        caches.keys().then((cacheNames) =>
-            Promise.all(
-                cacheNames
-                    .filter(
-                        (name) => name !== STATIC_CACHE && name !== RUNTIME_CACHE
-                    )
-                    .map((name) => caches.delete(name))
-            )
-        )
+        caches.keys()
+            .then((cacheNames) => {
+                return Promise.all(
+                    cacheNames
+                        .filter((name) => {
+                            // Eliminar cachés que no coinciden con la versión actual
+                            return name.startsWith('isiweek-pos-') &&
+                                !name.startsWith(CACHE_VERSION);
+                        })
+                        .map((name) => {
+                            console.log('[SW] Eliminando caché antiguo:', name);
+                            return caches.delete(name);
+                        })
+                );
+            })
+            .then(() => {
+                console.log('[SW] Activación completada');
+                return self.clients.claim(); // Tomar control de todas las páginas
+            })
     );
-    self.clients.claim();
 });
 
-// ---------------------------------------------
-// Fetch: Network First para páginas, Cache First para assets
-// ---------------------------------------------
+// ===========================================
+// FETCH - Estrategia de caché
+// ===========================================
 self.addEventListener('fetch', (event) => {
     const { request } = event;
     const url = new URL(request.url);
 
-    // Ignorar APIs (si manejas IndexedDB offline)
-    if (url.pathname.startsWith('/api/')) return;
+    // Ignorar requests de chrome-extension y otros protocolos
+    if (!url.protocol.startsWith('http')) {
+        return;
+    }
 
-    // Network First para navegación
-    if (request.mode === 'navigate') {
+    // ===========================================
+    // ESTRATEGIA 1: API Routes → Network First
+    // ===========================================
+    if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    // Cachear página visitada
-                    if (response.status === 200) {
-                        const responseClone = response.clone();
-                        caches.open(RUNTIME_CACHE).then((cache) =>
-                            cache.put(request, responseClone)
-                        );
-                    }
+                    // Si la respuesta es exitosa, NO cachear APIs
+                    // Las APIs se manejan con IndexedDB, no con cache
                     return response;
                 })
-                .catch(() =>
-                    caches.match(request).then((cached) => cached || caches.match(OFFLINE_URL))
-                )
+                .catch(() => {
+                    // Si falla el fetch (offline), retornar respuesta offline
+                    return new Response(
+                        JSON.stringify({
+                            offline: true,
+                            error: 'Sin conexión - Los datos se guardarán localmente'
+                        }),
+                        {
+                            status: 503,
+                            headers: { 'Content-Type': 'application/json' }
+                        }
+                    );
+                })
         );
         return;
     }
 
-    // Cache First para otros assets (CSS, JS, imágenes)
+    // ===========================================
+    // ESTRATEGIA 2: Imágenes → Cache First
+    // ===========================================
+    if (request.destination === 'image') {
+        event.respondWith(
+            caches.open(CACHE_IMAGES)
+                .then((cache) => {
+                    return cache.match(request)
+                        .then((cachedResponse) => {
+                            if (cachedResponse) {
+                                return cachedResponse;
+                            }
+
+                            return fetch(request)
+                                .then((networkResponse) => {
+                                    // Cachear la imagen
+                                    cache.put(request, networkResponse.clone());
+                                    return networkResponse;
+                                })
+                                .catch(() => {
+                                    // Retornar imagen placeholder si existe
+                                    return cache.match('/icons/manifest-icon-192.maskable.png');
+                                });
+                        });
+                })
+        );
+        return;
+    }
+
+    // ===========================================
+    // ESTRATEGIA 3: Navegación → Cache First (con revalidación)
+    // ===========================================
+    if (request.mode === 'navigate') {
+        event.respondWith(
+            caches.open(CACHE_STATIC)
+                .then((cache) => {
+                    return cache.match(request)
+                        .then((cachedResponse) => {
+                            // Intentar fetch en background
+                            const fetchPromise = fetch(request)
+                                .then((networkResponse) => {
+                                    // Actualizar cache con la respuesta nueva
+                                    cache.put(request, networkResponse.clone());
+                                    return networkResponse;
+                                })
+                                .catch(() => {
+                                    // Si falla, usar cache
+                                    return cachedResponse || cache.match('/offline');
+                                });
+
+                            // Retornar cache inmediatamente (más rápido)
+                            return cachedResponse || fetchPromise;
+                        });
+                })
+        );
+        return;
+    }
+
+    // ===========================================
+    // ESTRATEGIA 4: Otros recursos → Stale While Revalidate
+    // ===========================================
     event.respondWith(
-        caches.match(request).then((cached) => {
-            if (cached) return cached;
-            return fetch(request)
-                .then((response) => {
-                    // Solo cachear respuestas válidas
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
-                        return response;
-                    }
-                    const responseClone = response.clone();
-                    caches.open(RUNTIME_CACHE).then((cache) => cache.put(request, responseClone));
-                    return response;
-                })
-                .catch(() => {
-                    // Fallback para imágenes si estás offline
-                    if (request.destination === 'image') {
-                        return '/logo.png';
-                    }
-                })
-        })
+        caches.open(CACHE_DYNAMIC)
+            .then((cache) => {
+                return cache.match(request)
+                    .then((cachedResponse) => {
+                        const fetchPromise = fetch(request)
+                            .then((networkResponse) => {
+                                // Solo cachear GET exitosos
+                                if (request.method === 'GET' && networkResponse.ok) {
+                                    cache.put(request, networkResponse.clone());
+                                }
+                                return networkResponse;
+                            })
+                            .catch(() => cachedResponse);
+
+                        return cachedResponse || fetchPromise;
+                    });
+            })
     );
 });
 
-// ---------------------------------------------
-// Escuchar mensajes de la app
-// ---------------------------------------------
+// ===========================================
+// MENSAJES - Comunicación con la app
+// ===========================================
 self.addEventListener('message', (event) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
         self.skipWaiting();
     }
+
+    if (event.data && event.data.type === 'CLEAR_CACHE') {
+        event.waitUntil(
+            caches.keys().then((cacheNames) => {
+                return Promise.all(
+                    cacheNames.map((name) => caches.delete(name))
+                );
+            })
+        );
+    }
+
+    if (event.data && event.data.type === 'GET_VERSION') {
+        event.ports[0].postMessage({ version: CACHE_VERSION });
+    }
 });
+
+// ===========================================
+// SYNC - Background Sync (cuando vuelve internet)
+// ===========================================
+self.addEventListener('sync', (event) => {
+    console.log('[SW] Sync event:', event.tag);
+
+    if (event.tag === 'sync-ventas') {
+        event.waitUntil(syncVentas());
+    }
+});
+
+async function syncVentas() {
+    // Esta función se ejecuta cuando vuelve internet
+    // Enviar mensaje a la app para que sincronice
+    const clients = await self.clients.matchAll();
+    clients.forEach((client) => {
+        client.postMessage({
+            type: 'SYNC_VENTAS',
+            message: 'Sincronizando ventas pendientes...'
+        });
+    });
+}
+
+console.log('[SW] Service Worker cargado - Versión:', CACHE_VERSION);

@@ -1,0 +1,218 @@
+.container {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.statusBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 6px;
+}
+
+.statusIcon {
+    font-size: 12px;
+}
+
+.statusText {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+.error {
+    background: #ffebee;
+    border: 1px solid #ef5350;
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #c62828;
+    font-size: 14px;
+}
+
+.closeError {
+    background: none;
+    border: none;
+    font-size: 20px;
+    cursor: pointer;
+    color: #c62828;
+    padding: 0 5px;
+}
+
+.buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btnConnect,
+.btnPrint,
+.btnDisconnect {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btnConnect {
+    background: #2196f3;
+    color: white;
+    flex: 1;
+}
+
+.btnConnect:hover:not(:disabled) {
+    background: #1976d2;
+}
+
+.btnPrint {
+    background: #4caf50;
+    color: white;
+    flex: 2;
+}
+
+.btnPrint:hover:not(:disabled) {
+    background: #388e3c;
+}
+
+.btnDisconnect {
+    background: #f44336;
+    color: white;
+    flex: 1;
+}
+
+.btnDisconnect:hover:not(:disabled) {
+    background: #d32f2f;
+}
+
+.btnConnect:disabled,
+.btnPrint:disabled,
+.btnDisconnect:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.printerInfo {
+    margin-top: 15px;
+    padding: 10px;
+    background: #e3f2fd;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #1565c0;
+}
+
+/* ===================================== */
+/* MODO COMPACTO (para header) */
+/* ===================================== */
+
+.compactContainer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btnCompact {
+    background: #2196f3;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btnCompact:hover:not(:disabled) {
+    background: #1976d2;
+    transform: scale(1.05);
+}
+
+.btnCompact:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.compactConnected {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    border-radius: 6px;
+    padding: 6px 10px;
+}
+
+.compactStatus {
+    font-size: 12px;
+    color: #2e7d32;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+}
+
+.btnCompactDisconnect {
+    background: #f44336;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    line-height: 1;
+}
+
+.btnCompactDisconnect:hover {
+    background: #d32f2f;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .buttons {
+        flex-direction: column;
+    }
+
+    .btnConnect,
+    .btnPrint,
+    .btnDisconnect {
+        width: 100%;
+    }
+
+    .compactStatus {
+        max-width: 80px;
+    }
+}

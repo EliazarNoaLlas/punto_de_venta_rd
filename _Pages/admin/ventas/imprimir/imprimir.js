@@ -6,12 +6,13 @@ import html2canvas from 'html2canvas'
 import { obtenerVentaImprimir } from './servidor'
 import estilos from './imprimir.module.css'
 import { generarTicketESCPOS } from '@/utils/escpos'
-import { 
-    conectarQZTray, 
-    obtenerImpresoras, 
-    imprimirTextoRaw, 
-    buscarImpresoraTermica 
+import {
+    conectarQZTray,
+    obtenerImpresoras,
+    imprimirTextoRaw,
+    buscarImpresoraTermica
 } from '@/utils/qzTrayService'
+import PrinterButton from './PrinterButton'
 
 export default function ImprimirVenta() {
     const params = useParams()
@@ -30,7 +31,7 @@ export default function ImprimirVenta() {
     const [mostrarModalWhatsApp, setMostrarModalWhatsApp] = useState(false)
     const [numeroWhatsApp, setNumeroWhatsApp] = useState('')
     const boucherRef = useRef(null)
-    
+
     const [opciones, setOpciones] = useState({
         mostrarDatosEmpresa: true,
         mostrarDatosCliente: true,
@@ -86,9 +87,9 @@ export default function ImprimirVenta() {
             await conectarQZTray()
             const listaImpresoras = await obtenerImpresoras()
             setImpresoras(listaImpresoras)
-            
+
             const impresoraGuardada = localStorage.getItem('impresoraTermica')
-            
+
             if (impresoraGuardada && listaImpresoras.includes(impresoraGuardada)) {
                 setImpresoraSeleccionada(impresoraGuardada)
             } else {
@@ -100,7 +101,7 @@ export default function ImprimirVenta() {
                     setImpresoraSeleccionada(listaImpresoras[0])
                 }
             }
-            
+
             setQzDisponible(true)
         } catch (error) {
             console.error('Error inicializando QZ Tray:', error)
@@ -164,9 +165,9 @@ export default function ImprimirVenta() {
         try {
             const anchoLinea = tamañoPapel === '58mm' ? 32 : 42
             const ticketESCPOS = generarTicketESCPOS(venta, empresa, anchoLinea)
-            
+
             await imprimirTextoRaw(impresoraSeleccionada, ticketESCPOS)
-            
+
             alert('Impresión enviada correctamente')
         } catch (error) {
             console.error('Error al imprimir:', error)
@@ -188,7 +189,7 @@ export default function ImprimirVenta() {
             try {
                 const blob = new Blob([ticketTexto], { type: 'text/plain' })
                 const file = new File([blob], 'ticket.txt', { type: 'text/plain' })
-                
+
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
                     await navigator.share({
                         files: [file],
@@ -328,7 +329,7 @@ export default function ImprimirVenta() {
     const compartirPorWhatsApp = async () => {
         try {
             const esMobileDevice = esMobile()
-            
+
             if (esMobileDevice) {
                 // En mobile, intentar usar Web Share API con imagen
                 await compartirWhatsAppMobileConImagen()
@@ -349,20 +350,20 @@ export default function ImprimirVenta() {
         try {
             // Limpiar número (solo números)
             const numeroLimpio = numeroTelefono.replace(/\D/g, '')
-            
+
             // 1. Abrir WhatsApp Web con el número y texto del comprobante
             const textoComprobante = generarTextoComprobante()
             const textoCodificado = encodeURIComponent(textoComprobante)
             const urlWhatsApp = `https://web.whatsapp.com/send?phone=${numeroLimpio}&text=${textoCodificado}`
             window.open(urlWhatsApp, '_blank')
-            
+
             // 2. Capturar y descargar imagen del comprobante
             try {
                 const imageBlob = await capturarComprobanteComoImagen()
-                
+
                 // Crear URL de la imagen
                 const imageUrl = URL.createObjectURL(imageBlob)
-                
+
                 // Crear enlace de descarga
                 const link = document.createElement('a')
                 link.href = imageUrl
@@ -370,10 +371,10 @@ export default function ImprimirVenta() {
                 document.body.appendChild(link)
                 link.click()
                 document.body.removeChild(link)
-                
+
                 // Liberar URL después de un tiempo
                 setTimeout(() => URL.revokeObjectURL(imageUrl), 100)
-                
+
                 // 3. Mostrar mensaje con instrucciones
                 setTimeout(() => {
                     alert('✅ WhatsApp Web abierto con el texto del comprobante.\n✅ Imagen del comprobante descargada.\n\n📸 Para enviar la imagen:\n1. En WhatsApp Web, el contacto ya está seleccionado\n2. Arrastra el archivo descargado a la conversación\n3. O haz clic en el botón de adjuntar y selecciona el archivo\n\n💡 El texto ya está en el mensaje, puedes enviarlo ahora o agregar la imagen.')
@@ -401,10 +402,10 @@ export default function ImprimirVenta() {
 
             // Capturar imagen del comprobante
             const imageBlob = await capturarComprobanteComoImagen()
-            
+
             // Crear archivo para compartir
             const file = new File([imageBlob], `comprobante_${venta.numero_interno}.png`, { type: 'image/png' })
-            
+
             // Verificar si se puede compartir el archivo
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 // Compartir con Web Share API (incluye imagen)
@@ -446,13 +447,13 @@ export default function ImprimirVenta() {
         try {
             const textoComprobante = generarTextoComprobante()
             const textoCodificado = encodeURIComponent(textoComprobante)
-            
+
             // URL de WhatsApp con número y texto
             const urlWhatsApp = `https://wa.me/${numeroLimpio}?text=${textoCodificado}`
-            
+
             // Abrir WhatsApp App
             window.location.href = urlWhatsApp
-            
+
             setMostrarModalWhatsApp(false)
             setNumeroWhatsApp('')
         } catch (error) {
@@ -557,8 +558,8 @@ export default function ImprimirVenta() {
                 {qzDisponible && impresoras.length > 0 && (
                     <div className={estilos.selectores}>
                         <h3>Impresora</h3>
-                        <select 
-                            value={impresoraSeleccionada} 
+                        <select
+                            value={impresoraSeleccionada}
                             onChange={(e) => cambiarImpresora(e.target.value)}
                             className={`${estilos.selectImpresora} ${estilos[tema]}`}
                         >
@@ -573,30 +574,30 @@ export default function ImprimirVenta() {
 
                 <div className={estilos.botonesAccion}>
                     {qzDisponible && (
-                        <button 
-                            onClick={manejarImprimirTermica} 
+                        <button
+                            onClick={manejarImprimirTermica}
                             className={estilos.btnImprimir}
                             disabled={imprimiendo}
                         >
                             {imprimiendo ? 'Imprimiendo...' : 'Imprimir Termica'}
                         </button>
                     )}
-                    
+
                     {esAndroid && (
                         <button onClick={compartirTexto} className={estilos.btnCompartir}>
                             Compartir (RawBT)
                         </button>
                     )}
-                    
+
                     <button onClick={manejarImprimirNavegador} className={estilos.btnImprimirNav}>
                         Imprimir Normal
                     </button>
-                    
+
                     <button onClick={compartirPorWhatsApp} className={estilos.btnWhatsApp}>
                         <ion-icon name="logo-whatsapp"></ion-icon>
                         <span>Compartir por WhatsApp</span>
                     </button>
-                    
+
                     <button onClick={() => router.push('/admin/ventas')} className={estilos.btnCerrar}>
                         Cerrar
                     </button>
@@ -743,7 +744,7 @@ export default function ImprimirVenta() {
                             {venta.productos.map((producto, index) => {
                                 const cantidadPendiente = producto.cantidad - producto.cantidad_despachada
                                 const esDespachoParcial = cantidadPendiente > 0
-                                
+
                                 return (
                                     <tr key={index}>
                                         <td className={estilos.centrado}>
@@ -758,7 +759,7 @@ export default function ImprimirVenta() {
                                         <td>
                                             {producto.nombre_producto}
                                             {esDespachoParcial && (
-                                                <div style={{fontSize: '0.85em', color: '#ef4444', marginTop: '2px'}}>
+                                                <div style={{ fontSize: '0.85em', color: '#ef4444', marginTop: '2px' }}>
                                                     Pendiente: {cantidadPendiente}
                                                 </div>
                                             )}
@@ -792,7 +793,7 @@ export default function ImprimirVenta() {
                                                 <td>
                                                     {extra.nombre}
                                                     {extra.tipo && (
-                                                        <div style={{fontSize: '0.85em', color: '#64748b', marginTop: '2px'}}>
+                                                        <div style={{ fontSize: '0.85em', color: '#64748b', marginTop: '2px' }}>
                                                             {extra.tipo}
                                                         </div>
                                                     )}
@@ -868,7 +869,7 @@ export default function ImprimirVenta() {
                         <>
                             <div className={estilos.linea}></div>
                             <div className={estilos.codigoQR}>
-                                <Barcode 
+                                <Barcode
                                     value={venta.numero_interno}
                                     format="CODE128"
                                     width={2}
@@ -920,10 +921,41 @@ export default function ImprimirVenta() {
                                 autoFocus
                             />
                             <p className={estilos.modalAyuda}>
-                                {esMobile() 
+                                {esMobile()
                                     ? 'El comprobante se abrirá en WhatsApp con el número ingresado'
                                     : 'WhatsApp Web se abrirá con el texto y se descargará la imagen del comprobante'}
                             </p>
+                            <div className={estilos.contenedorBotones}>
+                                {/* NUEVA SECCIÓN: Impresión Bluetooth */}
+                                <div className={estilos.seccionImpresion}>
+                                    <div className={estilos.seccionHeader}>
+                                        <h3 className={estilos.seccionTitulo}>
+                                            🔵 Impresión Bluetooth (Recomendado)
+                                        </h3>
+                                        <span className={estilos.badgeNuevo}>Nuevo</span>
+                                    </div>
+                                    <p className={estilos.seccionDescripcion}>
+                                        Conexión directa con tu impresora térmica Bluetooth.
+                                        Sin necesidad de aplicaciones externas.
+                                    </p>
+                                    <PrinterButton ventaId={ventaId} />
+                                </div>
+
+                                {/* Separador */}
+                                <div className={estilos.separador}></div>
+
+                                {/* Sección QZ Tray (existente) */}
+                                <div className={estilos.seccionImpresion}>
+                                    <div className={estilos.seccionHeader}>
+                                        <h3 className={estilos.seccionTitulo}>
+                                            🖨️ Impresión Térmica (QZ Tray)
+                                        </h3>
+                                    </div>
+                                    <p className={estilos.seccionDescripcion}>
+                                        Impresión directa usando QZ Tray (Windows/Mac/Linux)
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                         <div className={estilos.modalFooter}>
                             <button onClick={cerrarModalWhatsApp} className={estilos.btnCancelar}>
