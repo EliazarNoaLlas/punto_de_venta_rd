@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import BluetoothPrintService from '@/utils/bluetooth/BluetoothPrintService';
 import styles from './PrinterButton.module.css';
+import { FaPrint, FaSpinner, FaCheckCircle, FaTimes, FaLink, FaPlug, FaExclamationTriangle, FaExclamationCircle } from 'react-icons/fa';
 
 export default function PrinterButton({ ventaId, compact = false }) {
     const [printer, setPrinter] = useState(null);
@@ -108,7 +109,7 @@ export default function PrinterButton({ ventaId, compact = false }) {
                 48 // Ancho de papel (48 para 80mm, 32 para 58mm)
             );
 
-            setStatus(`✅ Impreso correctamente`);
+            setStatus(`Impreso correctamente`);
 
             // Resetear status después de 3 segundos
             setTimeout(() => {
@@ -149,19 +150,19 @@ export default function PrinterButton({ ventaId, compact = false }) {
                         className={styles.btnCompact}
                         title="Conectar impresora Bluetooth"
                     >
-                        {isLoading ? '⏳' : '🖨️'}
+                        {isLoading ? <FaSpinner className={styles.spin} /> : <FaPrint />}
                     </button>
                 ) : (
                     <div className={styles.compactConnected}>
                         <span className={styles.compactStatus} title={printer.name}>
-                            🟢 {printer.name.substring(0, 10)}
+                            <FaCheckCircle color="#4caf50" /> {printer.name.substring(0, 10)}
                         </span>
                         <button
                             onClick={handleDisconnect}
                             className={styles.btnCompactDisconnect}
                             title="Desconectar"
                         >
-                            ×
+                            <FaTimes />
                         </button>
                     </div>
                 )}
@@ -174,19 +175,19 @@ export default function PrinterButton({ ventaId, compact = false }) {
         <div className={styles.container}>
             <div className={styles.statusBar}>
                 <span className={styles.statusIcon}>
-                    {isConnected ? '🟢' : '🔴'}
+                    {isConnected ? <FaCheckCircle color="#4caf50" /> : <FaExclamationCircle color="#ef5350" />}
                 </span>
                 <span className={styles.statusText}>{status}</span>
             </div>
 
             {error && (
                 <div className={styles.error}>
-                    <span>⚠️ {error}</span>
+                    <span><FaExclamationTriangle /> {error}</span>
                     <button
                         onClick={() => setError(null)}
                         className={styles.closeError}
                     >
-                        ×
+                        <FaTimes />
                     </button>
                 </div>
             )}
@@ -200,12 +201,12 @@ export default function PrinterButton({ ventaId, compact = false }) {
                     >
                         {isLoading ? (
                             <>
-                                <span className={styles.spinner}></span>
+                                <FaSpinner className={styles.spin} />
                                 Conectando...
                             </>
                         ) : (
                             <>
-                                🔗 Conectar Impresora
+                                <FaLink /> Conectar Impresora
                             </>
                         )}
                     </button>
@@ -219,12 +220,12 @@ export default function PrinterButton({ ventaId, compact = false }) {
                             >
                                 {isLoading ? (
                                     <>
-                                        <span className={styles.spinner}></span>
+                                        <FaSpinner className={styles.spin} />
                                         {status}
                                     </>
                                 ) : (
                                     <>
-                                        🖨️ Imprimir Ticket
+                                        <FaPrint /> Imprimir Ticket
                                     </>
                                 )}
                             </button>
@@ -235,7 +236,7 @@ export default function PrinterButton({ ventaId, compact = false }) {
                             disabled={isLoading}
                             className={styles.btnDisconnect}
                         >
-                            🔌 Desconectar
+                            <FaPlug /> Desconectar
                         </button>
                     </>
                 )}

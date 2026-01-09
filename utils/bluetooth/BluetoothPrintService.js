@@ -21,17 +21,17 @@ class BluetoothPrintService {
             return true;
         }
 
-        console.log('🚀 Inicializando BluetoothPrintService...');
+        console.log('Inicializando BluetoothPrintService...');
 
         try {
             this.adapter = await this._selectBestAdapter();
             this.isInitialized = true;
 
-            console.log('✅ Adaptador seleccionado:', this.adapter.constructor.name);
+            console.log('Adaptador seleccionado:', this.adapter.constructor.name);
             return true;
 
         } catch (error) {
-            console.error('❌ Error al inicializar:', error);
+            console.error('Error al inicializar:', error);
             throw new Error('No hay método de impresión disponible en este dispositivo');
         }
     }
@@ -43,14 +43,14 @@ class BluetoothPrintService {
         // 1. Prioridad: Web Bluetooth API (Android Chrome/Edge, Windows)
         const webBTAdapter = new WebBluetoothAdapter();
         if (await webBTAdapter.isSupported()) {
-            console.log('✅ Web Bluetooth API disponible');
+            console.log('Web Bluetooth API disponible');
             return webBTAdapter;
         }
 
         // 2. Fallback: RawBT (Android con app externa)
         const rawBTAdapter = new RawBTAdapter();
         if (await rawBTAdapter.isSupported()) {
-            console.log('⚠️  Usando RawBT como fallback');
+            console.log('Usando RawBT como fallback');
             return rawBTAdapter;
         }
 
@@ -73,7 +73,7 @@ class BluetoothPrintService {
             // Guardar en localStorage para reconexión automática
             this._saveDeviceToStorage(device);
 
-            console.log('✅ Impresora seleccionada:', device.name);
+            console.log('Impresora seleccionada:', device.name);
             return device;
 
         } catch (error) {
@@ -100,7 +100,7 @@ class BluetoothPrintService {
 
             if (connected) {
                 this.currentDevice = deviceToConnect;
-                console.log('✅ Conectado a:', deviceToConnect.name);
+                console.log('Conectado a:', deviceToConnect.name);
             }
 
             return connected;
@@ -123,21 +123,21 @@ class BluetoothPrintService {
         }
 
         try {
-            console.log('🖨️  Generando ticket...');
+            console.log('Generando ticket...');
 
             // Generar comandos ESC/POS
             const escposCommands = generateTicket(ventaData, empresaData, paperWidth);
 
-            console.log('📄 Ticket generado, enviando a impresora...');
+            console.log('Ticket generado, enviando a impresora...');
 
             // Enviar a impresora
             await this.adapter.print(escposCommands);
 
-            console.log('✅ Ticket impreso correctamente');
+            console.log('Ticket impreso correctamente');
             return true;
 
         } catch (error) {
-            console.error('❌ Error al imprimir ticket:', error);
+            console.error('Error al imprimir ticket:', error);
             throw new Error('Error al imprimir: ' + error.message);
         }
     }
@@ -157,7 +157,7 @@ class BluetoothPrintService {
         if (this.adapter) {
             await this.adapter.disconnect();
             this.currentDevice = null;
-            console.log('✅ Desconectado');
+            console.log('Desconectado');
         }
     }
 
@@ -172,11 +172,11 @@ class BluetoothPrintService {
         }
 
         try {
-            console.log('🔄 Intentando reconectar a:', lastDevice.name);
+            console.log('Intentando reconectar a:', lastDevice.name);
             await this.connect(lastDevice);
             return true;
         } catch (error) {
-            console.log('❌ No se pudo reconectar:', error.message);
+            console.log('No se pudo reconectar:', error.message);
             return false;
         }
     }

@@ -176,7 +176,9 @@ export default function HeaderAdmin() {
 
                     <div className={estilos.acciones}>
                         {/* Botón Bluetooth Printer */}
-                        <PrinterButton compact={true} />
+                        <PrinterButton
+                            className={estilos.botonTema}
+                            compact={true} />
 
                         <button
                             className={estilos.botonTema}

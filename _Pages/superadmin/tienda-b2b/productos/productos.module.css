@@ -683,7 +683,9 @@
 }
 
 @keyframes spin {
-    to { transform: rotate(360deg); }
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ===================================
@@ -760,11 +762,11 @@
    FORMULARIO
 =================================== */
 .formularioContainer {
-    max-width: 1200px;
+    width: 100%;
+    max-width: min(1200px, 100vw);
     margin: 0 auto;
     padding: 32px;
-    border-radius: 20px;
-    animation: fadeInUp 0.5s ease-out;
+    overflow-x: hidden;
 }
 
 .light .formularioContainer {
@@ -1335,11 +1337,11 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.switchContainer input[type="checkbox"]:checked + .switch {
+.switchContainer input[type="checkbox"]:checked+.switch {
     background-color: #10b981;
 }
 
-.switchContainer input[type="checkbox"]:checked + .switch::after {
+.switchContainer input[type="checkbox"]:checked+.switch::after {
     transform: translateX(24px);
 }
 
@@ -1488,6 +1490,7 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
@@ -1498,6 +1501,7 @@
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1509,6 +1513,7 @@
         opacity: 0;
         transform: translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1520,6 +1525,7 @@
         opacity: 0;
         transform: scale(0.9);
     }
+
     to {
         opacity: 1;
         transform: scale(1);
@@ -1540,37 +1546,54 @@
 }
 
 @media (max-width: 768px) {
+
+    .formLayout {
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
     .contenedor {
         padding: 16px;
+        max-width: 100%;
+        margin: 0 auto;
     }
 
     .header {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
     }
 
     .titulo {
         font-size: 26px;
+        text-align: center;
     }
 
     .filtros {
         flex-direction: column;
+        width: 100%;
     }
 
     .filtroGrupo {
-        min-width: 100%;
-    }
-
-    .grid {
-        grid-template-columns: 1fr;
+        min-width: 0;
+        width: 100%;
     }
 
     .formGrid {
         grid-template-columns: 1fr;
+        width: 100%;
     }
 
     .formularioContainer {
-        padding: 20px;
+        padding: 16px;
+        width: 100%;
+        max-width: 100%;
+        margin: 0 auto;
     }
 
     .modalCerrar {
@@ -1580,10 +1603,12 @@
 
     .selectorTipo {
         grid-template-columns: 1fr;
+        width: 100%;
     }
 
     .formularioAcciones {
         flex-direction: column-reverse;
+        gap: 10px;
     }
 
     .btnCancelarForm,
@@ -1593,13 +1618,36 @@
     }
 }
 
-@media (max-width: 480px) {
+@media (max-width: 420px) {
+
+    .contenedor,
+    .formularioContainer,
+    .seccionForm {
+        padding-left: 12px;
+        padding-right: 12px;
+        margin: 0 auto;
+        width: 100%;
+    }
+
+    .grid,
+    .formLayout,
+    .formGrid {
+        width: 100%;
+    }
+
+    /* 👇 SELECTORES PUROS (CSS MODULES OK) */
+    .input,
+    .textarea,
+    .select {
+        width: 100%;
+    }
+
     .productoCard {
         border-radius: 12px;
     }
 
     .imagenContainer {
-        height: 200px;
+        height: 180px;
     }
 
     .btnNuevo {

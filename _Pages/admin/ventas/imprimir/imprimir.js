@@ -13,6 +13,7 @@ import {
     buscarImpresoraTermica
 } from '@/utils/qzTrayService'
 import PrinterButton from './PrinterButton'
+import { FaPrint } from 'react-icons/fa'
 
 export default function ImprimirVenta() {
     const params = useParams()
@@ -948,7 +949,8 @@ export default function ImprimirVenta() {
                                 <div className={estilos.seccionImpresion}>
                                     <div className={estilos.seccionHeader}>
                                         <h3 className={estilos.seccionTitulo}>
-                                            🖨️ Impresión Térmica (QZ Tray)
+                                            <FaPrint className={estilos.iconoImpresion} />
+                                            Impresión Térmica (QZ Tray)
                                         </h3>
                                     </div>
                                     <p className={estilos.seccionDescripcion}>
