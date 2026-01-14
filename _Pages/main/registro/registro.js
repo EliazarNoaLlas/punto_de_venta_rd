@@ -11,7 +11,7 @@ export default function Registro() {
     const [cargando, setCargando] = useState(false)
     const [error, setError] = useState('')
     const [exito, setExito] = useState(false)
-    
+
     const [formData, setFormData] = useState({
         nombre: '',
         cedula: '',
@@ -21,9 +21,10 @@ export default function Registro() {
         confirmarPassword: '',
         nombreEmpresa: '',
         rnc: '',
-        razonSocial: ''
+        razonSocial: '',
+        aceptoTerminos: false // ✅ NUEVO CAMPO
     })
-    
+
     const [mostrarPassword, setMostrarPassword] = useState(false)
     const [mostrarConfirmar, setMostrarConfirmar] = useState(false)
 
@@ -46,17 +47,17 @@ export default function Registro() {
     }, [])
 
     const manejarCambio = (e) => {
-        const { name, value } = e.target
+        const { name, value, type, checked } = e.target
         setFormData(prev => ({
             ...prev,
-            [name]: value
+            [name]: type === 'checkbox' ? checked : value
         }))
     }
 
     const manejarSubmit = async (e) => {
         e.preventDefault()
         setError('')
-        
+
         if (formData.password !== formData.confirmarPassword) {
             setError('Las contrasenas no coinciden')
             return
@@ -67,6 +68,12 @@ export default function Registro() {
             return
         }
 
+        // ✅ VALIDACIÓN DE TÉRMINOS
+        if (!formData.aceptoTerminos) {
+            setError('Debe aceptar los Terminos y Condiciones para continuar')
+            return
+        }
+
         setCargando(true)
 
         try {
@@ -74,7 +81,7 @@ export default function Registro() {
 
             if (resultado.success) {
                 setExito(true)
-                
+
                 setTimeout(() => {
                     if (resultado.whatsappUrl) {
                         window.open(resultado.whatsappUrl, '_blank')
@@ -129,7 +136,7 @@ export default function Registro() {
 
                     <div className={estilos.seccion}>
                         <h3 className={estilos.seccionTitulo}>Informacion Personal</h3>
-                        
+
                         <div className={estilos.campo}>
                             <label htmlFor="nombre" className={estilos.label}>
                                 Nombre Completo
@@ -265,7 +272,7 @@ export default function Registro() {
 
                     <div className={estilos.seccion}>
                         <h3 className={estilos.seccionTitulo}>Informacion de la Empresa</h3>
-                        
+
                         <div className={estilos.campo}>
                             <label htmlFor="nombreEmpresa" className={estilos.label}>
                                 Nombre de la Empresa
@@ -324,6 +331,30 @@ export default function Registro() {
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* ✅ SECCIÓN DE TÉRMINOS Y CONDICIONES */}
+                    <div className={estilos.seccionTerminos}>
+                        <label className={estilos.checkboxTerminos}>
+                            <input
+                                type="checkbox"
+                                name="aceptoTerminos"
+                                checked={formData.aceptoTerminos}
+                                onChange={manejarCambio}
+                                className={estilos.checkboxInput}
+                                required
+                            />
+                            <span className={estilos.checkboxTexto}>
+                                He leído y acepto los{' '}
+                                <Link
+                                    href="/terminos"
+                                    target="_blank"
+                                    className={estilos.enlaceTerminos}
+                                >
+                                    Términos y Condiciones
+                                </Link>
+                            </span>
+                        </label>
                     </div>
 
                     <button

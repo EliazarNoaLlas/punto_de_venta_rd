@@ -258,6 +258,83 @@
     font-size: 20px;
 }
 
+/* ✅ ESTILOS PARA TÉRMINOS Y CONDICIONES */
+.seccionTerminos {
+    padding: 16px;
+    border-radius: 10px;
+    margin-top: 5px;
+}
+
+.light .seccionTerminos {
+    background: #f1f5f9;
+    border: 2px solid #cbd5e1;
+}
+
+.dark .seccionTerminos {
+    background: #0f172a;
+    border: 2px solid #334155;
+}
+
+.checkboxTerminos {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkboxInput {
+    width: 20px;
+    height: 20px;
+    min-width: 20px;
+    min-height: 20px;
+    cursor: pointer;
+    margin-top: 2px;
+    accent-color: #0ea5e9;
+}
+
+.dark .checkboxInput {
+    accent-color: #38bdf8;
+}
+
+.checkboxTexto {
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.light .checkboxTexto {
+    color: #334155;
+}
+
+.dark .checkboxTexto {
+    color: #cbd5e1;
+}
+
+.enlaceTerminos {
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid transparent;
+}
+
+.light .enlaceTerminos {
+    color: #0ea5e9;
+}
+
+.dark .enlaceTerminos {
+    color: #38bdf8;
+}
+
+.light .enlaceTerminos:hover {
+    color: #0284c7;
+    border-bottom-color: #0284c7;
+}
+
+.dark .enlaceTerminos:hover {
+    color: #7dd3fc;
+    border-bottom-color: #7dd3fc;
+}
+
 .botonSubmit {
     width: 100%;
     padding: 14px 24px;
@@ -450,5 +527,9 @@
 
     .fila {
         grid-template-columns: 1fr;
+    }
+
+    .checkboxTerminos {
+        font-size: 13px;
     }
 }

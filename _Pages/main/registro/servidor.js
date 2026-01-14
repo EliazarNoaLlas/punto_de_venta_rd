@@ -2,12 +2,24 @@
 
 import db from "@/_DB/db"
 import bcrypt from 'bcrypt'
+import { headers } from 'next/headers'
 
 export async function registrarUsuario(formData) {
     let connection
     try {
-        const { nombre, cedula, email, telefono, password, nombreEmpresa, rnc, razonSocial } = formData
+        const {
+            nombre,
+            cedula,
+            email,
+            telefono,
+            password,
+            nombreEmpresa,
+            rnc,
+            razonSocial,
+            aceptoTerminos // ✅ NUEVO CAMPO
+        } = formData
 
+        // ✅ VALIDACIÓN DE CAMPOS OBLIGATORIOS
         if (!nombre || !cedula || !email || !telefono || !password || !nombreEmpresa || !rnc || !razonSocial) {
             return {
                 success: false,
@@ -15,8 +27,17 @@ export async function registrarUsuario(formData) {
             }
         }
 
+        // ✅ VALIDACIÓN DE TÉRMINOS (CRÍTICO - NIVEL BACKEND)
+        if (!aceptoTerminos) {
+            return {
+                success: false,
+                mensaje: 'Debe aceptar los Términos y Condiciones para continuar'
+            }
+        }
+
         connection = await db.getConnection()
 
+        // Verificar si el email ya existe
         const [emailExiste] = await connection.execute(
             'SELECT id FROM usuarios WHERE email = ?',
             [email]
@@ -30,6 +51,7 @@ export async function registrarUsuario(formData) {
             }
         }
 
+        // Verificar si existe solicitud pendiente con el mismo RNC
         const [rncExiste] = await connection.execute(
             'SELECT id FROM solicitudes_registro WHERE rnc = ? AND estado = "pendiente"',
             [rnc]
@@ -43,8 +65,32 @@ export async function registrarUsuario(formData) {
             }
         }
 
+        // ✅ OBTENER TÉRMINOS ACTIVOS
+        const [terminosActivos] = await connection.execute(
+            'SELECT id, version FROM terminos_condiciones WHERE activo = TRUE LIMIT 1'
+        )
+
+        if (terminosActivos.length === 0) {
+            connection.release()
+            return {
+                success: false,
+                mensaje: 'No hay términos y condiciones activos. Contacte al administrador.'
+            }
+        }
+
+        const terminosId = terminosActivos[0].id
+        const terminosVersion = terminosActivos[0].version
+
+        // ✅ OBTENER IP DEL USUARIO (para auditoría legal)
+        const headersList = headers()
+        const ipAddress = headersList.get('x-forwarded-for') ||
+            headersList.get('x-real-ip') ||
+            'IP no disponible'
+
+        // Hash de la contraseña
         const passwordHash = await bcrypt.hash(password, 12)
 
+        // ✅ INSERTAR SOLICITUD CON INFORMACIÓN DE TÉRMINOS
         const [resultado] = await connection.execute(
             `INSERT INTO solicitudes_registro (
                 nombre,
@@ -55,14 +101,30 @@ export async function registrarUsuario(formData) {
                 nombre_empresa,
                 rnc,
                 razon_social,
+                acepto_terminos,
+                terminos_version,
+                ip_registro,
                 estado,
                 fecha_solicitud
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', NOW())`,
-            [nombre, cedula, email, passwordHash, telefono, nombreEmpresa, rnc, razonSocial]
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', NOW())`,
+            [
+                nombre,
+                cedula,
+                email,
+                passwordHash,
+                telefono,
+                nombreEmpresa,
+                rnc,
+                razonSocial,
+                true, // ✅ acepto_terminos
+                terminosVersion, // ✅ versión aceptada
+                ipAddress // ✅ IP para auditoría
+            ]
         )
 
         const solicitudId = resultado.insertId
 
+        // Obtener configuración de WhatsApp del superadmin
         const [configSuperAdmin] = await connection.execute(
             `SELECT telefono_whatsapp FROM plataforma_config LIMIT 1`
         )
@@ -88,6 +150,8 @@ Hola, soy *${nombre}* y acabo de registrarme en *IziWeek*.
 - RNC: ${rnc}
 - Razon Social: ${razonSocial}
 
+✅ He aceptado los Términos y Condiciones (v${terminosVersion})
+
 Por favor, podrian activar mi cuenta para empezar a usar el sistema?
 
 Gracias!
@@ -106,7 +170,7 @@ Gracias!
 
     } catch (error) {
         console.error('Error al registrar usuario:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -114,6 +178,49 @@ Gracias!
         return {
             success: false,
             mensaje: 'Error al procesar la solicitud'
+        }
+    }
+}
+
+// ✅ FUNCIÓN AUXILIAR: Obtener términos activos (para uso público)
+export async function obtenerTerminosActivos() {
+    let connection
+    try {
+        connection = await db.getConnection()
+
+        const [terminos] = await connection.execute(
+            'SELECT id, version, titulo, contenido, creado_en FROM terminos_condiciones WHERE activo = TRUE LIMIT 1'
+        )
+
+        connection.release()
+
+        if (terminos.length === 0) {
+            return {
+                success: false,
+                mensaje: 'No hay términos disponibles'
+            }
+        }
+
+        // ✅ NORMALIZAR MARKDOWN
+        const termino = terminos[0]
+        termino.contenido = termino.contenido
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '')
+            .trim()
+
+        return {
+            success: true,
+            datos: termino
+        }
+
+    } catch (error) {
+        console.error('Error al obtener términos:', error)
+
+        if (connection) connection.release()
+
+        return {
+            success: false,
+            mensaje: 'Error al obtener términos'
         }
     }
 }
