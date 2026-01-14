@@ -1,190 +1,442 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import BluetoothPrintService from '@/utils/bluetooth/BluetoothPrintService';
+import { useEffect, useState } from 'react';
+import { PrinterService } from '@/utils/printer/core/PrinterService';
 import styles from './PrinterButton.module.css';
-import { FaPrint, FaSpinner, FaCheckCircle, FaTimes, FaLink, FaPlug, FaExclamationTriangle, FaExclamationCircle } from 'react-icons/fa';
 
-export default function PrinterButton({ ventaId, compact = false }) {
-    const [printer, setPrinter] = useState(null);
+import {
+    FaPrint,
+    FaSpinner,
+    FaCheckCircle,
+    FaTimes,
+    FaLink,
+    FaPlug,
+    FaExclamationTriangle,
+    FaExclamationCircle,
+} from 'react-icons/fa';
+
+/**
+ * ==========================================
+ * COMPONENTE PRINTER BUTTON
+ * ==========================================
+ *
+ * Botón inteligente para imprimir tickets POS
+ *
+ * CARACTERÍSTICAS:
+ * - ✅ Compatible con Next.js App Router (SSR-safe)
+ * - ✅ Detección automática de plataforma (Web/PWA/Capacitor/Desktop)
+ * - ✅ Manejo robusto de estados y errores
+ * - ✅ Modo compacto y normal
+ * - ✅ Reconexión automática si aplica
+ *
+ * PROPS:
+ * @param {string} ventaId - ID de la venta a imprimir
+ * @param {boolean} compact - Modo compacto (solo íconos)
+ * @param {function} onServiceReady - Callback cuando el servicio esté listo
+ *
+ * PLATAFORMAS SOPORTADAS:
+ * - Android/iOS: Capacitor Thermal Printer
+ * - Desktop: QZ Tray
+ * - Web/PWA: Web Bluetooth API (limitado)
+ */
+export default function PrinterButton({ ventaId, compact = false, onServiceReady }) {
+
+    // ==========================================
+    // ESTADO DEL COMPONENTE
+    // ==========================================
+
+    const [printerService, setPrinterService] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [status, setStatus] = useState('Inicializando sistema de impresión...');
     const [error, setError] = useState(null);
-    const [status, setStatus] = useState('No conectado');
 
-    // Intentar reconexión automática al montar
-    useEffect(() => {
-        attemptAutoReconnect();
-    }, []);
+    // ==========================================
+    // INICIALIZACIÓN DEL SERVICIO
+    // ==========================================
 
     /**
-     * Intentar reconexión automática
+     * Hook de inicialización
+     *
+     * IMPORTANTE: Solo se ejecuta en el cliente (nunca en SSR)
+     * Esto evita errores de "window is not defined" en Next.js
+     *
+     * PROCESO:
+     * 1. Detecta automáticamente la plataforma (Capacitor/QZ/Bluetooth)
+     * 2. Crea el adaptador correcto
+     * 3. Verifica si ya hay una conexión activa
+     * 4. Actualiza el estado inicial
      */
-    async function attemptAutoReconnect() {
-        try {
-            setStatus('Verificando última impresora...');
-            const reconnected = await BluetoothPrintService.reconnectToLastPrinter();
+    useEffect(() => {
+        // Flag para evitar actualizaciones de estado si el componente se desmonta
+        let mounted = true;
 
-            if (reconnected) {
-                const lastDevice = BluetoothPrintService.currentDevice;
-                setPrinter(lastDevice);
-                setIsConnected(true);
-                setStatus(`Conectado: ${lastDevice.name}`);
-            } else {
-                setStatus('No conectado');
+        (async () => {
+            try {
+                // ==========================================
+                // PASO 1: Crear servicio según plataforma
+                // ==========================================
+                // PrinterService.create() detecta automáticamente:
+                // - Si estamos en Capacitor (Android/iOS) → CapacitorThermalAdapter
+                // - Si existe QZ Tray (Desktop) → QZTrayAdapter
+                // - Si hay Bluetooth Web API → WebBluetoothAdapter
+                // - Si nada está disponible → Lanza error
+                const service = await PrinterService.create();
+
+                // Verificar que el componente sigue montado antes de actualizar estado
+                if (!mounted) return;
+
+                setPrinterService(service);
+
+                // ==========================================
+                // PASO 2: Notificar al componente padre (opcional)
+                // ==========================================
+                // Útil si el padre necesita acceso directo al servicio
+                // Por ejemplo: para ocultar otros controles de impresión
+                if (onServiceReady) {
+                    onServiceReady(service);
+                }
+
+                // ==========================================
+                // PASO 3: Verificar estado inicial de conexión
+                // ==========================================
+                // Algunos adaptadores mantienen conexiones persistentes:
+                // - QZ Tray: Se conecta al iniciar y mantiene conexión
+                // - Capacitor: Requiere conexión manual cada vez
+                // - Web Bluetooth: Requiere interacción del usuario
+                const connected = await service.adapter?.isConnected?.();
+                setIsConnected(!!connected);
+
+                setStatus(
+                    connected
+                        ? '✅ Impresora lista para usar'
+                        : '⚠️ Sistema listo. Debe conectar una impresora.'
+                );
+
+            } catch (err) {
+                console.error('❌ Error inicializando PrinterService:', err);
+
+                if (!mounted) return;
+
+                setError(`No se pudo iniciar el sistema de impresión: ${err.message}`);
+                setStatus('❌ Error de inicialización');
             }
-        } catch (error) {
-            console.log('No se pudo reconectar automáticamente');
-            setStatus('No conectado');
-        }
-    }
+        })();
+
+        // Cleanup: evitar memory leaks
+        return () => {
+            mounted = false;
+        };
+    }, [onServiceReady]); // Solo re-ejecutar si cambia onServiceReady
+
+    // ==========================================
+    // FUNCIÓN: CONECTAR IMPRESORA
+    // ==========================================
 
     /**
-     * Conectar a impresora
+     * Maneja la conexión con una impresora
+     *
+     * FLUJO:
+     * 1. Lista impresoras disponibles (si el adaptador lo soporta)
+     * 2. Selecciona automáticamente la primera (mejora: mostrar modal)
+     * 3. Establece conexión
+     * 4. Actualiza estado
+     *
+     * CASOS ESPECIALES:
+     * - Web Bluetooth: Abre selector nativo del navegador
+     * - QZ Tray: Lista impresoras del sistema
+     * - Capacitor: Lista impresoras Bluetooth emparejadas
      */
     async function handleConnect() {
-        setIsLoading(true);
-        setError(null);
-        setStatus('Iniciando conexión...');
-
-        try {
-            // Inicializar servicio
-            await BluetoothPrintService.initialize();
-            setStatus('Selecciona una impresora...');
-
-            // Solicitar selección de impresora (abre diálogo nativo)
-            const device = await BluetoothPrintService.selectPrinter();
-            setStatus('Conectando...');
-
-            // Conectar
-            await BluetoothPrintService.connect(device);
-
-            // Actualizar estado
-            setPrinter(device);
-            setIsConnected(true);
-            setStatus(`Conectado: ${device.name}`);
-
-        } catch (error) {
-            setError(error.message);
-            setStatus('Error al conectar');
-            console.error('Error de conexión:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }
-
-    /**
-     * Imprimir ticket
-     */
-    async function handlePrint() {
-        if (!ventaId) {
-            setError('No hay venta seleccionada');
+        // Validación inicial
+        if (!printerService) {
+            setError('Servicio de impresión no disponible');
             return;
         }
 
         setIsLoading(true);
         setError(null);
-        setStatus('Obteniendo datos...');
+        setStatus('🔍 Buscando impresoras disponibles...');
 
         try {
-            // Obtener datos de la venta desde la API
-            const response = await fetch(`/api/ventas/${ventaId}`);
+            let printerId = null;
 
-            if (!response.ok) {
-                throw new Error('No se pudo obtener la venta');
+            // ==========================================
+            // PASO 1: Listar impresoras (si aplica)
+            // ==========================================
+            // NOTA: Web Bluetooth NO soporta listar, abre selector directamente
+            if (printerService.adapter?.listPrinters) {
+                const printers = await printerService.adapter.listPrinters();
+
+                // Si encontramos impresoras, seleccionar la primera
+                // TODO: MEJORA - Mostrar modal/dropdown para que el usuario elija
+                if (Array.isArray(printers) && printers.length > 0) {
+                    printerId = printers[0];
+                    console.log(`📋 Impresoras encontradas: ${printers.join(', ')}`);
+                    console.log(`✅ Seleccionada automáticamente: ${printerId}`);
+                } else {
+                    throw new Error('No se encontraron impresoras disponibles');
+                }
             }
 
-            const data = await response.json();
+            // ==========================================
+            // PASO 2: Establecer conexión
+            // ==========================================
+            setStatus('🔌 Conectando a impresora...');
+            await printerService.adapter.connect(printerId);
 
-            if (!data.success) {
-                throw new Error(data.error || 'Error al obtener venta');
-            }
+            // ==========================================
+            // PASO 3: Actualizar estado exitoso
+            // ==========================================
+            setIsConnected(true);
+            setStatus('✅ Impresora conectada correctamente');
 
-            setStatus('Imprimiendo...');
+            console.log(`✅ Conectado a: ${printerId || 'Impresora Bluetooth/USB'}`);
 
-            // Imprimir
-            await BluetoothPrintService.printTicket(
-                data.venta,
-                data.empresa,
-                48 // Ancho de papel (48 para 80mm, 32 para 58mm)
-            );
-
-            setStatus(`Impreso correctamente`);
-
-            // Resetear status después de 3 segundos
-            setTimeout(() => {
-                setStatus(`Conectado: ${printer.name}`);
-            }, 3000);
-
-        } catch (error) {
-            setError(error.message);
-            setStatus('Error al imprimir');
-            console.error('Error de impresión:', error);
+        } catch (err) {
+            console.error('❌ Error conectando impresora:', err);
+            setError(`Error de conexión: ${err.message}`);
+            setStatus('❌ Fallo en la conexión');
         } finally {
             setIsLoading(false);
         }
     }
 
+    // ==========================================
+    // FUNCIÓN: IMPRIMIR TICKET
+    // ==========================================
+
     /**
-     * Desconectar
+     * Imprime el ticket de una venta
+     *
+     * FLUJO COMPLETO:
+     * 1. Obtiene datos de la venta desde la API
+     * 2. Normaliza el formato (API → TicketData esperado)
+     * 3. Genera el ticket en formato ESC/POS o imagen
+     * 4. Envía a la impresora
+     *
+     * FORMATO TICKET:
+     * - Empresa (nombre, RNC, dirección)
+     * - Fecha, vendedor, NCF
+     * - Productos (cantidad, precio, subtotal)
+     * - Totales (subtotal, ITBIS, total)
+     * - Método de pago, recibido, cambio
      */
-    async function handleDisconnect() {
+    async function handlePrint() {
+        // ==========================================
+        // VALIDACIONES INICIALES
+        // ==========================================
+        if (!ventaId) {
+            setError('No hay venta seleccionada para imprimir');
+            return;
+        }
+
+        if (!printerService) {
+            setError('Servicio de impresión no disponible');
+            return;
+        }
+
+        setIsLoading(true);
+        setError(null);
+        setStatus('📥 Obteniendo datos de la venta...');
+
         try {
-            await BluetoothPrintService.disconnect();
-            setPrinter(null);
-            setIsConnected(false);
-            setStatus('Desconectado');
-        } catch (error) {
-            console.error('Error al desconectar:', error);
+            // ==========================================
+            // PASO 1: Obtener datos de la venta
+            // ==========================================
+            const response = await fetch(`/api/ventas/${ventaId}`);
+
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+
+            const { success, venta, empresa, error: apiError } = await response.json();
+
+            if (!success) {
+                throw new Error(apiError || 'Error desconocido al obtener la venta');
+            }
+
+            // ==========================================
+            // PASO 2: Normalizar datos al formato esperado
+            // ==========================================
+            // La API devuelve un formato, pero ESCPOSEncoder espera otro
+            // Esta es la capa de adaptación
+            const ticketData = {
+                // Información de la empresa
+                empresa: {
+                    nombre: empresa.nombre_empresa || empresa.razon_social,
+                    direccion: empresa.direccion,
+                    rnc: empresa.rnc,
+                    telefono: empresa.telefono,
+                },
+
+                // Información de la venta
+                fecha: new Date(venta.fecha_venta).toLocaleString('es-DO', {
+                    dateStyle: 'short',
+                    timeStyle: 'short',
+                }),
+                vendedor: venta.usuario_nombre,
+                ncf: venta.ncf || 'N/A',
+
+                // Productos vendidos
+                productos: venta.productos.map((p) => ({
+                    nombre: p.nombre_producto,
+                    cantidad: p.cantidad,
+                    precio: parseFloat(p.precio_unitario),
+                    subtotal: parseFloat(p.total),
+                })),
+
+                // Totales (asegurar que sean números)
+                subtotal: parseFloat(venta.subtotal),
+                itbis: parseFloat(venta.itbis),
+                total: parseFloat(venta.total),
+
+                // Información de pago
+                metodoPago: venta.metodo_pago_texto || 'Efectivo',
+                recibido: parseFloat(venta.monto_recibido || venta.total),
+                cambio: parseFloat(venta.devuelta || 0),
+            };
+
+            // ==========================================
+            // PASO 3: Enviar a imprimir
+            // ==========================================
+            setStatus('🖨️ Enviando a impresora...');
+
+            // PrinterService.print() automáticamente:
+            // 1. Detecta si el adaptador soporta ESC/POS
+            // 2. Si sí: usa ESCPOSEncoder
+            // 3. Si no: usa ImageEncoder (fallback)
+            // 4. Envía los bytes generados al adaptador
+            await printerService.print(ticketData);
+
+            // ==========================================
+            // PASO 4: Éxito
+            // ==========================================
+            setStatus('✅ Ticket impreso correctamente');
+
+            // Volver al estado "Listo" después de 3 segundos
+            setTimeout(() => {
+                setStatus('✅ Sistema listo');
+            }, 3000);
+
+            console.log('✅ Impresión completada exitosamente');
+
+        } catch (err) {
+            console.error('❌ Error imprimiendo ticket:', err);
+            setError(`Error al imprimir: ${err.message}`);
+            setStatus('❌ Error en la impresión');
+        } finally {
+            setIsLoading(false);
         }
     }
 
-    // Modo compacto para el header
+    // ==========================================
+    // FUNCIÓN: DESCONECTAR IMPRESORA
+    // ==========================================
+
+    /**
+     * Desconecta la impresora actual
+     *
+     * IMPORTANTE:
+     * - QZ Tray: Mantiene conexión, solo limpia estado local
+     * - Capacitor: Desconecta Bluetooth físicamente
+     * - Web Bluetooth: Cierra GATT connection
+     */
+    async function handleDisconnect() {
+        try {
+            setStatus('🔌 Desconectando impresora...');
+
+            // Llamar al método disconnect del adaptador
+            await printerService?.adapter?.disconnect?.();
+
+            // Actualizar estado local
+            setIsConnected(false);
+            setStatus('⚠️ Impresora desconectada');
+
+            console.log('✅ Impresora desconectada correctamente');
+
+        } catch (err) {
+            console.error('❌ Error desconectando:', err);
+            // Aún así marcar como desconectado localmente
+            setIsConnected(false);
+        }
+    }
+
+    // ==========================================
+    // RENDERIZADO: MODO COMPACTO
+    // ==========================================
+
+    /**
+     * UI minimalista para espacios reducidos
+     * Solo muestra:
+     * - Botón de conectar (si no está conectado)
+     * - Botón de desconectar (si está conectado)
+     */
     if (compact) {
         return (
             <div className={styles.compactContainer}>
                 {!isConnected ? (
                     <button
                         onClick={handleConnect}
-                        disabled={isLoading}
+                        disabled={isLoading || !printerService}
                         className={styles.btnCompact}
-                        title="Conectar impresora Bluetooth"
+                        title="Conectar impresora"
+                        aria-label="Conectar impresora"
                     >
-                        {isLoading ? <FaSpinner className={styles.spin} /> : <FaPrint />}
+                        {isLoading ? (
+                            <FaSpinner className={styles.spin} />
+                        ) : (
+                            <FaPrint />
+                        )}
                     </button>
                 ) : (
-                    <div className={styles.compactConnected}>
-                        <span className={styles.compactStatus} title={printer.name}>
-                            <FaCheckCircle color="#4caf50" /> {printer.name.substring(0, 10)}
-                        </span>
-                        <button
-                            onClick={handleDisconnect}
-                            className={styles.btnCompactDisconnect}
-                            title="Desconectar"
-                        >
-                            <FaTimes />
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleDisconnect}
+                        className={styles.btnCompactDisconnect}
+                        title="Desconectar impresora"
+                        aria-label="Desconectar impresora"
+                    >
+                        <FaTimes />
+                    </button>
                 )}
             </div>
         );
     }
 
-    // Modo completo para la página de impresión
+    // ==========================================
+    // RENDERIZADO: MODO NORMAL (UI COMPLETA)
+    // ==========================================
+
     return (
         <div className={styles.container}>
+
+            {/* ==========================================
+          BARRA DE ESTADO
+          Muestra el estado actual del sistema
+          ========================================== */}
             <div className={styles.statusBar}>
-                <span className={styles.statusIcon}>
-                    {isConnected ? <FaCheckCircle color="#4caf50" /> : <FaExclamationCircle color="#ef5350" />}
-                </span>
+        <span className={styles.statusIcon}>
+          {isConnected ? (
+              <FaCheckCircle color="#4caf50" title="Conectado" />
+          ) : (
+              <FaExclamationCircle color="#ef5350" title="Desconectado" />
+          )}
+        </span>
                 <span className={styles.statusText}>{status}</span>
             </div>
 
+            {/* ==========================================
+          BANNER DE ERROR
+          Solo visible cuando hay error
+          Incluye botón para cerrar
+          ========================================== */}
             {error && (
-                <div className={styles.error}>
-                    <span><FaExclamationTriangle /> {error}</span>
+                <div className={styles.error} role="alert">
+                    <FaExclamationTriangle />
+                    <span>{error}</span>
                     <button
                         onClick={() => setError(null)}
+                        aria-label="Cerrar error"
                         className={styles.closeError}
                     >
                         <FaTimes />
@@ -192,17 +444,21 @@ export default function PrinterButton({ ventaId, compact = false }) {
                 </div>
             )}
 
+            {/* ==========================================
+          BOTONES DE ACCIÓN
+          Cambian según el estado de conexión
+          ========================================== */}
             <div className={styles.buttons}>
                 {!isConnected ? (
+                    // Estado: DESCONECTADO → Mostrar botón de conectar
                     <button
                         onClick={handleConnect}
-                        disabled={isLoading}
+                        disabled={isLoading || !printerService}
                         className={styles.btnConnect}
                     >
                         {isLoading ? (
                             <>
-                                <FaSpinner className={styles.spin} />
-                                Conectando...
+                                <FaSpinner className={styles.spin} /> Conectando...
                             </>
                         ) : (
                             <>
@@ -211,25 +467,23 @@ export default function PrinterButton({ ventaId, compact = false }) {
                         )}
                     </button>
                 ) : (
+                    // Estado: CONECTADO → Mostrar botones de imprimir y desconectar
                     <>
-                        {ventaId && (
-                            <button
-                                onClick={handlePrint}
-                                disabled={isLoading}
-                                className={styles.btnPrint}
-                            >
-                                {isLoading ? (
-                                    <>
-                                        <FaSpinner className={styles.spin} />
-                                        {status}
-                                    </>
-                                ) : (
-                                    <>
-                                        <FaPrint /> Imprimir Ticket
-                                    </>
-                                )}
-                            </button>
-                        )}
+                        <button
+                            onClick={handlePrint}
+                            disabled={isLoading || !ventaId}
+                            className={styles.btnPrint}
+                        >
+                            {isLoading ? (
+                                <>
+                                    <FaSpinner className={styles.spin} /> Imprimiendo...
+                                </>
+                            ) : (
+                                <>
+                                    <FaPrint /> Imprimir Ticket
+                                </>
+                            )}
+                        </button>
 
                         <button
                             onClick={handleDisconnect}
@@ -241,12 +495,6 @@ export default function PrinterButton({ ventaId, compact = false }) {
                     </>
                 )}
             </div>
-
-            {printer && (
-                <div className={styles.printerInfo}>
-                    <strong>Impresora:</strong> {printer.name}
-                </div>
-            )}
         </div>
     );
 }

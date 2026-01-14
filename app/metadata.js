@@ -1,19 +1,17 @@
-
 export const metadata = {
-    title: 'POS RD',
-    description: 'Sistema de punto de venta offline con impresión Bluetooth',
+    title: 'Punto de Venta RD',
+    description: 'Sistema POS multi-empresa',
     manifest: '/manifest.json',
-    themeColor: '#3B82F6',
+    themeColor: '#1f2937',
+    appleWebApp: {
+        capable: true,
+        statusBarStyle: 'default',
+        title: 'POS RD',
+    },
     viewport: {
         width: 'device-width',
         initialScale: 1,
         maximumScale: 1,
         userScalable: false,
-        viewportFit: 'cover',
-    },
-    appleWebApp: {
-        capable: true,
-        statusBarStyle: 'default',
-        title: 'POS RD',
     },
 };

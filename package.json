@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor/core": "^8.0.1",
     "bcrypt": "^6.0.0",
     "dexie": "^4.2.1",
+    "esc-pos-encoder": "^3.0.0",
     "html2canvas": "^1.4.1",
     "idb": "^8.0.3",
     "ionicons": "^8.0.13",

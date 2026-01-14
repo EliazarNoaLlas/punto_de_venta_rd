@@ -61,21 +61,39 @@ const pwaConfig = withPWA({
   disable: process.env.NODE_ENV === 'development',
 
   runtimeCaching: [
-    // 🔌 API (productos, ventas, clientes)
+    // 🖼️ Imágenes (Requested strategy: CacheFirst)
     {
-      urlPattern: /^\/api\/.*$/i,
-      handler: 'NetworkFirst',
-      method: 'GET',
+      urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+      handler: 'CacheFirst',
       options: {
-        cacheName: 'api-cache',
-        networkTimeoutSeconds: 10,
+        cacheName: 'images',
+        expiration: {
+          maxEntries: 100,
+          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 días
+        }
+      }
+    },
+    // 🔌 API (Requested strategy: NetworkFirst with 3s timeout)
+    {
+      urlPattern: /\/api\/.*/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'api',
+        networkTimeoutSeconds: 3,
         expiration: {
           maxEntries: 50,
           maxAgeSeconds: 24 * 60 * 60,
         },
-      },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) => {
+              // Solo cachear respuestas exitosas
+              return response.status === 200 ? response : null;
+            }
+          }
+        ]
+      }
     },
-
     // ⚡ Assets Next.js
     {
       urlPattern: /^\/_next\/static\/.*$/i,
@@ -88,20 +106,6 @@ const pwaConfig = withPWA({
         },
       },
     },
-
-    // 🖼️ Imágenes
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|webp|ico)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'images-cache',
-        expiration: {
-          maxEntries: 100,
-          maxAgeSeconds: 7 * 24 * 60 * 60,
-        },
-      },
-    },
-
     // 📄 Navegación
     {
       urlPattern: /^\/.*$/i,
