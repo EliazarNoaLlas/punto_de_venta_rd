@@ -138,6 +138,7 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1331,5 +1332,228 @@
     .productoAcciones {
         width: 100%;
         justify-content: space-between;
+    }
+}
+
+@media (max-width: 480px) {
+
+    /* Header */
+    .headerContenedor {
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .headerAcciones {
+        width: 100%;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .btnGuardar,
+    .btnVistaPrevia {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Estadísticas */
+    .estadisticas {
+        grid-template-columns: 1fr;
+        padding: 16px;
+        gap: 12px;
+    }
+
+    .estadisticaCard {
+        padding: 16px;
+    }
+
+    /* Tabs */
+    .tabs {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .tab {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Layout principal */
+    .contenidoPrincipal {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        padding: 0 16px 24px;
+    }
+
+    /* Sidebar */
+    .sidebar {
+        order: -1;
+        gap: 16px;
+    }
+
+    .sidebarCard,
+    .sidebarCardCompartir,
+    .sidebarCardAyuda {
+        padding: 16px;
+    }
+
+    /* Formularios */
+    .campoGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .inputGroup {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .prefijo,
+    .inputSlug,
+    .btnGenerarSlug {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Productos */
+    .productoCard {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .productoAcciones {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .productoImagen {
+        width: 100%;
+        height: 160px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .productoImagen img {
+        max-height: 100%;
+        object-fit: contain;
+    }
+}
+
+
+@media (max-width: 360px) {
+
+    /* Tipografía */
+    .titulo {
+        font-size: 1.4rem;
+    }
+
+    .subtitulo {
+        font-size: 0.9rem;
+    }
+
+    /* Header */
+    .headerAcciones {
+        gap: 8px;
+    }
+
+    /* Estadísticas */
+    .estadisticaHeader {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .estadisticaDescripcion {
+        display: none;
+    }
+
+    /* Productos */
+    .productoCard {
+        padding: 12px;
+    }
+
+    .productoNombre {
+        font-size: 0.95rem;
+    }
+
+    .productoDetalles {
+        font-size: 0.85rem;
+        gap: 4px;
+    }
+
+    .productoOferta {
+        display: none;
+    }
+
+    .productoAcciones {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btnToggle,
+    .btnDestacado {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .botonTexto {
+        font-size: 0.85rem;
+    }
+
+    /* Inputs */
+    .input,
+    .textarea,
+    .inputSlug {
+        font-size: 0.9rem;
+        padding: 10px;
+    }
+
+    /* ===== SIDEBAR ===== */
+
+    /* Publicación */
+    .publicacionContenido {
+        gap: 8px;
+    }
+
+    .publicacionToggle {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .publicacionDescripcion {
+        font-size: 0.85rem;
+    }
+
+    /* Compartir catálogo */
+    .compartirHeader {
+        gap: 8px;
+    }
+
+    .urlContainer {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btnCopiarUrl {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .compartirAcciones {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btnQR,
+    .btnWhatsApp {
+        width: 100%;
+        justify-content: center;
+    }
+
+    /* Consejo */
+    .ayudaTexto {
+        font-size: 0.85rem;
+        line-height: 1.4;
     }
 }

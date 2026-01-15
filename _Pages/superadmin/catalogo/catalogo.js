@@ -302,8 +302,8 @@ export default function CatalogoSuperAdmin() {
             const base64 = reader.result
             setVistaPreviaImagen(base64)
             // Guardar base64 y limpiar imagen_url
-            setFormProducto({ 
-                ...formProducto, 
+            setFormProducto({
+                ...formProducto,
                 imagen_base64: base64,
                 imagen_url: '' // Limpiar URL si había una
             })
@@ -355,7 +355,7 @@ export default function CatalogoSuperAdmin() {
                             disabled={!config?.url_slug}
                         >
                             <ion-icon name="eye-outline"></ion-icon>
-                            <span>Vista Previa</span>
+                            <span className={estilos.botonTexto}>Vista Previa</span>
                         </button>
                         <button
                             onClick={manejarGuardarConfig}
@@ -370,7 +370,7 @@ export default function CatalogoSuperAdmin() {
                             ) : (
                                 <>
                                     <ion-icon name="save-outline"></ion-icon>
-                                    <span>Guardar Cambios</span>
+                                    <span className={estilos.botonTexto}>Guardar Cambios</span>
                                 </>
                             )}
                         </button>
@@ -436,14 +436,14 @@ export default function CatalogoSuperAdmin() {
                     onClick={() => setTabActiva('config')}
                 >
                     <ion-icon name="settings-outline"></ion-icon>
-                    <span>Configuración</span>
+                    <span className={estilos.tabTexto}>Configuración</span>
                 </button>
                 <button
                     className={`${estilos.tab} ${tabActiva === 'productos' ? estilos.tabActiva : ''}`}
                     onClick={() => setTabActiva('productos')}
                 >
                     <ion-icon name="cube-outline"></ion-icon>
-                    <span>Productos ({productosVisibles} visibles)</span>
+                    <span className={estilos.tabTexto}>Productos ({productosVisibles} visibles)</span>
                 </button>
             </div>
 
@@ -727,12 +727,12 @@ export default function CatalogoSuperAdmin() {
                                                         {esVisible ? (
                                                             <>
                                                                 <ion-icon name="eye-outline"></ion-icon>
-                                                                <span>Visible</span>
+                                                                <span className={estilos.toggleTexto}>Visible</span>
                                                             </>
                                                         ) : (
                                                             <>
                                                                 <ion-icon name="eye-off-outline"></ion-icon>
-                                                                <span>Oculto</span>
+                                                                <span className={estilos.toggleTexto}>Oculto</span>
                                                             </>
                                                         )}
                                                     </button>
@@ -783,7 +783,7 @@ export default function CatalogoSuperAdmin() {
                                 <ion-icon name="link-outline"></ion-icon>
                                 <h3 className={estilos.compartirTitulo}>Compartir Catálogo</h3>
                             </div>
-                            
+
                             <div className={estilos.urlContainer}>
                                 <div className={estilos.urlTexto}>
                                     <span className={estilos.urlTruncate}>{urlCatalogo}</span>
@@ -825,7 +825,7 @@ export default function CatalogoSuperAdmin() {
                     <div className={estilos.sidebarCardAyuda}>
                         <h3 className={estilos.ayudaTitulo}>💡 Consejo</h3>
                         <p className={estilos.ayudaTexto}>
-                            Activa productos destacados para mostrarlos en la portada. 
+                            Activa productos destacados para mostrarlos en la portada.
                             Los productos con ofertas atraen más atención de los clientes.
                             Los pedidos llegarán directamente a tu WhatsApp configurado.
                         </p>
@@ -958,7 +958,7 @@ export default function CatalogoSuperAdmin() {
 
                             <div className={estilos.campo}>
                                 <label className={estilos.label}>Imagen del Producto</label>
-                                
+
                                 {/* Selector de tipo: URL o Archivo */}
                                 <div className={estilos.campoGrid} style={{ marginBottom: '15px' }}>
                                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>

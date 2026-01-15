@@ -3,13 +3,14 @@ import { useEffect, useState } from 'react'
 import { obtenerConfiguracion, actualizarPlataforma, actualizarSuperAdmin, subirImagen } from './servidor'
 import estilos from './configuracion.module.css'
 import Cropper from 'react-easy-crop'
+import TerminosAdmin from '@/_Pages/superadmin/terminos/terminos'
 
 export default function ConfiguracionSuperAdmin() {
     const [tema, setTema] = useState('light')
     const [cargando, setCargando] = useState(true)
     const [procesando, setProcesando] = useState(false)
     const [tabActiva, setTabActiva] = useState('plataforma')
-    
+
     const [datosPlataforma, setDatosPlataforma] = useState({
         nombre_plataforma: '',
         email_contacto: '',
@@ -190,7 +191,7 @@ export default function ConfiguracionSuperAdmin() {
                 alert('Solo se permiten imagenes')
                 return
             }
-            
+
             const reader = new FileReader()
             reader.onloadend = () => {
                 setImagenParaRecortar(reader.result)
@@ -215,7 +216,7 @@ export default function ConfiguracionSuperAdmin() {
                 alert('Solo se permiten imagenes')
                 return
             }
-            
+
             const reader = new FileReader()
             reader.onloadend = () => {
                 setImagenParaRecortar(reader.result)
@@ -439,6 +440,13 @@ export default function ConfiguracionSuperAdmin() {
                 >
                     <ion-icon name="person-outline"></ion-icon>
                     <span>Mi Perfil</span>
+                </button>
+                <button
+                    className={`${estilos.tab} ${tabActiva === 'terminos' ? estilos.tabActiva : ''}`}
+                    onClick={() => setTabActiva('terminos')}
+                >
+                    <ion-icon name="document-text-outline"></ion-icon>
+                    <span>Términos y Condiciones</span>
                 </button>
             </div>
 
@@ -728,6 +736,12 @@ export default function ConfiguracionSuperAdmin() {
                             </button>
                         </div>
                     </form>
+                </div>
+            )}
+
+            {tabActiva === 'terminos' && (
+                <div className={`${estilos.seccion} ${estilos[tema]}`}>
+                    <TerminosAdmin />
                 </div>
             )}
 

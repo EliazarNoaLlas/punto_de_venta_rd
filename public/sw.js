@@ -1,8 +1,9 @@
 // ============================================
 // SERVICE WORKER OFFLINE-FIRST - ISIWEEK POS
+// ✅ CORREGIDO según auditoría técnica
 // ============================================
 
-const CACHE_VERSION = 'isiweek-pos-v1.0.0';
+const CACHE_VERSION = 'isiweek-pos-v1.0.2';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_DYNAMIC = `${CACHE_VERSION}-dynamic`;
 const CACHE_IMAGES = `${CACHE_VERSION}-images`;
@@ -12,12 +13,15 @@ const STATIC_FILES = [
     '/',
     '/offline.html',
     '/manifest.json',
-    '/icon-192.png',
-    '/icon-512.png'
+    '/icons/manifest-icon-192.maskable.png'
 ];
+
+// Rutas críticas que NUNCA deben cachearse agresivamente
+const RUTAS_CRITICAS = ['/login', '/registro', '/recuperar'];
 
 // ===========================================
 // INSTALACIÓN - Cachear archivos estáticos
+// ✅ FIX: Instalación tolerante a fallos
 // ===========================================
 self.addEventListener('install', (event) => {
     console.log('[SW] Instalando Service Worker...');
@@ -26,11 +30,19 @@ self.addEventListener('install', (event) => {
         caches.open(CACHE_STATIC)
             .then((cache) => {
                 console.log('[SW] Cacheando archivos estáticos');
-                return cache.addAll(STATIC_FILES);
+
+                // ✅ MEJORA: No romper instalación si un archivo falla
+                return Promise.allSettled(
+                    STATIC_FILES.map(file =>
+                        cache.add(file).catch(err => {
+                            console.warn(`[SW] No se pudo cachear ${file}:`, err);
+                        })
+                    )
+                );
             })
             .then(() => {
                 console.log('[SW] Instalación completada');
-                return self.skipWaiting(); // Activar inmediatamente
+                return self.skipWaiting();
             })
             .catch((error) => {
                 console.error('[SW] Error en instalación:', error);
@@ -50,7 +62,6 @@ self.addEventListener('activate', (event) => {
                 return Promise.all(
                     cacheNames
                         .filter((name) => {
-                            // Eliminar cachés que no coinciden con la versión actual
                             return name.startsWith('isiweek-pos-') &&
                                 !name.startsWith(CACHE_VERSION);
                         })
@@ -62,7 +73,7 @@ self.addEventListener('activate', (event) => {
             })
             .then(() => {
                 console.log('[SW] Activación completada');
-                return self.clients.claim(); // Tomar control de todas las páginas
+                return self.clients.claim();
             })
     );
 });
@@ -80,25 +91,60 @@ self.addEventListener('fetch', (event) => {
     }
 
     // ===========================================
+    // 🔥 FIX #1: Login POST - Sin usar navigator.onLine
+    // La única verdad es: fetch() funciona = online, fetch() falla = offline
+    // ===========================================
+    if (
+        request.method === 'POST' &&
+        (url.pathname === '/login' || url.pathname.includes('/login'))
+    ) {
+        event.respondWith(
+            fetch(request).catch(() => {
+                // ✅ CORRECCIÓN CRÍTICA: fetch falló = offline
+                return new Response(
+                    JSON.stringify({
+                        success: false,
+                        offline: true,
+                        message: 'Login remoto bloqueado: Sin conexión a internet'
+                    }),
+                    {
+                        status: 503,
+                        statusText: 'Service Unavailable',
+                        headers: { 'Content-Type': 'application/json' }
+                    }
+                );
+            })
+        );
+        return;
+    }
+
+    // ===========================================
+    // 🔥 FIX #2: REGLA DE ORO - Solo interceptar GET
+    // NUNCA interceptar POST/PUT/DELETE (excepto casos explícitos arriba)
+    // ===========================================
+    if (request.method !== 'GET') {
+        return; // Dejar que el navegador maneje directamente
+    }
+
+    // ===========================================
     // ESTRATEGIA 1: API Routes → Network First
     // ===========================================
     if (url.pathname.startsWith('/api/')) {
         event.respondWith(
             fetch(request)
                 .then((response) => {
-                    // Si la respuesta es exitosa, NO cachear APIs
-                    // Las APIs se manejan con IndexedDB, no con cache
                     return response;
                 })
                 .catch(() => {
-                    // Si falla el fetch (offline), retornar respuesta offline
+                    // ✅ SIEMPRE Response válida
                     return new Response(
                         JSON.stringify({
                             offline: true,
-                            error: 'Sin conexión - Los datos se guardarán localmente'
+                            error: 'Sin conexión - Acción no disponible'
                         }),
                         {
                             status: 503,
+                            statusText: 'Service Unavailable',
                             headers: { 'Content-Type': 'application/json' }
                         }
                     );
@@ -113,23 +159,29 @@ self.addEventListener('fetch', (event) => {
     if (request.destination === 'image') {
         event.respondWith(
             caches.open(CACHE_IMAGES)
-                .then((cache) => {
-                    return cache.match(request)
-                        .then((cachedResponse) => {
-                            if (cachedResponse) {
-                                return cachedResponse;
-                            }
+                .then(async (cache) => {
+                    const cachedResponse = await cache.match(request);
+                    if (cachedResponse) {
+                        return cachedResponse;
+                    }
 
-                            return fetch(request)
-                                .then((networkResponse) => {
-                                    // Cachear la imagen
-                                    cache.put(request, networkResponse.clone());
-                                    return networkResponse;
-                                })
-                                .catch(() => {
-                                    // Retornar imagen placeholder si existe
-                                    return cache.match('/icons/manifest-icon-192.maskable.png');
-                                });
+                    return fetch(request)
+                        .then((networkResponse) => {
+                            if (networkResponse.ok) {
+                                cache.put(request, networkResponse.clone());
+                            }
+                            return networkResponse;
+                        })
+                        .catch(async () => {
+                            // Fallback a ícono por defecto
+                            const iconoDefault = await cache.match('/icons/manifest-icon-192.maskable.png');
+
+                            // ✅ SIEMPRE Response válida
+                            return iconoDefault || new Response('', {
+                                status: 404,
+                                statusText: 'Not Found',
+                                headers: { 'Content-Type': 'image/png' }
+                            });
                         });
                 })
         );
@@ -137,29 +189,75 @@ self.addEventListener('fetch', (event) => {
     }
 
     // ===========================================
-    // ESTRATEGIA 3: Navegación → Cache First (con revalidación)
+    // 🔥 FIX #3: Navegación - Excluir rutas críticas
+    // Login/Registro/Recuperar NO deben cachearse agresivamente
     // ===========================================
-    if (request.mode === 'navigate') {
+    if (
+        request.mode === 'navigate' &&
+        !RUTAS_CRITICAS.some(ruta => url.pathname.startsWith(ruta))
+    ) {
         event.respondWith(
             caches.open(CACHE_STATIC)
-                .then((cache) => {
-                    return cache.match(request)
-                        .then((cachedResponse) => {
-                            // Intentar fetch en background
-                            const fetchPromise = fetch(request)
-                                .then((networkResponse) => {
-                                    // Actualizar cache con la respuesta nueva
-                                    cache.put(request, networkResponse.clone());
-                                    return networkResponse;
-                                })
-                                .catch(() => {
-                                    // Si falla, usar cache
-                                    return cachedResponse || cache.match('/offline');
-                                });
+                .then(async (cache) => {
+                    const cachedResponse = await cache.match(request);
 
-                            // Retornar cache inmediatamente (más rápido)
-                            return cachedResponse || fetchPromise;
+                    const fetchPromise = fetch(request)
+                        .then((networkResponse) => {
+                            if (networkResponse.ok) {
+                                cache.put(request, networkResponse.clone());
+                            }
+                            return networkResponse;
+                        })
+                        .catch(async () => {
+                            // Si hay cache, usarlo
+                            if (cachedResponse) return cachedResponse;
+
+                            // Si no, página offline
+                            const offlinePage = await cache.match('/offline.html');
+
+                            // ✅ SIEMPRE Response válida
+                            return offlinePage || new Response(
+                                `<!DOCTYPE html>
+                                <html lang="es">
+                                <head>
+                                    <meta charset="UTF-8">
+                                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                    <title>Sin Conexión</title>
+                                    <style>
+                                        body {
+                                            font-family: Arial, sans-serif;
+                                            display: flex;
+                                            justify-content: center;
+                                            align-items: center;
+                                            height: 100vh;
+                                            margin: 0;
+                                            background: #f5f5f5;
+                                        }
+                                        .container {
+                                            text-align: center;
+                                            padding: 20px;
+                                        }
+                                        h1 { color: #ff9800; }
+                                    </style>
+                                </head>
+                                <body>
+                                    <div class="container">
+                                        <h1>⚠️ Sin Conexión</h1>
+                                        <p>No hay conexión a internet</p>
+                                        <button onclick="location.reload()">Reintentar</button>
+                                    </div>
+                                </body>
+                                </html>`,
+                                {
+                                    status: 503,
+                                    statusText: 'Service Unavailable',
+                                    headers: { 'Content-Type': 'text/html' }
+                                }
+                            );
                         });
+
+                    // Cache First: Priorizar cache si existe
+                    return cachedResponse || fetchPromise;
                 })
         );
         return;
@@ -170,21 +268,29 @@ self.addEventListener('fetch', (event) => {
     // ===========================================
     event.respondWith(
         caches.open(CACHE_DYNAMIC)
-            .then((cache) => {
-                return cache.match(request)
-                    .then((cachedResponse) => {
-                        const fetchPromise = fetch(request)
-                            .then((networkResponse) => {
-                                // Solo cachear GET exitosos
-                                if (request.method === 'GET' && networkResponse.ok) {
-                                    cache.put(request, networkResponse.clone());
-                                }
-                                return networkResponse;
-                            })
-                            .catch(() => cachedResponse);
+            .then(async (cache) => {
+                const cachedResponse = await cache.match(request);
 
-                        return cachedResponse || fetchPromise;
+                const fetchPromise = fetch(request)
+                    .then((networkResponse) => {
+                        if (networkResponse.ok) {
+                            cache.put(request, networkResponse.clone());
+                        }
+                        return networkResponse;
+                    })
+                    .catch(() => {
+                        // Si hay cache, usarlo
+                        if (cachedResponse) return cachedResponse;
+
+                        // ✅ SIEMPRE Response válida, NUNCA undefined/null
+                        return new Response('', {
+                            status: 503,
+                            statusText: 'Service Unavailable'
+                        });
                     });
+
+                // Priorizar cache si existe (velocidad)
+                return cachedResponse || fetchPromise;
             })
     );
 });
@@ -213,7 +319,7 @@ self.addEventListener('message', (event) => {
 });
 
 // ===========================================
-// SYNC - Background Sync (cuando vuelve internet)
+// SYNC - Background Sync
 // ===========================================
 self.addEventListener('sync', (event) => {
     console.log('[SW] Sync event:', event.tag);
@@ -224,8 +330,6 @@ self.addEventListener('sync', (event) => {
 });
 
 async function syncVentas() {
-    // Esta función se ejecuta cuando vuelve internet
-    // Enviar mensaje a la app para que sincronice
     const clients = await self.clients.matchAll();
     clients.forEach((client) => {
         client.postMessage({

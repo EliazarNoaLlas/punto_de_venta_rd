@@ -2,11 +2,14 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { iniciarSesion, obtenerCopyright } from './servidor'
+import { obtenerCopyright } from './servidor'
+import { useOnlineStatus } from '@/lib/hooks/useOnlineStatus'
+import { login } from '@/lib/auth/authFacade'
 import estilos from './login.module.css'
 
 export default function Login() {
     const router = useRouter()
+    const { isOnline } = useOnlineStatus()
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [mostrarPassword, setMostrarPassword] = useState(false)
@@ -14,10 +17,20 @@ export default function Login() {
     const [error, setError] = useState('')
     const [tema, setTema] = useState('light')
     const [copyright, setCopyright] = useState('© 2025 IziWeek. Todos los derechos reservados.')
+    const [rememberMe, setRememberMe] = useState(false)
+
+    const estaOffline = !isOnline
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
         setTema(temaLocal)
+
+        // Cargar usuario recordado
+        const savedUser = localStorage.getItem('rememberedUser')
+        if (savedUser) {
+            setEmail(savedUser)
+            setRememberMe(true)
+        }
 
         const manejarCambioTema = () => {
             const nuevoTema = localStorage.getItem('tema') || 'light'
@@ -33,48 +46,93 @@ export default function Login() {
         }
     }, [])
 
+    // ============================================
+    // 🔥 CRÍTICO: Solo cargar copyright si hay conexión
+    // ============================================
     useEffect(() => {
+        if (!isOnline) return
+
         const cargarCopyright = async () => {
-            const resultado = await obtenerCopyright()
-            if (resultado.success && resultado.copyright) {
-                setCopyright(resultado.copyright)
+            try {
+                const resultado = await obtenerCopyright()
+                if (resultado && resultado.success && resultado.copyright) {
+                    setCopyright(resultado.copyright)
+                }
+            } catch (error) {
+                console.log('No se pudo cargar copyright, usando predeterminado')
             }
         }
         cargarCopyright()
-    }, [])
+    }, [isOnline])
 
+    // ============================================
+    // 🔥 SUBMIT CON SOPORTE OFFLINE DESACOPLADO
+    // ============================================
     const manejarSubmit = async (e) => {
         e.preventDefault()
         setError('')
         setCargando(true)
 
         try {
-            const resultado = await iniciarSesion(email, password)
+            // El componente no sabe si el login será online u offline
+            // La lógica está centralizada en el authFacade
+            const resultado = await login(email, password, isOnline)
 
             if (resultado.success) {
-                if (resultado.tipo === 'superadmin') {
+                // Guardar o eliminar usuario recordado
+                if (rememberMe) {
+                    localStorage.setItem('rememberedUser', email)
+                } else {
+                    localStorage.removeItem('rememberedUser')
+                }
+
+                // Redirigir según tipo de usuario (vuelve del servidor o de cache offline)
+                const tipo = resultado.tipo
+
+                if (tipo === 'superadmin') {
                     router.push('/superadmin')
-                } else if (resultado.tipo === 'admin') {
+                } else if (tipo === 'admin') {
                     router.push('/admin')
-                } else if (resultado.tipo === 'vendedor') {
+                } else if (tipo === 'vendedor') {
                     router.push('/vendedor')
                 }
             } else {
-                setError(resultado.mensaje || 'Error al iniciar sesion')
+                setError(resultado.mensaje || resultado.message || 'Error al iniciar sesión')
             }
         } catch (error) {
-            setError('Error al procesar la solicitud')
-            console.error('Error en login:', error)
+            console.error('Error en manejador de submit:', error)
+            setError('Error inesperado al intentar iniciar sesión.')
         } finally {
             setCargando(false)
         }
     }
 
+
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-            <div className={`${estilos.caja} ${estilos[tema]}`}>
+            {/* ============================================ */}
+            {/* BANNER DE ESTADO OFFLINE */}
+            {/* ============================================ */}
+            {estaOffline && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    background: '#ff9800',
+                    color: 'white',
+                    padding: '10px',
+                    textAlign: 'center',
+                    zIndex: 9999,
+                    fontWeight: 'bold'
+                }}>
+                    ⚠️ Sin conexión - Modo Offline
+                </div>
+            )}
+
+            <div className={`${estilos.caja} ${estilos[tema]}`} style={estaOffline ? { marginTop: '50px' } : {}}>
                 <div className={estilos.header}>
-                    <h1 className={estilos.titulo}>Iniciar Sesion</h1>
+                    <h1 className={estilos.titulo}>Iniciar Sesión</h1>
                     <p className={estilos.subtitulo}>Ingresa tus credenciales para continuar</p>
                 </div>
 
@@ -88,7 +146,7 @@ export default function Login() {
 
                     <div className={estilos.campo}>
                         <label htmlFor="email" className={estilos.label}>
-                            Correo Electronico
+                            Correo Electrónico
                         </label>
                         <div className={estilos.inputWrapper}>
                             <ion-icon name="mail-outline"></ion-icon>
@@ -107,7 +165,7 @@ export default function Login() {
 
                     <div className={estilos.campo}>
                         <label htmlFor="password" className={estilos.label}>
-                            Contrasena
+                            Contraseña
                         </label>
                         <div className={estilos.inputWrapper}>
                             <ion-icon name="lock-closed-outline"></ion-icon>
@@ -116,7 +174,7 @@ export default function Login() {
                                 id="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Tu contrasena"
+                                placeholder="Tu contraseña"
                                 className={estilos.input}
                                 required
                                 autoComplete="current-password"
@@ -125,7 +183,7 @@ export default function Login() {
                                 type="button"
                                 onClick={() => setMostrarPassword(!mostrarPassword)}
                                 className={estilos.togglePassword}
-                                aria-label={mostrarPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                                aria-label={mostrarPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                             >
                                 <ion-icon name={mostrarPassword ? 'eye-off-outline' : 'eye-outline'}></ion-icon>
                             </button>
@@ -133,8 +191,16 @@ export default function Login() {
                     </div>
 
                     <div className={estilos.opciones}>
+                        <label className={estilos.rememberMe}>
+                            <input
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                            />
+                            Recordar usuario
+                        </label>
                         <Link href="/recuperar" className={estilos.enlaceRecuperar}>
-                            Olvidaste tu contrasena?
+                            ¿Olvidaste tu contraseña?
                         </Link>
                     </div>
 
@@ -146,12 +212,12 @@ export default function Login() {
                         {cargando ? (
                             <>
                                 <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
-                                <span>Iniciando sesion...</span>
+                                <span>Iniciando sesión...</span>
                             </>
                         ) : (
                             <>
                                 <ion-icon name="log-in-outline"></ion-icon>
-                                <span>Iniciar Sesion</span>
+                                <span>Iniciar Sesión</span>
                             </>
                         )}
                     </button>
@@ -159,9 +225,9 @@ export default function Login() {
 
                 <div className={estilos.footer}>
                     <p className={estilos.textoRegistro}>
-                        No tienes una cuenta?{' '}
+                        ¿No tienes una cuenta?{' '}
                         <Link href="/registro" className={estilos.enlaceRegistro}>
-                            Registrate aqui
+                            Regístrate aquí
                         </Link>
                     </p>
                     <p className={estilos.copyright}>{copyright}</p>
