@@ -449,9 +449,11 @@ export async function aceptarTerminos(terminoId) {
             }
         }
 
-        // Obtener IP y User-Agent
-        const headersList = headers()
-        const ipAddress = headersList.get('x-forwarded-for') ||
+        // ✅ Obtener IP y User-Agent (headers() debe ser await en Next.js App Router)
+        const headersList = await headers()
+
+        // Extraer IP (x-forwarded-for puede tener múltiples IPs separadas por coma)
+        const ipAddress = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
             headersList.get('x-real-ip') ||
             'IP no disponible'
         const userAgent = headersList.get('user-agent') || 'User-Agent no disponible'

@@ -81,9 +81,9 @@ export async function registrarUsuario(formData) {
         const terminosId = terminosActivos[0].id
         const terminosVersion = terminosActivos[0].version
 
-        // ✅ OBTENER IP DEL USUARIO (para auditoría legal)
-        const headersList = headers()
-        const ipAddress = headersList.get('x-forwarded-for') ||
+        // ✅ OBTENER IP DEL USUARIO (para auditoría legal - headers() debe ser await)
+        const headersList = await headers()
+        const ipAddress = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ||
             headersList.get('x-real-ip') ||
             'IP no disponible'
 

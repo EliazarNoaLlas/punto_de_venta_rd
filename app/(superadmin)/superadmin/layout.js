@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper"
 import HeaderSuperAdmin from "@/_Pages/superadmin/header/header"
+import ModalTerminos from "@/components/ModalTerminos/ModalTerminos"
 
 export default async function SuperAdminLayout({ children }) {
     const cookieStore = await cookies()
@@ -16,6 +17,7 @@ export default async function SuperAdminLayout({ children }) {
         <>
             <ClienteWrapper>
                 <HeaderSuperAdmin />
+                <ModalTerminos />
             </ClienteWrapper>
             {children}
         </>
