@@ -3,7 +3,7 @@
 // ✅ CORREGIDO según auditoría técnica
 // ============================================
 
-const CACHE_VERSION = 'isiweek-pos-v1.0.2';
+const CACHE_VERSION = 'isiweek-pos-v1.0.1';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_DYNAMIC = `${CACHE_VERSION}-dynamic`;
 const CACHE_IMAGES = `${CACHE_VERSION}-images`;

@@ -1,7 +1,7 @@
 "use server"
 
 import db from "@/_DB/db"
-import { cookies } from 'next/headers'
+import {cookies} from 'next/headers'
 
 export async function obtenerCajaActiva() {
     let connection
@@ -20,20 +20,36 @@ export async function obtenerCajaActiva() {
         connection = await db.getConnection()
 
         const [cajas] = await connection.execute(
-            `SELECT 
-                c.*,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id THEN v.total ELSE 0 END), 0) as total_ventas_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'efectivo' THEN v.total ELSE 0 END), 0) as total_efectivo_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'tarjeta_debito' THEN v.total ELSE 0 END), 0) as total_tarjeta_debito_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'tarjeta_credito' THEN v.total ELSE 0 END), 0) as total_tarjeta_credito_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'transferencia' THEN v.total ELSE 0 END), 0) as total_transferencia_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'cheque' THEN v.total ELSE 0 END), 0) as total_cheque_real
-            FROM cajas c
-            LEFT JOIN ventas v ON v.caja_id = c.id AND v.estado = 'emitida'
-            WHERE c.empresa_id = ? AND c.usuario_id = ? AND c.estado = 'abierta'
-            GROUP BY c.id
-            ORDER BY c.fecha_apertura DESC
-            LIMIT 1`,
+            `SELECT c.*,
+                    COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id THEN v.total ELSE 0 END),
+                             0)                      as total_ventas_real,
+                    COALESCE(SUM(CASE
+                                     WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'efectivo'
+                                         THEN v.total
+                                     ELSE 0 END), 0) as total_efectivo_real,
+                    COALESCE(SUM(CASE
+                                     WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'tarjeta_debito'
+                                         THEN v.total
+                                     ELSE 0 END), 0) as total_tarjeta_debito_real,
+                    COALESCE(SUM(CASE
+                                     WHEN v.estado = 'emitida' AND v.caja_id = c.id AND
+                                          v.metodo_pago = 'tarjeta_credito' THEN v.total
+                                     ELSE 0 END), 0) as total_tarjeta_credito_real,
+                    COALESCE(SUM(CASE
+                                     WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'transferencia'
+                                         THEN v.total
+                                     ELSE 0 END), 0) as total_transferencia_real,
+                    COALESCE(SUM(CASE
+                                     WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'cheque'
+                                         THEN v.total
+                                     ELSE 0 END), 0) as total_cheque_real
+             FROM cajas c
+                      LEFT JOIN ventas v ON v.caja_id = c.id AND v.estado = 'emitida'
+             WHERE c.empresa_id = ?
+               AND c.usuario_id = ?
+               AND c.estado = 'abierta'
+             GROUP BY c.id
+             ORDER BY c.fecha_apertura DESC LIMIT 1`,
             [empresaId, userId]
         )
 
@@ -63,7 +79,7 @@ export async function obtenerCajaActiva() {
 
     } catch (error) {
         console.error('Error al obtener caja activa:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -93,8 +109,11 @@ export async function obtenerCajasDisponibles() {
 
         // Verificar si el usuario ya tiene una caja abierta
         const [cajaUsuario] = await connection.execute(
-            `SELECT id, numero_caja FROM cajas 
-            WHERE empresa_id = ? AND usuario_id = ? AND estado = 'abierta'`,
+            `SELECT id, numero_caja
+             FROM cajas
+             WHERE empresa_id = ?
+               AND usuario_id = ?
+               AND estado = 'abierta'`,
             [empresaId, userId]
         )
 
@@ -108,8 +127,10 @@ export async function obtenerCajasDisponibles() {
         }
 
         const [config] = await connection.execute(
-            `SELECT name, value FROM settings 
-            WHERE empresa_id = ? AND name = 'numero_cajas'`,
+            `SELECT name, value
+             FROM settings
+             WHERE empresa_id = ?
+               AND name = 'numero_cajas'`,
             [empresaId]
         )
 
@@ -118,8 +139,11 @@ export async function obtenerCajasDisponibles() {
         const fechaHoy = new Date().toISOString().split('T')[0]
 
         const [cajasOcupadas] = await connection.execute(
-            `SELECT numero_caja FROM cajas 
-            WHERE empresa_id = ? AND fecha_caja = ? AND estado = 'abierta'`,
+            `SELECT numero_caja
+             FROM cajas
+             WHERE empresa_id = ?
+               AND fecha_caja = ?
+               AND estado = 'abierta'`,
             [empresaId, fechaHoy]
         )
 
@@ -128,7 +152,7 @@ export async function obtenerCajasDisponibles() {
 
         for (let i = 1; i <= numeroCajas; i++) {
             if (!ocupadas.includes(i)) {
-                disponibles.push({ numero: i })
+                disponibles.push({numero: i})
             }
         }
 
@@ -141,7 +165,7 @@ export async function obtenerCajasDisponibles() {
 
     } catch (error) {
         console.error('Error al obtener cajas disponibles:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -172,8 +196,11 @@ export async function abrirCaja(datos) {
 
         // Verificar si el usuario ya tiene una caja abierta
         const [cajaActiva] = await connection.execute(
-            `SELECT id, numero_caja FROM cajas 
-            WHERE empresa_id = ? AND usuario_id = ? AND estado = 'abierta'`,
+            `SELECT id, numero_caja
+             FROM cajas
+             WHERE empresa_id = ?
+               AND usuario_id = ?
+               AND estado = 'abierta'`,
             [empresaId, userId]
         )
 
@@ -189,8 +216,12 @@ export async function abrirCaja(datos) {
 
         // Verificar si la caja ya está ocupada por otro usuario
         const [cajaOcupada] = await connection.execute(
-            `SELECT id, numero_caja FROM cajas 
-            WHERE empresa_id = ? AND fecha_caja = ? AND numero_caja = ? AND estado = 'abierta'`,
+            `SELECT id, numero_caja
+             FROM cajas
+             WHERE empresa_id = ?
+               AND fecha_caja = ?
+               AND numero_caja = ?
+               AND estado = 'abierta'`,
             [empresaId, fechaHoy, datos.numero_caja]
         )
 
@@ -204,14 +235,13 @@ export async function abrirCaja(datos) {
 
         // Insertar nueva caja
         const [result] = await connection.execute(
-            `INSERT INTO cajas (
-                empresa_id,
-                usuario_id,
-                numero_caja,
-                fecha_caja,
-                monto_inicial,
-                estado
-            ) VALUES (?, ?, ?, ?, ?, 'abierta')`,
+            `INSERT INTO cajas (empresa_id,
+                                usuario_id,
+                                numero_caja,
+                                fecha_caja,
+                                monto_inicial,
+                                estado)
+             VALUES (?, ?, ?, ?, ?, 'abierta')`,
             [
                 empresaId,
                 userId,
@@ -231,7 +261,7 @@ export async function abrirCaja(datos) {
 
     } catch (error) {
         console.error('Error al abrir caja:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -260,9 +290,11 @@ export async function obtenerVentasCaja() {
         connection = await db.getConnection()
 
         const [caja] = await connection.execute(
-            `SELECT id FROM cajas 
-            WHERE empresa_id = ? AND usuario_id = ? AND estado = 'abierta'
-            LIMIT 1`,
+            `SELECT id
+             FROM cajas
+             WHERE empresa_id = ?
+               AND usuario_id = ?
+               AND estado = 'abierta' LIMIT 1`,
             [empresaId, userId]
         )
 
@@ -275,15 +307,15 @@ export async function obtenerVentasCaja() {
         }
 
         const [ventas] = await connection.execute(
-            `SELECT 
-                id,
-                ncf,
-                total,
-                metodo_pago,
-                fecha_venta
-            FROM ventas 
-            WHERE caja_id = ? AND estado = 'emitida'
-            ORDER BY fecha_venta DESC`,
+            `SELECT id,
+                    ncf,
+                    total,
+                    metodo_pago,
+                    fecha_venta
+             FROM ventas
+             WHERE caja_id = ?
+               AND estado = 'emitida'
+             ORDER BY fecha_venta DESC`,
             [caja[0].id]
         )
 
@@ -296,7 +328,7 @@ export async function obtenerVentasCaja() {
 
     } catch (error) {
         console.error('Error al obtener ventas:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -326,9 +358,11 @@ export async function registrarGasto(datos) {
         connection = await db.getConnection()
 
         const [caja] = await connection.execute(
-            `SELECT id FROM cajas 
-            WHERE empresa_id = ? AND usuario_id = ? AND estado = 'abierta'
-            LIMIT 1`,
+            `SELECT id
+             FROM cajas
+             WHERE empresa_id = ?
+               AND usuario_id = ?
+               AND estado = 'abierta' LIMIT 1`,
             [empresaId, userId]
         )
 
@@ -341,16 +375,15 @@ export async function registrarGasto(datos) {
         }
 
         await connection.execute(
-            `INSERT INTO gastos (
-                empresa_id,
-                concepto,
-                monto,
-                categoria,
-                usuario_id,
-                caja_id,
-                comprobante_numero,
-                notas
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO gastos (empresa_id,
+                                 concepto,
+                                 monto,
+                                 categoria,
+                                 usuario_id,
+                                 caja_id,
+                                 comprobante_numero,
+                                 notas)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
                 empresaId,
                 datos.concepto,
@@ -372,7 +405,7 @@ export async function registrarGasto(datos) {
 
     } catch (error) {
         console.error('Error al registrar gasto:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -386,83 +419,114 @@ export async function registrarGasto(datos) {
 
 export async function cerrarCaja(datos) {
     let connection
+
     try {
         const cookieStore = await cookies()
         const userId = cookieStore.get('userId')?.value
         const empresaId = cookieStore.get('empresaId')?.value
 
         if (!userId || !empresaId) {
-            return {
-                success: false,
-                mensaje: 'Sesion invalida'
-            }
+            return { success: false, mensaje: 'Sesión inválida' }
+        }
+
+        if (!datos.caja_id) {
+            return { success: false, mensaje: 'ID de caja requerido' }
         }
 
         connection = await db.getConnection()
 
-        // Obtener caja activa con totales reales
-        const [cajaResult] = await connection.execute(
-            `SELECT 
-                c.*,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id THEN v.total ELSE 0 END), 0) as total_ventas_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'efectivo' THEN v.total ELSE 0 END), 0) as total_efectivo_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'tarjeta_debito' THEN v.total ELSE 0 END), 0) as total_tarjeta_debito_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'tarjeta_credito' THEN v.total ELSE 0 END), 0) as total_tarjeta_credito_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'transferencia' THEN v.total ELSE 0 END), 0) as total_transferencia_real,
-                COALESCE(SUM(CASE WHEN v.estado = 'emitida' AND v.caja_id = c.id AND v.metodo_pago = 'cheque' THEN v.total ELSE 0 END), 0) as total_cheque_real,
-                COALESCE(SUM(CASE WHEN g.caja_id = c.id THEN g.monto ELSE 0 END), 0) as total_gastos_real
-            FROM cajas c
-            LEFT JOIN ventas v ON v.caja_id = c.id AND v.estado = 'emitida'
-            LEFT JOIN gastos g ON g.caja_id = c.id
-            WHERE c.empresa_id = ? AND c.usuario_id = ? AND c.estado = 'abierta'
-            GROUP BY c.id
-            LIMIT 1`,
-            [empresaId, userId]
+        /* ==============================
+           1️⃣ VALIDAR CAJA EXACTA
+           ============================== */
+        const [cajaRows] = await connection.execute(
+            `SELECT *
+             FROM cajas
+             WHERE id = ?
+               AND empresa_id = ?
+               AND usuario_id = ?
+               AND estado = 'abierta'
+                 LIMIT 1`,
+            [datos.caja_id, empresaId, userId]
         )
 
-        if (cajaResult.length === 0) {
+        if (cajaRows.length === 0) {
             connection.release()
             return {
                 success: false,
-                mensaje: 'No tienes una caja abierta'
+                mensaje: 'La caja no existe, no te pertenece o ya fue cerrada'
             }
         }
 
-        const cajaData = cajaResult[0]
-        const totalVentasReal = parseFloat(cajaData.total_ventas_real || 0)
-        const totalGastosReal = parseFloat(cajaData.total_gastos_real || 0)
-        const esperado = parseFloat(cajaData.monto_inicial) + totalVentasReal - totalGastosReal
-        const diferencia = parseFloat(datos.monto_final) - esperado
+        const caja = cajaRows[0]
 
-        // Actualizar la caja
+        /* ==============================
+           2️⃣ TOTALES REALES DE ESA CAJA
+           ============================== */
+        const [[totales]] = await connection.execute(
+            `SELECT
+          COALESCE(SUM(v.total), 0) AS total_ventas,
+          COALESCE(SUM(CASE WHEN v.metodo_pago = 'efectivo' THEN v.total ELSE 0 END), 0) AS total_efectivo,
+          COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_debito' THEN v.total ELSE 0 END), 0) AS total_tarjeta_debito,
+          COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_credito' THEN v.total ELSE 0 END), 0) AS total_tarjeta_credito,
+          COALESCE(SUM(CASE WHEN v.metodo_pago = 'transferencia' THEN v.total ELSE 0 END), 0) AS total_transferencia,
+          COALESCE(SUM(CASE WHEN v.metodo_pago = 'cheque' THEN v.total ELSE 0 END), 0) AS total_cheque,
+          COALESCE(SUM(g.monto), 0) AS total_gastos
+       FROM cajas c
+       LEFT JOIN ventas v 
+              ON v.caja_id = c.id AND v.estado = 'emitida'
+       LEFT JOIN gastos g 
+              ON g.caja_id = c.id
+       WHERE c.id = ?
+         AND c.empresa_id = ?
+         AND c.usuario_id = ?`,
+            [caja.id, empresaId, userId]
+        )
+
+        /* ==============================
+           3️⃣ CÁLCULOS
+           ============================== */
+        const esperado =
+            parseFloat(caja.monto_inicial) +
+            parseFloat(totales.total_ventas) -
+            parseFloat(totales.total_gastos)
+
+        const diferencia =
+            parseFloat(datos.monto_final) - esperado
+
+        /* ==============================
+           4️⃣ CIERRE DEFINITIVO
+           ============================== */
         await connection.execute(
-            `UPDATE cajas 
-            SET 
-                monto_final = ?,
-                total_ventas = ?,
-                total_efectivo = ?,
-                total_tarjeta_debito = ?,
-                total_tarjeta_credito = ?,
-                total_transferencia = ?,
-                total_cheque = ?,
-                total_gastos = ?,
-                diferencia = ?,
-                estado = 'cerrada',
-                notas = ?,
-                fecha_cierre = NOW()
-            WHERE id = ?`,
+            `UPDATE cajas SET
+                              monto_final = ?,
+                              total_ventas = ?,
+                              total_efectivo = ?,
+                              total_tarjeta_debito = ?,
+                              total_tarjeta_credito = ?,
+                              total_transferencia = ?,
+                              total_cheque = ?,
+                              total_gastos = ?,
+                              diferencia = ?,
+                              notas = ?,
+                              estado = 'cerrada',
+                              fecha_cierre = NOW()
+             WHERE id = ?
+               AND empresa_id = ?
+               AND usuario_id = ?`,
             [
                 datos.monto_final,
-                totalVentasReal,
-                parseFloat(cajaData.total_efectivo_real || 0),
-                parseFloat(cajaData.total_tarjeta_debito_real || 0),
-                parseFloat(cajaData.total_tarjeta_credito_real || 0),
-                parseFloat(cajaData.total_transferencia_real || 0),
-                parseFloat(cajaData.total_cheque_real || 0),
-                totalGastosReal,
+                totales.total_ventas,
+                totales.total_efectivo,
+                totales.total_tarjeta_debito,
+                totales.total_tarjeta_credito,
+                totales.total_transferencia,
+                totales.total_cheque,
+                totales.total_gastos,
                 diferencia,
                 datos.notas,
-                cajaData.id
+                caja.id,
+                empresaId,
+                userId
             ]
         )
 
@@ -470,23 +534,21 @@ export async function cerrarCaja(datos) {
 
         return {
             success: true,
-            mensaje: 'Caja cerrada exitosamente',
-            diferencia: diferencia
+            mensaje: 'Caja cerrada correctamente',
+            diferencia
         }
 
     } catch (error) {
         console.error('Error al cerrar caja:', error)
-        
-        if (connection) {
-            connection.release()
-        }
+        if (connection) connection.release()
 
         return {
             success: false,
-            mensaje: 'Error al cerrar caja'
+            mensaje: 'Error interno al cerrar la caja'
         }
     }
 }
+
 
 export async function obtenerHistorialCajas() {
     let connection
@@ -505,28 +567,27 @@ export async function obtenerHistorialCajas() {
         connection = await db.getConnection()
 
         const [cajas] = await connection.execute(
-            `SELECT 
-                c.id,
-                c.numero_caja,
-                c.fecha_caja,
-                c.monto_inicial,
-                c.monto_final,
-                c.total_ventas,
-                c.total_efectivo,
-                c.total_tarjeta_debito,
-                c.total_tarjeta_credito,
-                c.total_transferencia,
-                c.total_cheque,
-                c.total_gastos,
-                c.diferencia,
-                c.estado,
-                c.fecha_apertura,
-                c.fecha_cierre,
-                c.notas
-            FROM cajas c
-            WHERE c.empresa_id = ? AND c.usuario_id = ?
-            ORDER BY c.fecha_caja DESC, c.fecha_apertura DESC
-            LIMIT 50`,
+            `SELECT c.id,
+                    c.numero_caja,
+                    c.fecha_caja,
+                    c.monto_inicial,
+                    c.monto_final,
+                    c.total_ventas,
+                    c.total_efectivo,
+                    c.total_tarjeta_debito,
+                    c.total_tarjeta_credito,
+                    c.total_transferencia,
+                    c.total_cheque,
+                    c.total_gastos,
+                    c.diferencia,
+                    c.estado,
+                    c.fecha_apertura,
+                    c.fecha_cierre,
+                    c.notas
+             FROM cajas c
+             WHERE c.empresa_id = ?
+               AND c.usuario_id = ?
+             ORDER BY c.fecha_caja DESC, c.fecha_apertura DESC LIMIT 50`,
             [empresaId, userId]
         )
 
@@ -539,7 +600,7 @@ export async function obtenerHistorialCajas() {
 
     } catch (error) {
         console.error('Error al obtener historial:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -579,28 +640,28 @@ export async function obtenerTodasLasCajas() {
         const fechaHoy = new Date().toISOString().split('T')[0]
 
         const [cajas] = await connection.execute(
-            `SELECT 
-                c.id,
-                c.numero_caja,
-                c.fecha_caja,
-                c.monto_inicial,
-                c.monto_final,
-                c.total_ventas,
-                c.total_efectivo,
-                c.total_tarjeta_debito,
-                c.total_tarjeta_credito,
-                c.total_transferencia,
-                c.total_cheque,
-                c.total_gastos,
-                c.diferencia,
-                c.estado,
-                c.fecha_apertura,
-                c.fecha_cierre,
-                u.nombre as usuario_nombre
-            FROM cajas c
-            LEFT JOIN usuarios u ON c.usuario_id = u.id
-            WHERE c.empresa_id = ? AND c.fecha_caja = ?
-            ORDER BY c.numero_caja ASC`,
+            `SELECT c.id,
+                    c.numero_caja,
+                    c.fecha_caja,
+                    c.monto_inicial,
+                    c.monto_final,
+                    c.total_ventas,
+                    c.total_efectivo,
+                    c.total_tarjeta_debito,
+                    c.total_tarjeta_credito,
+                    c.total_transferencia,
+                    c.total_cheque,
+                    c.total_gastos,
+                    c.diferencia,
+                    c.estado,
+                    c.fecha_apertura,
+                    c.fecha_cierre,
+                    u.nombre as usuario_nombre
+             FROM cajas c
+                      LEFT JOIN usuarios u ON c.usuario_id = u.id
+             WHERE c.empresa_id = ?
+               AND c.fecha_caja = ?
+             ORDER BY c.numero_caja ASC`,
             [empresaId, fechaHoy]
         )
 
@@ -613,7 +674,7 @@ export async function obtenerTodasLasCajas() {
 
     } catch (error) {
         console.error('Error al obtener todas las cajas:', error)
-        
+
         if (connection) {
             connection.release()
         }

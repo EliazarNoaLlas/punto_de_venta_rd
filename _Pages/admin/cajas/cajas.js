@@ -1,7 +1,7 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { 
+import {useEffect, useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {
     obtenerCajaActiva,
     obtenerCajasDisponibles,
     abrirCaja,
@@ -19,13 +19,13 @@ export default function CajaPageAdmin() {
     const [cargando, setCargando] = useState(true)
     const [procesando, setProcesando] = useState(false)
     const [userTipo, setUserTipo] = useState('')
-    
+
     const [cajaActiva, setCajaActiva] = useState(null)
     const [cajasDisponibles, setCajasDisponibles] = useState([])
     const [ventasCaja, setVentasCaja] = useState([])
     const [todasLasCajas, setTodasLasCajas] = useState([])
     const [historial, setHistorial] = useState([])
-    
+
     const [vistaActual, setVistaActual] = useState('dashboard')
     const [mostrarModalAbrir, setMostrarModalAbrir] = useState(false)
     const [mostrarModalGasto, setMostrarModalGasto] = useState(false)
@@ -227,15 +227,15 @@ export default function CajaPageAdmin() {
             return
         }
 
-        const esperado = parseFloat(cajaActiva.monto_inicial || 0) + 
-                        parseFloat(cajaActiva.total_ventas || 0) - 
-                        parseFloat(cajaActiva.total_gastos || 0)
-        
+        const esperado = parseFloat(cajaActiva.monto_inicial || 0) +
+            parseFloat(cajaActiva.total_ventas || 0) -
+            parseFloat(cajaActiva.total_gastos || 0)
+
         const diferencia = parseFloat(formCerrar.monto_final) - esperado
 
         const confirmar = window.confirm(
-            diferencia === 0 
-                ? '¿Confirmas el cierre de caja? El monto cuadra perfectamente.' 
+            diferencia === 0
+                ? '¿Confirmas el cierre de caja? El monto cuadra perfectamente.'
                 : `¿Confirmas el cierre de caja? Hay una diferencia de ${formatearMoneda(Math.abs(diferencia))} ${diferencia > 0 ? 'a favor' : 'en contra'}.`
         )
 
@@ -244,6 +244,7 @@ export default function CajaPageAdmin() {
         setProcesando(true)
         try {
             const resultado = await cerrarCaja({
+                caja_id: cajaActiva.id,
                 monto_final: parseFloat(formCerrar.monto_final),
                 notas: formCerrar.notas.trim() || null
             })
@@ -308,14 +309,14 @@ export default function CajaPageAdmin() {
             </div>
 
             <div className={estilos.tabs}>
-                <button 
+                <button
                     className={`${estilos.tab} ${vistaActual === 'dashboard' ? estilos.tabActiva : ''}`}
                     onClick={() => setVistaActual('dashboard')}
                 >
                     <ion-icon name="calculator-outline"></ion-icon>
                     <span>Mi Caja</span>
                 </button>
-                <button 
+                <button
                     className={`${estilos.tab} ${vistaActual === 'historial' ? estilos.tabActiva : ''}`}
                     onClick={() => setVistaActual('historial')}
                 >
@@ -323,7 +324,7 @@ export default function CajaPageAdmin() {
                     <span>Historial</span>
                 </button>
                 {userTipo === 'admin' && (
-                    <button 
+                    <button
                         className={`${estilos.tab} ${vistaActual === 'todas' ? estilos.tabActiva : ''}`}
                         onClick={() => setVistaActual('todas')}
                     >
@@ -364,7 +365,8 @@ export default function CajaPageAdmin() {
                                     </div>
                                     <div className={estilos.estadInfo}>
                                         <span className={estilos.estadLabel}>Monto Inicial</span>
-                                        <span className={estilos.estadValor}>{formatearMoneda(cajaActiva.monto_inicial)}</span>
+                                        <span
+                                            className={estilos.estadValor}>{formatearMoneda(cajaActiva.monto_inicial)}</span>
                                     </div>
                                 </div>
 
@@ -374,7 +376,8 @@ export default function CajaPageAdmin() {
                                     </div>
                                     <div className={estilos.estadInfo}>
                                         <span className={estilos.estadLabel}>Ventas del Dia</span>
-                                        <span className={estilos.estadValor}>{formatearMoneda(cajaActiva.total_ventas)}</span>
+                                        <span
+                                            className={estilos.estadValor}>{formatearMoneda(cajaActiva.total_ventas)}</span>
                                     </div>
                                 </div>
 
@@ -384,7 +387,8 @@ export default function CajaPageAdmin() {
                                     </div>
                                     <div className={estilos.estadInfo}>
                                         <span className={estilos.estadLabel}>Gastos</span>
-                                        <span className={estilos.estadValor}>{formatearMoneda(cajaActiva.total_gastos)}</span>
+                                        <span
+                                            className={estilos.estadValor}>{formatearMoneda(cajaActiva.total_gastos)}</span>
                                     </div>
                                 </div>
 
@@ -396,8 +400,8 @@ export default function CajaPageAdmin() {
                                         <span className={estilos.estadLabel}>Total en Caja</span>
                                         <span className={estilos.estadValor}>
                                             {formatearMoneda(
-                                                parseFloat(cajaActiva.monto_inicial || 0) + 
-                                                parseFloat(cajaActiva.total_ventas || 0) - 
+                                                parseFloat(cajaActiva.monto_inicial || 0) +
+                                                parseFloat(cajaActiva.total_ventas || 0) -
                                                 parseFloat(cajaActiva.total_gastos || 0)
                                             )}
                                         </span>
@@ -414,28 +418,32 @@ export default function CajaPageAdmin() {
                                                 <ion-icon name="cash-outline"></ion-icon>
                                                 <span>Efectivo</span>
                                             </div>
-                                            <span className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_efectivo)}</span>
+                                            <span
+                                                className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_efectivo)}</span>
                                         </div>
                                         <div className={estilos.metodoItem}>
                                             <div className={estilos.metodoInfo}>
                                                 <ion-icon name="card-outline"></ion-icon>
                                                 <span>Tarjeta Debito</span>
                                             </div>
-                                            <span className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_tarjeta_debito)}</span>
+                                            <span
+                                                className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_tarjeta_debito)}</span>
                                         </div>
                                         <div className={estilos.metodoItem}>
                                             <div className={estilos.metodoInfo}>
                                                 <ion-icon name="card-outline"></ion-icon>
                                                 <span>Tarjeta Credito</span>
                                             </div>
-                                            <span className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_tarjeta_credito)}</span>
+                                            <span
+                                                className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_tarjeta_credito)}</span>
                                         </div>
                                         <div className={estilos.metodoItem}>
                                             <div className={estilos.metodoInfo}>
                                                 <ion-icon name="sync-outline"></ion-icon>
                                                 <span>Transferencia</span>
                                             </div>
-                                            <span className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_transferencia)}</span>
+                                            <span
+                                                className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_transferencia)}</span>
                                         </div>
                                         {cajaActiva.total_cheque > 0 && (
                                             <div className={estilos.metodoItem}>
@@ -443,7 +451,8 @@ export default function CajaPageAdmin() {
                                                     <ion-icon name="document-text-outline"></ion-icon>
                                                     <span>Cheque</span>
                                                 </div>
-                                                <span className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_cheque)}</span>
+                                                <span
+                                                    className={estilos.metodoMonto}>{formatearMoneda(cajaActiva.total_cheque)}</span>
                                             </div>
                                         )}
                                     </div>
@@ -454,11 +463,13 @@ export default function CajaPageAdmin() {
                                     <div className={estilos.infoGrid}>
                                         <div className={estilos.infoItem}>
                                             <span className={estilos.infoLabel}>Fecha</span>
-                                            <span className={estilos.infoValor}>{formatearFecha(cajaActiva.fecha_apertura)}</span>
+                                            <span
+                                                className={estilos.infoValor}>{formatearFecha(cajaActiva.fecha_apertura)}</span>
                                         </div>
                                         <div className={estilos.infoItem}>
                                             <span className={estilos.infoLabel}>Hora Apertura</span>
-                                            <span className={estilos.infoValor}>{formatearHora(cajaActiva.fecha_apertura)}</span>
+                                            <span
+                                                className={estilos.infoValor}>{formatearHora(cajaActiva.fecha_apertura)}</span>
                                         </div>
                                         <div className={estilos.infoItem}>
                                             <span className={estilos.infoLabel}>Ventas Realizadas</span>
@@ -480,11 +491,13 @@ export default function CajaPageAdmin() {
                                             <div key={venta.id} className={`${estilos.ventaItem} ${estilos[tema]}`}>
                                                 <div className={estilos.ventaInfo}>
                                                     <span className={estilos.ventaNcf}>{venta.ncf}</span>
-                                                    <span className={estilos.ventaHora}>{formatearHora(venta.fecha_venta)}</span>
+                                                    <span
+                                                        className={estilos.ventaHora}>{formatearHora(venta.fecha_venta)}</span>
                                                 </div>
                                                 <div className={estilos.ventaDetalle}>
                                                     <span className={estilos.ventaMetodo}>{venta.metodo_pago}</span>
-                                                    <span className={estilos.ventaTotal}>{formatearMoneda(venta.total)}</span>
+                                                    <span
+                                                        className={estilos.ventaTotal}>{formatearMoneda(venta.total)}</span>
                                                 </div>
                                             </div>
                                         ))}
@@ -525,24 +538,29 @@ export default function CajaPageAdmin() {
                                     <div className={estilos.historialHeader}>
                                         <div>
                                             <span className={estilos.historialCaja}>Caja {caja.numero_caja}</span>
-                                            <span className={estilos.historialFecha}>{formatearFecha(caja.fecha_caja)}</span>
+                                            <span
+                                                className={estilos.historialFecha}>{formatearFecha(caja.fecha_caja)}</span>
                                         </div>
-                                        <span className={`${estilos.badge} ${caja.estado === 'abierta' ? estilos.activo : estilos.inactivo}`}>
+                                        <span
+                                            className={`${estilos.badge} ${caja.estado === 'abierta' ? estilos.activo : estilos.inactivo}`}>
                                             {caja.estado}
                                         </span>
                                     </div>
                                     <div className={estilos.historialDetalles}>
                                         <div className={estilos.historialStat}>
                                             <span className={estilos.historialLabel}>Monto Inicial</span>
-                                            <span className={estilos.historialValor}>{formatearMoneda(caja.monto_inicial)}</span>
+                                            <span
+                                                className={estilos.historialValor}>{formatearMoneda(caja.monto_inicial)}</span>
                                         </div>
                                         <div className={estilos.historialStat}>
                                             <span className={estilos.historialLabel}>Ventas</span>
-                                            <span className={estilos.historialValor}>{formatearMoneda(caja.total_ventas)}</span>
+                                            <span
+                                                className={estilos.historialValor}>{formatearMoneda(caja.total_ventas)}</span>
                                         </div>
                                         <div className={estilos.historialStat}>
                                             <span className={estilos.historialLabel}>Gastos</span>
-                                            <span className={estilos.historialValor}>{formatearMoneda(caja.total_gastos)}</span>
+                                            <span
+                                                className={estilos.historialValor}>{formatearMoneda(caja.total_gastos)}</span>
                                         </div>
                                         {caja.estado === 'cerrada' && (
                                             <>
@@ -550,19 +568,21 @@ export default function CajaPageAdmin() {
                                                     <span className={estilos.historialLabel}>Esperado</span>
                                                     <span className={estilos.historialValor}>
                                                         {formatearMoneda(
-                                                            parseFloat(caja.monto_inicial || 0) + 
-                                                            parseFloat(caja.total_ventas || 0) - 
+                                                            parseFloat(caja.monto_inicial || 0) +
+                                                            parseFloat(caja.total_ventas || 0) -
                                                             parseFloat(caja.total_gastos || 0)
                                                         )}
                                                     </span>
                                                 </div>
                                                 <div className={estilos.historialStat}>
                                                     <span className={estilos.historialLabel}>Real</span>
-                                                    <span className={estilos.historialValor}>{formatearMoneda(caja.monto_final)}</span>
+                                                    <span
+                                                        className={estilos.historialValor}>{formatearMoneda(caja.monto_final)}</span>
                                                 </div>
                                                 <div className={estilos.historialStat}>
                                                     <span className={estilos.historialLabel}>Diferencia</span>
-                                                    <span className={`${estilos.historialValor} ${parseFloat(caja.diferencia || 0) === 0 ? estilos.success : estilos.danger}`}>
+                                                    <span
+                                                        className={`${estilos.historialValor} ${parseFloat(caja.diferencia || 0) === 0 ? estilos.success : estilos.danger}`}>
                                                         {formatearMoneda(caja.diferencia)}
                                                     </span>
                                                 </div>
@@ -590,7 +610,8 @@ export default function CajaPageAdmin() {
                                 <div key={caja.id} className={`${estilos.cajaCard} ${estilos[tema]}`}>
                                     <div className={estilos.cajaCardHeader}>
                                         <h3>Caja {caja.numero_caja}</h3>
-                                        <span className={`${estilos.badge} ${caja.estado === 'abierta' ? estilos.activo : estilos.inactivo}`}>
+                                        <span
+                                            className={`${estilos.badge} ${caja.estado === 'abierta' ? estilos.activo : estilos.inactivo}`}>
                                             {caja.estado}
                                         </span>
                                     </div>
@@ -602,14 +623,15 @@ export default function CajaPageAdmin() {
                                         <div className={estilos.cajaCardStats}>
                                             <div className={estilos.cajaCardStat}>
                                                 <span className={estilos.cajaCardLabel}>Ventas</span>
-                                                <span className={estilos.cajaCardValor}>{formatearMoneda(caja.total_ventas)}</span>
+                                                <span
+                                                    className={estilos.cajaCardValor}>{formatearMoneda(caja.total_ventas)}</span>
                                             </div>
                                             <div className={estilos.cajaCardStat}>
                                                 <span className={estilos.cajaCardLabel}>En Caja</span>
                                                 <span className={estilos.cajaCardValor}>
                                                     {formatearMoneda(
-                                                        parseFloat(caja.monto_inicial || 0) + 
-                                                        parseFloat(caja.total_ventas || 0) - 
+                                                        parseFloat(caja.monto_inicial || 0) +
+                                                        parseFloat(caja.total_ventas || 0) -
                                                         parseFloat(caja.total_gastos || 0)
                                                     )}
                                                 </span>
@@ -665,7 +687,8 @@ export default function CajaPageAdmin() {
                                 </div>
                             </div>
                             <div className={estilos.modalFooter}>
-                                <button type="button" onClick={() => setMostrarModalAbrir(false)} className={estilos.btnCancelar}>
+                                <button type="button" onClick={() => setMostrarModalAbrir(false)}
+                                        className={estilos.btnCancelar}>
                                     Cancelar
                                 </button>
                                 <button type="submit" className={estilos.btnGuardar} disabled={procesando}>
@@ -728,7 +751,10 @@ export default function CajaPageAdmin() {
                                     <input
                                         type="text"
                                         value={formGasto.comprobante_numero}
-                                        onChange={(e) => setFormGasto({...formGasto, comprobante_numero: e.target.value})}
+                                        onChange={(e) => setFormGasto({
+                                            ...formGasto,
+                                            comprobante_numero: e.target.value
+                                        })}
                                         placeholder="Ej: FAC-001"
                                         disabled={procesando}
                                     />
@@ -745,7 +771,8 @@ export default function CajaPageAdmin() {
                                 </div>
                             </div>
                             <div className={estilos.modalFooter}>
-                                <button type="button" onClick={() => setMostrarModalGasto(false)} className={estilos.btnCancelar}>
+                                <button type="button" onClick={() => setMostrarModalGasto(false)}
+                                        className={estilos.btnCancelar}>
                                     Cancelar
                                 </button>
                                 <button type="submit" className={estilos.btnGuardar} disabled={procesando}>
@@ -789,8 +816,8 @@ export default function CajaPageAdmin() {
                                     <div className={`${estilos.resumenItem} ${estilos.total}`}>
                                         <span>Esperado en Caja:</span>
                                         <span>{formatearMoneda(
-                                            parseFloat(cajaActiva.monto_inicial || 0) + 
-                                            parseFloat(cajaActiva.total_ventas || 0) - 
+                                            parseFloat(cajaActiva.monto_inicial || 0) +
+                                            parseFloat(cajaActiva.total_ventas || 0) -
                                             parseFloat(cajaActiva.total_gastos || 0)
                                         )}</span>
                                     </div>
@@ -813,17 +840,17 @@ export default function CajaPageAdmin() {
                                         <span>Diferencia:</span>
                                         <span className={
                                             (parseFloat(formCerrar.monto_final) - (
-                                                parseFloat(cajaActiva.monto_inicial || 0) + 
-                                                parseFloat(cajaActiva.total_ventas || 0) - 
+                                                parseFloat(cajaActiva.monto_inicial || 0) +
+                                                parseFloat(cajaActiva.total_ventas || 0) -
                                                 parseFloat(cajaActiva.total_gastos || 0)
-                                            )) === 0 
-                                            ? estilos.success 
-                                            : estilos.danger
+                                            )) === 0
+                                                ? estilos.success
+                                                : estilos.danger
                                         }>
                                             {formatearMoneda(
                                                 parseFloat(formCerrar.monto_final) - (
-                                                    parseFloat(cajaActiva.monto_inicial || 0) + 
-                                                    parseFloat(cajaActiva.total_ventas || 0) - 
+                                                    parseFloat(cajaActiva.monto_inicial || 0) +
+                                                    parseFloat(cajaActiva.total_ventas || 0) -
                                                     parseFloat(cajaActiva.total_gastos || 0)
                                                 )
                                             )}
@@ -842,7 +869,8 @@ export default function CajaPageAdmin() {
                                 </div>
                             </div>
                             <div className={estilos.modalFooter}>
-                                <button type="button" onClick={() => setMostrarModalCerrar(false)} className={estilos.btnCancelar}>
+                                <button type="button" onClick={() => setMostrarModalCerrar(false)}
+                                        className={estilos.btnCancelar}>
                                     Cancelar
                                 </button>
                                 <button type="submit" className={estilos.btnGuardar} disabled={procesando}>

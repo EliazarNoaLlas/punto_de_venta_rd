@@ -3,6 +3,8 @@
   <component name="DataSourcePerFileMappings">
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/41f1b61e-406c-40ae-9d54-6593eba6dd34/console.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
     <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/41f1b61e-406c-40ae-9d54-6593eba6dd34/console_1.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/41f1b61e-406c-40ae-9d54-6593eba6dd34/console_2.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
+    <file url="file://$APPLICATION_CONFIG_DIR$/consoles/db/41f1b61e-406c-40ae-9d54-6593eba6dd34/console_3.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_catalogo_b2b.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_catalogo_superadmin.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_terminos_condiciones.sql" value="41f1b61e-406c-40ae-9d54-6593eba6dd34" />
