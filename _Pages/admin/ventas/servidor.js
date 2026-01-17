@@ -43,11 +43,10 @@ export async function obtenerDatosCaja() {
             FROM cajas
             WHERE empresa_id = ? 
             AND usuario_id = ? 
-            AND fecha_caja = ?
             AND estado = 'abierta'
             ORDER BY fecha_apertura DESC
             LIMIT 1`,
-            [empresaId, userId, fechaHoy]
+            [empresaId, userId]
         )
 
         connection.release()
@@ -67,7 +66,7 @@ export async function obtenerDatosCaja() {
 
     } catch (error) {
         console.error('Error al obtener datos de caja:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -161,7 +160,7 @@ export async function abrirCaja(montoInicial) {
 
     } catch (error) {
         console.error('Error al abrir caja:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -171,6 +170,20 @@ export async function abrirCaja(montoInicial) {
             mensaje: 'Error al abrir la caja'
         }
     }
+}
+
+export async function obtenerCajaAbierta(connection, empresaId, userId) {
+    const [rows] = await connection.execute(
+        `SELECT id
+         FROM cajas
+         WHERE empresa_id = ?
+         AND usuario_id = ?
+         AND estado = 'abierta'
+         LIMIT 1`,
+        [empresaId, userId]
+    )
+
+    return rows.length ? rows[0].id : null
 }
 
 export async function obtenerVentas(pagina = 1, limite = 10, filtroEstado = 'todos', filtroMetodo = 'todos', fechaInicio = null, fechaFin = null) {
@@ -195,9 +208,27 @@ export async function obtenerVentas(pagina = 1, limite = 10, filtroEstado = 'tod
 
         connection = await db.getConnection()
 
+        // Obtener caja abierta para filtrar ventas
+        const cajaId = await obtenerCajaAbierta(connection, empresaId, userId)
+
+        if (!cajaId) {
+            connection.release()
+            return {
+                success: true,
+                ventas: [],
+                paginacion: {
+                    pagina: paginaNum,
+                    limite: limiteNum,
+                    total: 0,
+                    totalPaginas: 0
+                },
+                mensaje: 'No hay caja abierta'
+            }
+        }
+
         // Construir condiciones WHERE
-        const condiciones = ['v.empresa_id = ?']
-        const parametros = [empresaId]
+        const condiciones = ['v.empresa_id = ?', 'v.caja_id = ?']
+        const parametros = [empresaId, cajaId]
 
         if (filtroEstado !== 'todos') {
             condiciones.push('v.estado = ?')
@@ -219,7 +250,7 @@ export async function obtenerVentas(pagina = 1, limite = 10, filtroEstado = 'tod
             parametros.push(fechaFin)
         }
 
-        const whereClause = condiciones.length > 0 ? `WHERE ${condiciones.join(' AND ')}` : 'WHERE v.empresa_id = ?'
+        const whereClause = `WHERE ${condiciones.join(' AND ')}`
 
         // Obtener total de ventas para paginación
         const [totalResult] = await connection.execute(
@@ -278,12 +309,13 @@ export async function obtenerVentas(pagina = 1, limite = 10, filtroEstado = 'tod
                 limite: limiteNum,
                 total: totalVentas,
                 totalPaginas: totalPaginas
-            }
+            },
+            cajaId: cajaId
         }
 
     } catch (error) {
         console.error('Error al obtener ventas:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -314,7 +346,7 @@ export async function anularVenta(ventaId, razonAnulacion) {
         await connection.beginTransaction()
 
         const [venta] = await connection.execute(
-            `SELECT id, estado, empresa_id FROM ventas WHERE id = ? AND empresa_id = ?`,
+            `SELECT id, estado, empresa_id, caja_id, total, metodo_pago FROM ventas WHERE id = ? AND empresa_id = ?`,
             [ventaId, empresaId]
         )
 
@@ -336,6 +368,9 @@ export async function anularVenta(ventaId, razonAnulacion) {
             }
         }
 
+        const ventaData = venta[0]
+
+        // Revertir stock
         const [detalles] = await connection.execute(
             `SELECT producto_id, cantidad FROM detalle_ventas WHERE venta_id = ?`,
             [ventaId]
@@ -379,6 +414,30 @@ export async function anularVenta(ventaId, razonAnulacion) {
             )
         }
 
+        // ACTUALIZAR CAJA: Revertir montos
+        if (ventaData.caja_id) {
+            await connection.execute(
+                `UPDATE cajas
+                 SET
+                   total_ventas = total_ventas - ?,
+                   total_efectivo = total_efectivo - IF(? = 'efectivo', ?, 0),
+                   total_tarjeta_debito = total_tarjeta_debito - IF(? = 'tarjeta_debito', ?, 0),
+                   total_tarjeta_credito = total_tarjeta_credito - IF(? = 'tarjeta_credito', ?, 0),
+                   total_transferencia = total_transferencia - IF(? = 'transferencia', ?, 0),
+                   total_cheque = total_cheque - IF(? = 'cheque', ?, 0)
+                 WHERE id = ?`,
+                [
+                    ventaData.total,
+                    ventaData.metodo_pago, ventaData.total,
+                    ventaData.metodo_pago, ventaData.total,
+                    ventaData.metodo_pago, ventaData.total,
+                    ventaData.metodo_pago, ventaData.total,
+                    ventaData.metodo_pago, ventaData.total,
+                    ventaData.caja_id
+                ]
+            )
+        }
+
         await connection.execute(
             `UPDATE ventas 
             SET estado = 'anulada', razon_anulacion = ? 
@@ -396,7 +455,7 @@ export async function anularVenta(ventaId, razonAnulacion) {
 
     } catch (error) {
         console.error('Error al anular venta:', error)
-        
+
         if (connection) {
             await connection.rollback()
             connection.release()

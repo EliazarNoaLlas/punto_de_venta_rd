@@ -1,11 +1,11 @@
-// app/page.js
 import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
-import VentasAdmin from "@/_Pages/admin/ventas/ventas";
+import NuevaVenta from "@/_Pages/admin/ventas/nueva/nueva";
+
 export default function page() {
   return (
     <div>
       <ClienteWrapper>
-        <VentasAdmin></VentasAdmin>
+        <NuevaVenta></NuevaVenta>
       </ClienteWrapper>
     </div>
   );

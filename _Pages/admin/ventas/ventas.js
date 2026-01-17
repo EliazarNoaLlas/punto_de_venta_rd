@@ -47,10 +47,10 @@ export default function VentasAdmin() {
         const checkVistaMovil = () => {
             setVistaMovil(window.innerWidth <= 1024)
         }
-        
+
         checkVistaMovil()
         window.addEventListener('resize', checkVistaMovil)
-        
+
         return () => window.removeEventListener('resize', checkVistaMovil)
     }, [])
 
@@ -119,7 +119,7 @@ export default function VentasAdmin() {
 
     const manejarAbrirCaja = async (e) => {
         e.preventDefault()
-        
+
         if (!montoInicial || parseFloat(montoInicial) < 0) {
             alert('Por favor ingresa un monto inicial valido')
             return
@@ -146,7 +146,7 @@ export default function VentasAdmin() {
 
     const manejarAnularVenta = async (ventaId, numeroInterno) => {
         const razon = prompt(`Ingresa la razon de anulacion para la venta ${numeroInterno}:`)
-        
+
         if (!razon || razon.trim() === '') {
             alert('Debes proporcionar una razon para anular la venta')
             return
@@ -176,10 +176,10 @@ export default function VentasAdmin() {
     // Filtro de búsqueda en el cliente (para búsqueda rápida sin recargar)
     const ventasFiltradas = ventas.filter(venta => {
         if (!busqueda) return true
-        
+
         return venta.vendedor_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-               venta.numero_interno.toLowerCase().includes(busqueda.toLowerCase()) ||
-               venta.cliente_nombre?.toLowerCase().includes(busqueda.toLowerCase())
+            venta.numero_interno.toLowerCase().includes(busqueda.toLowerCase()) ||
+            venta.cliente_nombre?.toLowerCase().includes(busqueda.toLowerCase())
     })
 
     const formatearMoneda = (monto) => {
@@ -246,7 +246,7 @@ export default function VentasAdmin() {
                         </div>
                         <h2>Caja Cerrada</h2>
                         <p>Para comenzar a realizar ventas, primero debes abrir la caja del dia</p>
-                        <button 
+                        <button
                             className={estilos.btnAbrirCaja}
                             onClick={() => setMostrarModalCaja(true)}
                         >
@@ -261,7 +261,7 @@ export default function VentasAdmin() {
                         <div className={`${estilos.modal} ${estilos[tema]}`}>
                             <div className={estilos.modalHeader}>
                                 <h2>Abrir Caja</h2>
-                                <button 
+                                <button
                                     className={estilos.btnCerrar}
                                     onClick={() => !procesando && setMostrarModalCaja(false)}
                                     disabled={procesando}
@@ -326,7 +326,7 @@ export default function VentasAdmin() {
                     <h1 className={estilos.titulo}>Ventas</h1>
                     <p className={estilos.subtitulo}>Gestiona las ventas y comprobantes fiscales</p>
                 </div>
-                <Link href="/admin/ventas/nuevo" className={estilos.btnNuevo}>
+                <Link href="/admin/ventas/nueva" className={estilos.btnNuevo}>
                     <ion-icon name="add-circle-outline"></ion-icon>
                     <span>Nueva Venta</span>
                 </Link>
@@ -473,7 +473,7 @@ export default function VentasAdmin() {
                 <div className={estilos.listaMovil}>
                     {ventasFiltradas.map((venta) => {
                         const tieneDespachoPendiente = venta.tipo_entrega === 'parcial' && venta.despacho_completo === 0 && venta.estado === 'emitida'
-                        
+
                         return (
                             <div key={venta.id} className={`${estilos.cardMovil} ${estilos[tema]}`}>
                                 <div className={estilos.cardHeader}>
@@ -566,7 +566,7 @@ export default function VentasAdmin() {
                     <div className={estilos.tablaBody}>
                         {ventasFiltradas.map((venta) => {
                             const tieneDespachoPendiente = venta.tipo_entrega === 'parcial' && venta.despacho_completo === 0 && venta.estado === 'emitida'
-                            
+
                             return (
                                 <div key={venta.id} className={`${estilos.fila} ${estilos[tema]}`}>
                                     <div className={estilos.columna}>
@@ -669,7 +669,7 @@ export default function VentasAdmin() {
                         >
                             <ion-icon name="chevron-back-outline"></ion-icon>
                         </button>
-                        
+
                         <div className={estilos.numerosPagina}>
                             {Array.from({ length: Math.min(5, totalPaginas) }, (_, i) => {
                                 let numeroPagina
@@ -682,7 +682,7 @@ export default function VentasAdmin() {
                                 } else {
                                     numeroPagina = paginaActual - 2 + i
                                 }
-                                
+
                                 return (
                                     <button
                                         key={numeroPagina}
@@ -698,7 +698,7 @@ export default function VentasAdmin() {
                                 )
                             })}
                         </div>
-                        
+
                         <button
                             className={estilos.btnPaginacion}
                             onClick={() => {

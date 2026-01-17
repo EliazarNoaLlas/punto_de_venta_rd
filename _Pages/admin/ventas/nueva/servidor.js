@@ -2,6 +2,7 @@
 
 import db from "@/_DB/db"
 import { cookies } from 'next/headers'
+import { obtenerCajaAbierta } from '../servidor'
 
 export async function obtenerDatosVenta() {
     let connection
@@ -75,7 +76,7 @@ export async function obtenerDatosVenta() {
 
     } catch (error) {
         console.error('Error al obtener datos de venta:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -136,7 +137,7 @@ export async function buscarProductos(termino) {
 
     } catch (error) {
         console.error('Error al buscar productos:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -193,7 +194,7 @@ export async function buscarClientes(termino) {
 
     } catch (error) {
         console.error('Error al buscar clientes:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -270,7 +271,7 @@ export async function crearClienteRapido(nombre) {
 
     } catch (error) {
         console.error('Error al crear cliente rapido:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -294,6 +295,20 @@ export async function crearVenta(datosVenta) {
             return {
                 success: false,
                 mensaje: 'Sesion invalida'
+            }
+        }
+
+        if (!datosVenta.metodo_pago) {
+            return {
+                success: false,
+                mensaje: 'Método de pago requerido'
+            }
+        }
+
+        if (datosVenta.metodo_pago === 'efectivo' && datosVenta.efectivo_recibido < datosVenta.total) {
+            return {
+                success: false,
+                mensaje: 'Efectivo insuficiente'
             }
         }
 
@@ -379,16 +394,10 @@ export async function crearVenta(datosVenta) {
             }
         }
 
-        // Obtener caja activa
-        const fechaHoy = new Date().toISOString().split('T')[0]
-        const [cajaActiva] = await connection.execute(
-            `SELECT id FROM cajas 
-            WHERE empresa_id = ? AND usuario_id = ? AND fecha_caja = ? AND estado = 'abierta'
-            LIMIT 1`,
-            [empresaId, userId, fechaHoy]
-        )
+        // Obtener caja activa (usando la nueva lógica compartida)
+        const cajaId = await obtenerCajaAbierta(connection, empresaId, userId)
 
-        if (cajaActiva.length === 0) {
+        if (!cajaId) {
             await connection.rollback()
             connection.release()
             return {
@@ -396,8 +405,6 @@ export async function crearVenta(datosVenta) {
                 mensaje: 'No tienes una caja abierta. Abre una caja antes de realizar ventas.'
             }
         }
-
-        const cajaId = cajaActiva[0].id
         const hayDespachoParcial = datosVenta.tipo_entrega === 'parcial'
         const despachoCompleto = !hayDespachoParcial
 
@@ -443,6 +450,28 @@ export async function crearVenta(datosVenta) {
                 datosVenta.efectivo_recibido,
                 datosVenta.cambio,
                 datosVenta.notas
+            ]
+        )
+
+        // ACTUALIZAR TOTALES DE CAJA (CRÍTICO PARA POS)
+        await connection.execute(
+            `UPDATE cajas
+             SET
+                total_ventas = total_ventas + ?,
+                total_efectivo = total_efectivo + IF(? = 'efectivo', ?, 0),
+                total_tarjeta_debito = total_tarjeta_debito + IF(? = 'tarjeta_debito', ?, 0),
+                total_tarjeta_credito = total_tarjeta_credito + IF(? = 'tarjeta_credito', ?, 0),
+                total_transferencia = total_transferencia + IF(? = 'transferencia', ?, 0),
+                total_cheque = total_cheque + IF(? = 'cheque', ?, 0)
+             WHERE id = ?`,
+            [
+                datosVenta.total,
+                datosVenta.metodo_pago, datosVenta.total,
+                datosVenta.metodo_pago, datosVenta.total,
+                datosVenta.metodo_pago, datosVenta.total,
+                datosVenta.metodo_pago, datosVenta.total,
+                datosVenta.metodo_pago, datosVenta.total,
+                cajaId
             ]
         )
 
@@ -640,7 +669,7 @@ export async function crearVenta(datosVenta) {
 
     } catch (error) {
         console.error('Error al crear venta:', error)
-        
+
         if (connection) {
             await connection.rollback()
             connection.release()
