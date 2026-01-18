@@ -1,7 +1,8 @@
 "use client"
-import {useEffect, useState} from 'react'
-import {useRouter} from 'next/navigation'
-import {obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta} from './servidor'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta } from './servidor'
+import { obtenerDatosCaja, abrirCaja } from '../servidor'
 import estilos from './nueva.module.css'
 
 export default function NuevaVentaOptimizada() {
@@ -12,6 +13,12 @@ export default function NuevaVentaOptimizada() {
     const [datosEmpresa, setDatosEmpresa] = useState(null)
     const [tiposComprobante, setTiposComprobante] = useState([])
     const [tiposDocumento, setTiposDocumento] = useState([])
+
+    // Estados de Caja
+    const [cajaAbierta, setCajaAbierta] = useState(false)
+    const [mostrarModalCaja, setMostrarModalCaja] = useState(false)
+    const [montoInicial, setMontoInicial] = useState('')
+    const [datosCaja, setDatosCaja] = useState(null)
 
     const [busquedaProducto, setBusquedaProducto] = useState('')
     const [productos, setProductos] = useState([])
@@ -43,10 +50,10 @@ export default function NuevaVentaOptimizada() {
     })
 
     const tiposExtra = [
-        {valor: 'ingrediente', nombre: 'Ingrediente Extra'},
-        {valor: 'delivery', nombre: 'Delivery'},
-        {valor: 'propina', nombre: 'Propina'},
-        {valor: 'otro', nombre: 'Otro'}
+        { valor: 'ingrediente', nombre: 'Ingrediente Extra' },
+        { valor: 'delivery', nombre: 'Delivery' },
+        { valor: 'propina', nombre: 'Propina' },
+        { valor: 'otro', nombre: 'Otro' }
     ]
 
     useEffect(() => {
@@ -83,24 +90,70 @@ export default function NuevaVentaOptimizada() {
 
     const cargarDatosIniciales = async () => {
         try {
-            const resultado = await obtenerDatosVenta()
-            if (resultado.success) {
-                setDatosEmpresa(resultado.empresa)
-                setTiposComprobante(resultado.tiposComprobante)
-                setTiposDocumento(resultado.tiposDocumento)
-                if (resultado.tiposComprobante.length > 0) {
-                    setTipoComprobanteId(resultado.tiposComprobante[0].id)
+            const [ventaResult, cajaResult] = await Promise.all([
+                obtenerDatosVenta(),
+                obtenerDatosCaja()
+            ])
+
+            if (ventaResult.success) {
+                setDatosEmpresa(ventaResult.empresa)
+                setTiposComprobante(ventaResult.tiposComprobante)
+                setTiposDocumento(ventaResult.tiposDocumento)
+                if (ventaResult.tiposComprobante.length > 0) {
+                    setTipoComprobanteId(ventaResult.tiposComprobante[0].id)
                 }
             } else {
-                alert(resultado.mensaje || 'Error al cargar datos')
+                alert(ventaResult.mensaje || 'Error al cargar datos')
                 router.push('/admin/ventas')
             }
+
+            if (cajaResult.success) {
+                if (cajaResult.cajaAbierta) {
+                    setCajaAbierta(true)
+                    setDatosCaja(cajaResult.caja)
+                } else {
+                    setCajaAbierta(false)
+                    setMostrarModalCaja(true)
+                }
+            }
+
         } catch (error) {
             console.error('Error al cargar datos:', error)
             alert('Error al cargar datos iniciales')
-            router.push('/admin/ventas')
+            // router.push('/admin/ventas') // No redirigir obligatoriamente, permitir intento de recarga o abrir caja
         } finally {
             setCargando(false)
+        }
+    }
+
+    const manejarAbrirCaja = async (e) => {
+        e.preventDefault()
+
+        const monto = parseFloat(montoInicial)
+
+        if (isNaN(monto) || monto < 0) {
+            alert('Ingresa un monto inicial válido')
+            return
+        }
+
+        setProcesando(true)
+
+        try {
+            const resultado = await abrirCaja(monto)
+
+            if (resultado.success) {
+                setCajaAbierta(true)
+                setDatosCaja(resultado.caja)
+                setMostrarModalCaja(false)
+                setMontoInicial('')
+            } else {
+                alert(resultado.mensaje || 'No se pudo abrir la caja')
+            }
+        } catch (error) {
+            console.error(error)
+            alert('Error al abrir la caja')
+        } finally {
+            setProcesando(false)
         }
     }
 
@@ -128,7 +181,7 @@ export default function NuevaVentaOptimizada() {
         if (existe) {
             setProductosVenta(productosVenta.map(p =>
                 p.id === producto.id
-                    ? {...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1}
+                    ? { ...p, cantidad: p.cantidad + 1, cantidadDespachar: (p.cantidadDespachar || p.cantidad) + 1 }
                     : p
             ))
         } else {
@@ -170,7 +223,7 @@ export default function NuevaVentaOptimizada() {
 
     const actualizarPrecio = (productoId, nuevoPrecio) => {
         setProductosVenta(productosVenta.map(p =>
-            p.id === productoId ? {...p, precio_venta_usado: parseFloat(nuevoPrecio) || 0} : p
+            p.id === productoId ? { ...p, precio_venta_usado: parseFloat(nuevoPrecio) || 0 } : p
         ))
     }
 
@@ -190,7 +243,7 @@ export default function NuevaVentaOptimizada() {
 
     const toggleAplicaItbis = (productoId) => {
         setProductosVenta(productosVenta.map(p =>
-            p.id === productoId ? {...p, aplica_itbis: !p.aplica_itbis} : p
+            p.id === productoId ? { ...p, aplica_itbis: !p.aplica_itbis } : p
         ))
     }
 
@@ -198,7 +251,7 @@ export default function NuevaVentaOptimizada() {
         setProductosVenta(productosVenta.map(p => {
             if (p.id === productoId) {
                 const cantidadValida = Math.min(Math.max(1, nuevaCantidad), p.cantidad)
-                return {...p, cantidadDespachar: cantidadValida}
+                return { ...p, cantidadDespachar: cantidadValida }
             }
             return p
         }))
@@ -402,6 +455,10 @@ export default function NuevaVentaOptimizada() {
     }
 
     const procesarVenta = async () => {
+        if (!cajaAbierta) {
+            alert('Debes abrir la caja antes de realizar una venta')
+            return
+        }
         if (!validarVenta()) return
         setProcesando(true)
         try {
@@ -492,6 +549,86 @@ export default function NuevaVentaOptimizada() {
         )
     }
 
+    if (!cajaAbierta && !cargando) {
+        return (
+            <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>
+                {mostrarModalCaja && (
+                    <div className={estilos.modalOverlay}>
+                        <div className={`${estilos.modalCaja} ${estilos[tema]}`}>
+                            <div className={estilos.modalHeader}>
+                                <div className={estilos.modalHeaderIcon}>
+                                    <ion-icon name="cash-outline"></ion-icon>
+                                </div>
+                                <div className={estilos.modalHeaderText}>
+                                    <h2>Abrir Caja</h2>
+                                    <span>Inicia operaciones del día</span>
+                                </div>
+                            </div>
+
+                            <div className={estilos.modalBody}>
+                                <p className={estilos.modalDescripcion}>
+                                    Ingresa el monto con el que iniciarás las operaciones del día.
+                                    Este monto será el efectivo inicial disponible en caja.
+                                </p>
+
+                                <form onSubmit={manejarAbrirCaja} className={estilos.formCaja}>
+                                    <div className={estilos.grupoInput}>
+                                        <label>Monto Inicial (RD$)</label>
+                                        <div className={estilos.inputConIcono}>
+                                            <span className={estilos.iconoMoneda}>RD$</span>
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={montoInicial}
+                                                onChange={(e) => setMontoInicial(e.target.value)}
+                                                placeholder="0.00"
+                                                autoFocus
+                                                required
+                                                className={estilos.inputMontoGrande}
+                                                disabled={procesando}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className={estilos.modalAcciones}>
+                                        <button
+                                            type="button"
+                                            onClick={() => router.push('/admin/ventas')}
+                                            className={estilos.btnCancelar}
+                                            disabled={procesando}
+                                        >
+                                            <ion-icon name="arrow-back-outline"></ion-icon>
+                                            Cancelar
+                                        </button>
+
+                                        <button
+                                            type="submit"
+                                            className={estilos.btnPrimario}
+                                            disabled={procesando}
+                                        >
+                                            {procesando ? (
+                                                <>
+                                                    <ion-icon name="hourglass-outline" className={estilos.iconRotate}></ion-icon>
+                                                    Abriendo...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <ion-icon name="lock-open-outline"></ion-icon>
+                                                    Abrir Caja
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    }
+
     return (
         <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>
             {/* HEADER STICKY CON ACCIONES PRINCIPALES */}
@@ -502,8 +639,8 @@ export default function NuevaVentaOptimizada() {
                         <h1>Registro de Venta</h1>
                     </div>
                     <span className={estilos.pageSubtitle}>
-                    Punto de venta · Emisión de comprobantes
-                </span>
+                        Punto de venta · Emisión de comprobantes
+                    </span>
                 </div>
 
                 <div className={estilos.headerLeft}>
@@ -530,7 +667,11 @@ export default function NuevaVentaOptimizada() {
 
                     <button
                         onClick={procesarVenta}
-                        disabled={procesando || (productosVenta.length === 0 && productosExtra.length === 0)}
+                        disabled={
+                            procesando ||
+                            !cajaAbierta ||
+                            (productosVenta.length === 0 && productosExtra.length === 0)
+                        }
                         className={estilos.btnProcesarHeader}
                     >
                         {procesando ? (
@@ -656,12 +797,12 @@ export default function NuevaVentaOptimizada() {
                                         onClick={() => seleccionarCliente(cliente)}
                                     >
                                         <div className={estilos.clienteInfo}>
-                                <span className={estilos.clienteNombre}>
-                                    {cliente.nombre}
-                                </span>
+                                            <span className={estilos.clienteNombre}>
+                                                {cliente.nombre}
+                                            </span>
                                             <span className={estilos.clienteDoc}>
-                                    {cliente.numero_documento}
-                                </span>
+                                                {cliente.numero_documento}
+                                            </span>
                                         </div>
                                     </div>
                                 ))}
@@ -917,7 +1058,7 @@ export default function NuevaVentaOptimizada() {
 
                                         return (
                                             <div key={extra.id}
-                                                 className={`${estilos.itemExtraCompacto} ${estilos[tema]}`}>
+                                                className={`${estilos.itemExtraCompacto} ${estilos[tema]}`}>
                                                 <div className={estilos.infoExtraCompacto}>
                                                     <span className={estilos.nombreExtraCompacto}>{extra.nombre}</span>
                                                     <span className={estilos.detalleExtraCompacto}>
@@ -1113,7 +1254,7 @@ export default function NuevaVentaOptimizada() {
                                 <input
                                     type="text"
                                     value={formExtra.nombre}
-                                    onChange={(e) => setFormExtra({...formExtra, nombre: e.target.value})}
+                                    onChange={(e) => setFormExtra({ ...formExtra, nombre: e.target.value })}
                                     className={estilos.inputExtra}
                                     placeholder="Ej: Pepperoni extra, Delivery, Propina..."
                                     required
@@ -1125,7 +1266,7 @@ export default function NuevaVentaOptimizada() {
                                 <label className={estilos.etiquetaExtra}>Tipo</label>
                                 <select
                                     value={formExtra.tipo}
-                                    onChange={(e) => setFormExtra({...formExtra, tipo: e.target.value})}
+                                    onChange={(e) => setFormExtra({ ...formExtra, tipo: e.target.value })}
                                     className={estilos.selectExtra}
                                 >
                                     {tiposExtra.map(t => (
@@ -1181,7 +1322,7 @@ export default function NuevaVentaOptimizada() {
                                     <input
                                         type="checkbox"
                                         checked={formExtra.aplicaItbis}
-                                        onChange={(e) => setFormExtra({...formExtra, aplicaItbis: e.target.checked})}
+                                        onChange={(e) => setFormExtra({ ...formExtra, aplicaItbis: e.target.checked })}
                                         className={estilos.checkboxExtra}
                                     />
                                     <span>Aplica {datosEmpresa?.impuesto_porcentaje || 18}% de impuesto</span>
@@ -1211,7 +1352,7 @@ export default function NuevaVentaOptimizada() {
                                 <label className={estilos.etiquetaExtra}>Notas (Opcional)</label>
                                 <textarea
                                     value={formExtra.notas}
-                                    onChange={(e) => setFormExtra({...formExtra, notas: e.target.value})}
+                                    onChange={(e) => setFormExtra({ ...formExtra, notas: e.target.value })}
                                     className={estilos.textareaExtra}
                                     placeholder="Observaciones adicionales..."
                                     rows="2"
