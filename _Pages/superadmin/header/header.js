@@ -103,7 +103,7 @@ export default function HeaderSuperAdmin() {
         <>
             <header className={`${estilos.header} ${estilos[tema]}`}>
                 <div className={estilos.contenedor}>
-                    <button 
+                    <button
                         className={estilos.botonMenu}
                         onClick={toggleMenu}
                         aria-label="Abrir menu"
@@ -113,8 +113,8 @@ export default function HeaderSuperAdmin() {
 
                     <Link href="/superadmin" className={estilos.logo}>
                         {logoPlataforma ? (
-                            <img 
-                                src={logoPlataforma} 
+                            <img
+                                src={logoPlataforma}
                                 alt="IziWeek"
                                 className={estilos.logoImagen}
                             />
@@ -148,6 +148,10 @@ export default function HeaderSuperAdmin() {
                             <ion-icon name="albums-outline"></ion-icon>
                             <span>Catálogo Online</span>
                         </Link>
+                        <Link href="/superadmin/depuracion" className={`${estilos.navItem} ${pathname === '/superadmin/depuracion' || pathname.startsWith('/superadmin/depuracion/') ? estilos.activo : ''}`}>
+                            <ion-icon name="shield-checkmark-outline"></ion-icon>
+                            <span>Depuración</span>
+                        </Link>
                         <Link href="/superadmin/configuracion" className={`${estilos.navItem} ${pathname === '/superadmin/configuracion' ? estilos.activo : ''}`}>
                             <ion-icon name="settings-outline"></ion-icon>
                             <span>Configuracion</span>
@@ -155,7 +159,7 @@ export default function HeaderSuperAdmin() {
                     </nav>
 
                     <div className={estilos.acciones}>
-                        <button 
+                        <button
                             className={estilos.botonTema}
                             onClick={toggleTema}
                             aria-label="Cambiar tema"
@@ -165,8 +169,8 @@ export default function HeaderSuperAdmin() {
 
                         <div className={estilos.usuario} onClick={toggleMenuUsuario}>
                             {datosUsuario?.avatar_url ? (
-                                <img 
-                                    src={datosUsuario.avatar_url} 
+                                <img
+                                    src={datosUsuario.avatar_url}
                                     alt={datosUsuario.nombre}
                                     className={estilos.avatar}
                                 />
@@ -183,7 +187,7 @@ export default function HeaderSuperAdmin() {
 
                             {menuUsuarioAbierto && (
                                 <div className={`${estilos.menuDesplegable} ${estilos[tema]}`}>
-                                    <button 
+                                    <button
                                         className={estilos.menuDesplegableItem}
                                         onClick={manejarCerrarSesion}
                                     >
@@ -199,13 +203,13 @@ export default function HeaderSuperAdmin() {
 
             {menuAbierto && (
                 <>
-                    <div 
+                    <div
                         className={estilos.overlay}
                         onClick={cerrarMenu}
                     ></div>
-                    
+
                     <div className={`${estilos.menuLateral} ${estilos[tema]}`}>
-                        <button 
+                        <button
                             className={estilos.botonCerrar}
                             onClick={cerrarMenu}
                             aria-label="Cerrar menu"
@@ -217,8 +221,8 @@ export default function HeaderSuperAdmin() {
                             <div className={estilos.menuHeader}>
                                 <div className={estilos.menuUsuario}>
                                     {datosUsuario?.avatar_url ? (
-                                        <img 
-                                            src={datosUsuario.avatar_url} 
+                                        <img
+                                            src={datosUsuario.avatar_url}
                                             alt={datosUsuario.nombre}
                                             className={estilos.menuAvatar}
                                         />
@@ -258,6 +262,10 @@ export default function HeaderSuperAdmin() {
                                 <Link href="/superadmin/catalogo" className={`${estilos.menuItem} ${pathname === '/superadmin/catalogo' || pathname.startsWith('/superadmin/catalogo/') ? estilos.activo : ''}`} onClick={cerrarMenu}>
                                     <ion-icon name="albums-outline"></ion-icon>
                                     <span>Catálogo Online</span>
+                                </Link>
+                                <Link href="/superadmin/depuracion" className={`${estilos.menuItem} ${pathname === '/superadmin/depuracion' || pathname.startsWith('/superadmin/depuracion/') ? estilos.activo : ''}`} onClick={cerrarMenu}>
+                                    <ion-icon name="shield-checkmark-outline"></ion-icon>
+                                    <span>Depuración</span>
                                 </Link>
                                 <Link href="/superadmin/configuracion" className={`${estilos.menuItem} ${pathname === '/superadmin/configuracion' ? estilos.activo : ''}`} onClick={cerrarMenu}>
                                     <ion-icon name="settings-outline"></ion-icon>

@@ -426,11 +426,11 @@ export async function cerrarCaja(datos) {
         const empresaId = cookieStore.get('empresaId')?.value
 
         if (!userId || !empresaId) {
-            return { success: false, mensaje: 'Sesión inválida' }
+            return {success: false, mensaje: 'Sesión inválida'}
         }
 
         if (!datos.caja_id) {
-            return { success: false, mensaje: 'ID de caja requerido' }
+            return {success: false, mensaje: 'ID de caja requerido'}
         }
 
         connection = await db.getConnection()
@@ -444,8 +444,7 @@ export async function cerrarCaja(datos) {
              WHERE id = ?
                AND empresa_id = ?
                AND usuario_id = ?
-               AND estado = 'abierta'
-                 LIMIT 1`,
+               AND estado = 'abierta' LIMIT 1`,
             [datos.caja_id, empresaId, userId]
         )
 
@@ -463,22 +462,26 @@ export async function cerrarCaja(datos) {
            2️⃣ TOTALES REALES DE ESA CAJA
            ============================== */
         const [[totales]] = await connection.execute(
-            `SELECT
-          COALESCE(SUM(v.total), 0) AS total_ventas,
-          COALESCE(SUM(CASE WHEN v.metodo_pago = 'efectivo' THEN v.total ELSE 0 END), 0) AS total_efectivo,
-          COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_debito' THEN v.total ELSE 0 END), 0) AS total_tarjeta_debito,
-          COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_credito' THEN v.total ELSE 0 END), 0) AS total_tarjeta_credito,
-          COALESCE(SUM(CASE WHEN v.metodo_pago = 'transferencia' THEN v.total ELSE 0 END), 0) AS total_transferencia,
-          COALESCE(SUM(CASE WHEN v.metodo_pago = 'cheque' THEN v.total ELSE 0 END), 0) AS total_cheque,
-          COALESCE(SUM(g.monto), 0) AS total_gastos
-       FROM cajas c
-       LEFT JOIN ventas v 
-              ON v.caja_id = c.id AND v.estado = 'emitida'
-       LEFT JOIN gastos g 
-              ON g.caja_id = c.id
-       WHERE c.id = ?
-         AND c.empresa_id = ?
-         AND c.usuario_id = ?`,
+            `SELECT COALESCE(SUM(v.total), 0) AS total_ventas,
+                    COALESCE(SUM(CASE WHEN v.metodo_pago = 'efectivo' THEN v.total ELSE 0 END),
+                             0)               AS total_efectivo,
+                    COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_debito' THEN v.total ELSE 0 END),
+                             0)               AS total_tarjeta_debito,
+                    COALESCE(SUM(CASE WHEN v.metodo_pago = 'tarjeta_credito' THEN v.total ELSE 0 END),
+                             0)               AS total_tarjeta_credito,
+                    COALESCE(SUM(CASE WHEN v.metodo_pago = 'transferencia' THEN v.total ELSE 0 END),
+                             0)               AS total_transferencia,
+                    COALESCE(SUM(CASE WHEN v.metodo_pago = 'cheque' THEN v.total ELSE 0 END),
+                             0)               AS total_cheque,
+                    COALESCE(SUM(g.monto), 0) AS total_gastos
+             FROM cajas c
+                      LEFT JOIN ventas v
+                                ON v.caja_id = c.id AND v.estado = 'emitida'
+                      LEFT JOIN gastos g
+                                ON g.caja_id = c.id
+             WHERE c.id = ?
+               AND c.empresa_id = ?
+               AND c.usuario_id = ?`,
             [caja.id, empresaId, userId]
         )
 
@@ -497,19 +500,19 @@ export async function cerrarCaja(datos) {
            4️⃣ CIERRE DEFINITIVO
            ============================== */
         await connection.execute(
-            `UPDATE cajas SET
-                              monto_final = ?,
-                              total_ventas = ?,
-                              total_efectivo = ?,
-                              total_tarjeta_debito = ?,
-                              total_tarjeta_credito = ?,
-                              total_transferencia = ?,
-                              total_cheque = ?,
-                              total_gastos = ?,
-                              diferencia = ?,
-                              notas = ?,
-                              estado = 'cerrada',
-                              fecha_cierre = NOW()
+            `UPDATE cajas
+             SET monto_final           = ?,
+                 total_ventas          = ?,
+                 total_efectivo        = ?,
+                 total_tarjeta_debito  = ?,
+                 total_tarjeta_credito = ?,
+                 total_transferencia   = ?,
+                 total_cheque          = ?,
+                 total_gastos          = ?,
+                 diferencia            = ?,
+                 notas                 = ?,
+                 estado                = 'cerrada',
+                 fecha_cierre          = NOW()
              WHERE id = ?
                AND empresa_id = ?
                AND usuario_id = ?`,
