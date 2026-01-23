@@ -125,6 +125,104 @@ export function obtenerUrlValida(imagenUrl) {
 }
 
 /**
+ * Guarda una imagen de cliente y retorna la ruta relativa
+ * @param {string} base64Data - Cadena base64 de la imagen (data:image/...)
+ * @param {number|string} clienteId - ID del cliente
+ * @returns {Promise<string>} - Ruta relativa de la imagen (/images/productos/...)
+ */
+export async function guardarImagenCliente(base64Data, clienteId) {
+    // Validación
+    if (!base64Data || !base64Data.startsWith('data:image/')) {
+        throw new Error('Formato de imagen inválido')
+    }
+
+    await ensureDirExists()
+
+    // Extraer extensión y datos
+    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
+    if (!matches) {
+        throw new Error('Base64 inválido')
+    }
+
+    const [, extension, data] = matches
+    const buffer = Buffer.from(data, 'base64')
+
+    // Validar extensión permitida
+    const extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    if (!extensionesPermitidas.includes(extension.toLowerCase())) {
+        throw new Error(`Extensión ${extension} no permitida. Use: ${extensionesPermitidas.join(', ')}`)
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (buffer.length > maxSize) {
+        throw new Error('La imagen es demasiado grande. Máximo 5MB')
+    }
+
+    // Nombre único para cliente
+    const timestamp = Date.now()
+    const fileName = `cliente_${clienteId}_${timestamp}.${extension}`
+    const filePath = path.join(IMAGES_DIR, fileName)
+
+    // Guardar archivo
+    await fs.writeFile(filePath, buffer)
+
+    // Retornar ruta RELATIVA
+    return `${PUBLIC_PATH}/${fileName}`
+}
+
+/**
+ * Elimina una imagen de cliente si es local
+ * @param {string} imagenUrl - Ruta relativa de la imagen (/images/productos/...)
+ * @returns {Promise<void>}
+ */
+export async function eliminarImagenCliente(imagenUrl) {
+    if (!imagenUrl || !imagenUrl.startsWith(PUBLIC_PATH)) return
+
+    try {
+        const fileName = path.basename(imagenUrl)
+        const filePath = path.join(IMAGES_DIR, fileName)
+        await fs.unlink(filePath)
+    } catch (error) {
+        console.error('Error al eliminar imagen de cliente:', error)
+        // No lanzar error, tolerante a fallos
+    }
+}
+
+/**
+ * Valida si una URL de imagen es accesible (estructura)
+ * @param {string} imagenUrl - URL o ruta de la imagen
+ * @returns {string|null} - URL válida o null
+ */
+export function obtenerUrlValidaCliente(imagenUrl) {
+    if (!imagenUrl) return null
+    if (imagenUrl.startsWith('/images/')) return imagenUrl
+    try {
+        new URL(imagenUrl)
+        return imagenUrl
+    } catch {
+        return null
+    }
+}
+
+/**
+ * Valida que una imagen local de cliente existe físicamente
+ * @param {string} imagenUrl - Ruta relativa de la imagen
+ * @returns {Promise<boolean>} - true si existe
+ */
+export async function existeImagenCliente(imagenUrl) {
+    if (!imagenUrl || !imagenUrl.startsWith(PUBLIC_PATH)) return false
+    try {
+        const fileName = path.basename(imagenUrl)
+        const filePath = path.join(IMAGES_DIR, fileName)
+        await fs.access(filePath)
+        return true
+    } catch {
+        return false
+    }
+}
+
+/**
  * Valida que una imagen local existe físicamente
  * @param {string} imagenUrl - Ruta relativa de la imagen
  * @returns {Promise<boolean>} - true si la imagen existe

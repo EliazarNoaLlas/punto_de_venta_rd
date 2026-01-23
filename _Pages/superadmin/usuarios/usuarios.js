@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { obtenerEmpresas, obtenerUsuarios, crearUsuario, actualizarUsuario, toggleEstadoUsuario, eliminarUsuario, obtenerConteoRegistrosUsuario } from './servidor'
+import { obtenerEmpresas, obtenerUsuarios, crearUsuario, actualizarUsuario, toggleEstadoUsuario, eliminarUsuario, obtenerConteoRegistrosUsuario, actualizarModoSistema } from './servidor'
 import estilos from './usuarios.module.css'
 
 export default function UsuariosSuperAdmin() {
@@ -29,7 +29,8 @@ export default function UsuariosSuperAdmin() {
         cedula: '',
         email: '',
         password: '',
-        tipo: 'vendedor'
+        tipo: 'vendedor',
+        system_mode: 'POS'
     })
 
     useEffect(() => {
@@ -86,7 +87,7 @@ export default function UsuariosSuperAdmin() {
 
     const cargarUsuarios = async () => {
         if (!empresaSeleccionada) return
-        
+
         setCargando(true)
         try {
             const resultado = await obtenerUsuarios(empresaSeleccionada)
@@ -102,27 +103,27 @@ export default function UsuariosSuperAdmin() {
 
     const validarFormulario = () => {
         const errores = {}
-        
+
         if (!formData.empresa_id) {
             errores.empresa_id = 'Debes seleccionar una empresa'
         }
-        
+
         if (!formData.nombre.trim()) {
             errores.nombre = 'El nombre es requerido'
         }
-        
+
         if (!formData.cedula.trim()) {
             errores.cedula = 'La cedula es requerida'
         } else if (formData.cedula.length < 11) {
             errores.cedula = 'La cedula debe tener al menos 11 caracteres'
         }
-        
+
         if (!formData.email.trim()) {
             errores.email = 'El email es requerido'
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             errores.email = 'Email invalido'
         }
-        
+
         if (!modoEdicion && !formData.password.trim()) {
             errores.password = 'La contrasena es requerida'
         } else if (!modoEdicion && formData.password.length < 6) {
@@ -146,7 +147,8 @@ export default function UsuariosSuperAdmin() {
             cedula: '',
             email: '',
             password: '',
-            tipo: 'vendedor'
+            tipo: 'vendedor',
+            system_mode: 'POS'
         })
         setErroresForm({})
         setAceptaTerminos(false)
@@ -162,7 +164,8 @@ export default function UsuariosSuperAdmin() {
             cedula: usuario.cedula,
             email: usuario.email,
             password: '',
-            tipo: usuario.tipo
+            tipo: usuario.tipo,
+            system_mode: usuario.system_mode || 'POS'
         })
         setErroresForm({})
         setMostrarModal(true)
@@ -193,7 +196,7 @@ export default function UsuariosSuperAdmin() {
 
     const manejarSubmit = async (e) => {
         e.preventDefault()
-        
+
         if (!validarFormulario()) {
             return
         }
@@ -262,7 +265,7 @@ export default function UsuariosSuperAdmin() {
             let mensajeAdvertencia = `⚠️ ELIMINACIÓN DEFINITIVA\n\n`
             mensajeAdvertencia += `Esta acción eliminará PERMANENTEMENTE:\n\n`
             mensajeAdvertencia += `• El usuario: ${nombreUsuario}\n`
-            
+
             if (totalRegistros > 0) {
                 if (ventas > 0) mensajeAdvertencia += `• ${ventas} venta(s)\n`
                 if (cajas > 0) mensajeAdvertencia += `• ${cajas} caja(s)\n`
@@ -274,13 +277,13 @@ export default function UsuariosSuperAdmin() {
             } else {
                 mensajeAdvertencia += `• No tiene registros asociados\n\n`
             }
-            
+
             mensajeAdvertencia += `❗ NO existe recuperación\n\n`
             mensajeAdvertencia += `Escribe "ELIMINAR DEFINITIVAMENTE" para continuar:`
 
             // Paso 2: Confirmación explícita con texto requerido
             const confirmacion = prompt(mensajeAdvertencia)
-            
+
             if (confirmacion !== 'ELIMINAR DEFINITIVAMENTE') {
                 if (confirmacion !== null) {
                     alert('Eliminación cancelada. Debes escribir exactamente "ELIMINAR DEFINITIVAMENTE" para continuar.')
@@ -307,16 +310,16 @@ export default function UsuariosSuperAdmin() {
 
     const usuariosFiltrados = usuarios.filter(usuario => {
         const cumpleBusqueda = busqueda === '' ||
-                               usuario.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-                               usuario.cedula.includes(busqueda) ||
-                               usuario.email.toLowerCase().includes(busqueda.toLowerCase())
-        
+            usuario.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
+            usuario.cedula.includes(busqueda) ||
+            usuario.email.toLowerCase().includes(busqueda.toLowerCase())
+
         const cumpleEstado = filtroEstado === 'todos' ||
-                            (filtroEstado === 'activos' && usuario.activo) ||
-                            (filtroEstado === 'inactivos' && !usuario.activo)
-        
+            (filtroEstado === 'activos' && usuario.activo) ||
+            (filtroEstado === 'inactivos' && !usuario.activo)
+
         const cumpleTipo = filtroTipo === 'todos' || usuario.tipo === filtroTipo
-        
+
         return cumpleBusqueda && cumpleEstado && cumpleTipo
     })
 
@@ -369,7 +372,7 @@ export default function UsuariosSuperAdmin() {
                     <p className={estilos.subtitulo}>Gestiona los usuarios de cada empresa</p>
                 </div>
                 {empresaSeleccionada && (
-                    <button 
+                    <button
                         className={estilos.btnNuevo}
                         onClick={abrirModalCrear}
                     >
@@ -392,7 +395,7 @@ export default function UsuariosSuperAdmin() {
                                 className={estilos.inputBusquedaEmpresa}
                             />
                             {empresaSeleccionada && (
-                                <button 
+                                <button
                                     className={estilos.btnLimpiar}
                                     onClick={() => {
                                         setEmpresaSeleccionada('')
@@ -521,6 +524,7 @@ export default function UsuariosSuperAdmin() {
                                 <div className={estilos.columna}>Cedula</div>
                                 <div className={estilos.columna}>Email</div>
                                 <div className={estilos.columna}>Tipo</div>
+                                <div className={estilos.columna}>Modo</div>
                                 <div className={estilos.columna}>Estado</div>
                                 <div className={estilos.columna}>Registro</div>
                                 <div className={estilos.columnaAcciones}>Acciones</div>
@@ -532,8 +536,8 @@ export default function UsuariosSuperAdmin() {
                                         <div className={estilos.columna}>
                                             <div className={estilos.usuarioInfo}>
                                                 {usuario.avatar_url ? (
-                                                    <img 
-                                                        src={usuario.avatar_url} 
+                                                    <img
+                                                        src={usuario.avatar_url}
                                                         alt={usuario.nombre}
                                                         className={estilos.avatar}
                                                     />
@@ -554,6 +558,11 @@ export default function UsuariosSuperAdmin() {
                                         <div className={estilos.columna}>
                                             <span className={`${estilos.badgeTipo} ${estilos[getTipoBadge(usuario.tipo).color]}`}>
                                                 {getTipoBadge(usuario.tipo).texto}
+                                            </span>
+                                        </div>
+                                        <div className={estilos.columna}>
+                                            <span className={`${estilos.badgeModo} ${usuario.system_mode === 'OBRAS' ? estilos.modoObras : estilos.modoPos}`}>
+                                                {usuario.system_mode || 'POS'}
                                             </span>
                                         </div>
                                         <div className={estilos.columna}>
@@ -673,6 +682,35 @@ export default function UsuariosSuperAdmin() {
                                         <option value="admin">Administrador</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className={estilos.grupoInput}>
+                                <label>Modo de Sistema (Vista Principal) *</label>
+                                <div className={estilos.selectorModo}>
+                                    <label className={`${estilos.opcionModo} ${formData.system_mode === 'POS' ? estilos.activo : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="system_mode"
+                                            value="POS"
+                                            checked={formData.system_mode === 'POS'}
+                                            onChange={manejarCambioInput}
+                                        />
+                                        <ion-icon name="cart-outline"></ion-icon>
+                                        <span>POS (Ventas)</span>
+                                    </label>
+                                    <label className={`${estilos.opcionModo} ${formData.system_mode === 'OBRAS' ? estilos.activo : ''}`}>
+                                        <input
+                                            type="radio"
+                                            name="system_mode"
+                                            value="OBRAS"
+                                            checked={formData.system_mode === 'OBRAS'}
+                                            onChange={manejarCambioInput}
+                                        />
+                                        <ion-icon name="construct-outline"></ion-icon>
+                                        <span>OBRAS (Construcción)</span>
+                                    </label>
+                                </div>
+                                <p className={estilos.ayudaInput}>El usuario verá este módulo al iniciar sesión.</p>
                             </div>
 
                             <div className={estilos.grupoInput}>

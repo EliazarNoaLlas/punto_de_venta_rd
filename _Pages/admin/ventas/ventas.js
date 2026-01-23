@@ -527,9 +527,9 @@ export default function VentasAdmin() {
                                     </Link>
                                     {tieneDespachoPendiente && (
                                         <Link
-                                            href={`/admin/ventas/despachar/${venta.id}`}
+                                            href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`}
                                             className={`${estilos.btnIcono} ${estilos.despachar}`}
-                                            title="Despachar pedido"
+                                            title="Generar Conduce"
                                         >
                                             <ion-icon name="cube-outline"></ion-icon>
                                         </Link>
@@ -623,9 +623,9 @@ export default function VentasAdmin() {
                                         </Link>
                                         {tieneDespachoPendiente && (
                                             <Link
-                                                href={`/admin/ventas/despachar/${venta.id}`}
+                                                href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`}
                                                 className={`${estilos.btnIcono} ${estilos.despachar}`}
-                                                title="Despachar pedido"
+                                                title="Generar Conduce"
                                             >
                                                 <ion-icon name="cube-outline"></ion-icon>
                                             </Link>

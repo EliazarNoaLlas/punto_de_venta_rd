@@ -38,7 +38,7 @@ export async function obtenerEmpresas() {
 
     } catch (error) {
         console.error('Error al obtener empresas:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -76,6 +76,7 @@ export async function obtenerUsuarios(empresaId) {
                 u.avatar_url,
                 u.tipo,
                 u.activo,
+                u.system_mode,
                 u.fecha_creacion,
                 e.nombre_empresa
             FROM usuarios u
@@ -94,7 +95,7 @@ export async function obtenerUsuarios(empresaId) {
 
     } catch (error) {
         console.error('Error al obtener usuarios:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -192,7 +193,7 @@ export async function crearUsuario(datos) {
 
     } catch (error) {
         console.error('Error al crear usuario:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -269,7 +270,7 @@ export async function actualizarUsuario(usuarioId, datos) {
 
         if (datos.password && datos.password.trim() !== '') {
             const passwordHash = await bcrypt.hash(datos.password, 10)
-            
+
             await connection.execute(
                 `UPDATE usuarios SET
                     nombre = ?,
@@ -314,7 +315,7 @@ export async function actualizarUsuario(usuarioId, datos) {
 
     } catch (error) {
         console.error('Error al actualizar usuario:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -377,7 +378,7 @@ export async function toggleEstadoUsuario(usuarioId, nuevoEstado) {
 
     } catch (error) {
         console.error('Error al cambiar estado de usuario:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -432,7 +433,7 @@ export async function obtenerConteoRegistrosUsuario(usuarioId) {
 
     } catch (error) {
         console.error('Error al obtener conteo de registros:', error)
-        
+
         if (connection) {
             connection.release()
         }
@@ -581,14 +582,14 @@ export async function eliminarUsuario(usuarioId) {
             sqlState: error.sqlState,
             sqlMessage: error.sqlMessage
         })
-        
+
         if (connection) {
             connection.release()
         }
 
         // Mensaje más descriptivo basado en el tipo de error
         let mensajeError = 'Error al eliminar el usuario y sus registros'
-        
+
         if (error.code === 'ER_ROW_IS_REFERENCED_2' || error.code === 'ER_NO_REFERENCED_ROW_2') {
             mensajeError = 'No se puede eliminar el usuario porque tiene registros asociados que no se pueden eliminar. Verifique las restricciones de la base de datos.'
         } else if (error.sqlMessage) {
@@ -600,6 +601,48 @@ export async function eliminarUsuario(usuarioId) {
         return {
             success: false,
             mensaje: mensajeError
+        }
+    }
+}
+
+export async function actualizarModoSistema(usuarioId, nuevoModo) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
+
+        if (!userId || userTipo !== 'superadmin') {
+            return {
+                success: false,
+                mensaje: 'Acceso no autorizado'
+            }
+        }
+
+        connection = await db.getConnection()
+
+        await connection.execute(
+            `UPDATE usuarios SET system_mode = ? WHERE id = ?`,
+            [nuevoModo, usuarioId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            mensaje: `Modo de sistema actualizado a ${nuevoModo}`
+        }
+
+    } catch (error) {
+        console.error('Error al actualizar modo de sistema:', error)
+
+        if (connection) {
+            connection.release()
+        }
+
+        return {
+            success: false,
+            mensaje: 'Error al cambiar modo de sistema'
         }
     }
 }

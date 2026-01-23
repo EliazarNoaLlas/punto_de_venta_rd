@@ -127,7 +127,7 @@
     width: 100%;
 }
 
-.busquedaEmpresa > ion-icon:first-child {
+.busquedaEmpresa>ion-icon:first-child {
     position: absolute;
     left: 14px;
     top: 50%;
@@ -137,11 +137,11 @@
     z-index: 2;
 }
 
-.light .busquedaEmpresa > ion-icon:first-child {
+.light .busquedaEmpresa>ion-icon:first-child {
     color: #64748b;
 }
 
-.dark .busquedaEmpresa > ion-icon:first-child {
+.dark .busquedaEmpresa>ion-icon:first-child {
     color: #94a3b8;
 }
 
@@ -569,6 +569,7 @@
     from {
         transform: rotate(0deg);
     }
+
     to {
         transform: rotate(360deg);
     }
@@ -1109,6 +1110,7 @@
 }
 
 @media (max-width: 1200px) {
+
     .tablaHeader,
     .fila {
         grid-template-columns: 1.8fr 1.2fr 1.5fr 0.9fr 0.9fr 0.9fr 1fr;
@@ -1460,4 +1462,114 @@
     .btnAceptarTerminos {
         width: 100%;
     }
+}
+
+/* Estilos para Modo de Sistema */
+.badgeModo {
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    white-space: nowrap;
+    width: fit-content;
+}
+
+.modoPos {
+    background: #e0f2fe;
+    color: #075985;
+}
+
+.modoObras {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.selectorModo {
+    display: flex;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.opcionModo {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 15px;
+    border: 2px solid #eee;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+}
+
+.opcionModo ion-icon {
+    font-size: 1.5rem;
+    color: #95a5a6;
+}
+
+.opcionModo span {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: #7f8c8d;
+}
+
+.opcionModo input {
+    display: none;
+}
+
+.opcionModo:hover {
+    border-color: #0ea5e9;
+    background: rgba(14, 165, 233, 0.05);
+}
+
+.opcionModo.activo {
+    border-color: #0ea5e9;
+    background: rgba(14, 165, 233, 0.1);
+}
+
+.opcionModo.activo ion-icon {
+    color: #0ea5e9;
+}
+
+.opcionModo.activo span {
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.ayudaInput {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.dark .opcionModo {
+    background: #0f172a;
+    border-color: #334155;
+}
+
+.dark .opcionModo span {
+    color: #94a3b8;
+}
+
+.dark .opcionModo.activo {
+    background: rgba(56, 189, 248, 0.1);
+    border-color: #38bdf8;
+}
+
+.dark .opcionModo.activo span {
+    color: #f1f5f9;
+}
+
+.dark .modoPos {
+    background: #1e3a8a;
+    color: #60a5fa;
+}
+
+.dark .modoObras {
+    background: #065f46;
+    color: #34d399;
 }

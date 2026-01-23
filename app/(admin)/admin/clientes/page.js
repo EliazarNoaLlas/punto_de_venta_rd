@@ -1,12 +1,15 @@
-// app/page.js
 import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
 import ClientesAdmin from "@/_Pages/admin/clientes/cliente";
-export default function page() {
+
+export const metadata = {
+  title: 'Gestión de Clientes | Punto de Venta RD',
+  description: 'Administración de cartera de clientes, estados crediticios y fidelización.',
+}
+
+export default function Page() {
   return (
-    <div>
-      <ClienteWrapper>
-        <ClientesAdmin></ClientesAdmin>
-      </ClienteWrapper>
-    </div>
+    <ClienteWrapper>
+      <ClientesAdmin />
+    </ClienteWrapper>
   );
 }

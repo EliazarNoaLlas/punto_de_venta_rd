@@ -1,54 +1,58 @@
 "use client"
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { obtenerClientes, crearCliente, actualizarCliente, eliminarCliente } from './servidor'
-import estilos from './clientes.module.css'
+import { useEffect, useState, useMemo } from "react"
+import { useRouter } from "next/navigation"
+import { obtenerClientes, eliminarCliente } from "./servidor"
+import estilos from "./clientes.module.css"
 
 export default function ClientesAdmin() {
     const router = useRouter()
-    const [tema, setTema] = useState('light')
+
+    // -------------------------------
+    // Estados generales
+    // -------------------------------
+    const [tema, setTema] = useState("light")
     const [cargando, setCargando] = useState(true)
     const [procesando, setProcesando] = useState(false)
     const [clientes, setClientes] = useState([])
     const [tiposDocumento, setTiposDocumento] = useState([])
-    const [busqueda, setBusqueda] = useState('')
-    const [filtroTipoDoc, setFiltroTipoDoc] = useState('todos')
-    
-    const [mostrarModal, setMostrarModal] = useState(false)
-    const [modoModal, setModoModal] = useState('crear')
-    const [clienteSeleccionado, setClienteSeleccionado] = useState(null)
-    
-    const [tipoDocumentoId, setTipoDocumentoId] = useState('')
-    const [numeroDocumento, setNumeroDocumento] = useState('')
-    const [nombre, setNombre] = useState('')
-    const [apellidos, setApellidos] = useState('')
-    const [telefono, setTelefono] = useState('')
-    const [email, setEmail] = useState('')
-    const [direccion, setDireccion] = useState('')
-    const [sector, setSector] = useState('')
-    const [municipio, setMunicipio] = useState('')
-    const [provincia, setProvincia] = useState('')
-    const [fechaNacimiento, setFechaNacimiento] = useState('')
-    const [genero, setGenero] = useState('')
 
+    // -------------------------------
+    // Filtros y búsqueda
+    // -------------------------------
+    const [busqueda, setBusqueda] = useState("")
+    const [filtroEstado, setFiltroEstado] = useState("todos")
+    const [vistaActual, setVistaActual] = useState("cards")
+
+    // -------------------------------
+    // Paginación
+    // -------------------------------
+    const [paginaActual, setPaginaActual] = useState(1)
+    const itemsPorPagina = 10
+
+    // -------------------------------
+    // Tema desde localStorage
+    // -------------------------------
     useEffect(() => {
-        const temaLocal = localStorage.getItem('tema') || 'light'
+        const temaLocal = localStorage.getItem("tema") || "light"
         setTema(temaLocal)
 
         const manejarCambioTema = () => {
-            const nuevoTema = localStorage.getItem('tema') || 'light'
+            const nuevoTema = localStorage.getItem("tema") || "light"
             setTema(nuevoTema)
         }
 
-        window.addEventListener('temaChange', manejarCambioTema)
-        window.addEventListener('storage', manejarCambioTema)
+        window.addEventListener("temaChange", manejarCambioTema)
+        window.addEventListener("storage", manejarCambioTema)
 
         return () => {
-            window.removeEventListener('temaChange', manejarCambioTema)
-            window.removeEventListener('storage', manejarCambioTema)
+            window.removeEventListener("temaChange", manejarCambioTema)
+            window.removeEventListener("storage", manejarCambioTema)
         }
     }, [])
 
+    // -------------------------------
+    // Cargar clientes al montar
+    // -------------------------------
     useEffect(() => {
         cargarClientes()
     }, [])
@@ -61,650 +65,627 @@ export default function ClientesAdmin() {
                 setClientes(resultado.clientes)
                 setTiposDocumento(resultado.tiposDocumento)
             } else {
-                alert(resultado.mensaje || 'Error al cargar clientes')
+                alert(resultado.mensaje || "Error al cargar clientes")
             }
         } catch (error) {
-            console.error('Error al cargar clientes:', error)
-            alert('Error al cargar datos')
+            console.error("Error al cargar clientes:", error)
+            alert("Error al cargar datos")
         } finally {
             setCargando(false)
         }
     }
 
-    const abrirModalCrear = () => {
-        limpiarFormulario()
-        setModoModal('crear')
-        setMostrarModal(true)
+    // -------------------------------
+    // Filtrado y búsqueda
+    // -------------------------------
+    const clientesFiltrados = useMemo(() => {
+        const busquedaLower = busqueda.toLowerCase()
+
+        const filtrados = clientes.filter((cliente) => {
+            const coincideBusqueda =
+                cliente.nombreCompleto.toLowerCase().includes(busquedaLower) ||
+                (cliente.numeroDocumento?.toLowerCase() || "").includes(busquedaLower) ||
+                (cliente.telefono?.toLowerCase() || "").includes(busquedaLower)
+
+            const coincideFiltro =
+                filtroEstado === "todos" ||
+                cliente.credito?.estadoCredito === filtroEstado
+
+            return coincideBusqueda && coincideFiltro
+        })
+
+        return filtrados
+    }, [clientes, busqueda, filtroEstado])
+
+    // Lógica de Paginación
+    const totalPaginas = Math.ceil(clientesFiltrados.length / itemsPorPagina)
+    const clientesPaginados = useMemo(() => {
+        const inicio = (paginaActual - 1) * itemsPorPagina
+        return clientesFiltrados.slice(inicio, inicio + itemsPorPagina)
+    }, [clientesFiltrados, paginaActual])
+
+    // Reset de página al cambiar filtros
+    useEffect(() => {
+        setPaginaActual(1)
+    }, [busqueda, filtroEstado])
+
+    // -------------------------------
+    // Estadísticas generales
+    // -------------------------------
+    const stats = useMemo(() => ({
+        total: clientes.length,
+        activos: clientes.filter((c) => c.clienteActivo).length,
+        creditoNormal: clientes.filter((c) => c.credito?.estadoCredito === "normal").length,
+        atrasados: clientes.filter((c) => c.credito?.estadoCredito === "atrasado").length,
+        bloqueados: clientes.filter((c) => c.credito?.estadoCredito === "bloqueado").length,
+        deudaTotal: clientes.reduce((acc, c) => acc + (c.deuda?.total || 0), 0),
+        deudaVencida: clientes.reduce((acc, c) => acc + (c.deuda?.vencida || 0), 0),
+    }), [clientes])
+
+    // -------------------------------
+    // Utilidades
+    // -------------------------------
+    const formatearMoneda = (valor) =>
+        new Intl.NumberFormat("es-DO", { style: "currency", currency: "DOP" }).format(valor || 0)
+
+    const obtenerColorBarra = (porcentaje) => {
+        if (porcentaje < 50) return "var(--color-success)"
+        if (porcentaje < 80) return "var(--color-warning)"
+        return "var(--color-danger)"
     }
 
-    const abrirModalEditar = (cliente) => {
-        setClienteSeleccionado(cliente)
-        setTipoDocumentoId(cliente.tipo_documento_id.toString())
-        setNumeroDocumento(cliente.numero_documento)
-        setNombre(cliente.nombre)
-        setApellidos(cliente.apellidos || '')
-        setTelefono(cliente.telefono || '')
-        setEmail(cliente.email || '')
-        setDireccion(cliente.direccion || '')
-        setSector(cliente.sector || '')
-        setMunicipio(cliente.municipio || '')
-        setProvincia(cliente.provincia || '')
-        setFechaNacimiento(cliente.fecha_nacimiento || '')
-        setGenero(cliente.genero || '')
-        setModoModal('editar')
-        setMostrarModal(true)
-    }
-
-    const abrirModalVer = (cliente) => {
-        setClienteSeleccionado(cliente)
-        setModoModal('ver')
-        setMostrarModal(true)
-    }
-
-    const limpiarFormulario = () => {
-        setClienteSeleccionado(null)
-        setTipoDocumentoId('')
-        setNumeroDocumento('')
-        setNombre('')
-        setApellidos('')
-        setTelefono('')
-        setEmail('')
-        setDireccion('')
-        setSector('')
-        setMunicipio('')
-        setProvincia('')
-        setFechaNacimiento('')
-        setGenero('')
-    }
-
-    const cerrarModal = () => {
-        setMostrarModal(false)
-        limpiarFormulario()
-    }
-
-    const validarFormulario = () => {
-        if (!tipoDocumentoId) {
-            alert('Selecciona un tipo de documento')
-            return false
+    const obtenerIconoEstado = (estado) => {
+        const iconos = {
+            normal: "checkmark-circle",
+            atrasado: "time",
+            bloqueado: "lock-closed"
         }
-
-        if (!numeroDocumento.trim()) {
-            alert('El numero de documento es obligatorio')
-            return false
-        }
-
-        if (!nombre.trim()) {
-            alert('El nombre es obligatorio')
-            return false
-        }
-
-        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            alert('El email no es valido')
-            return false
-        }
-
-        if (fechaNacimiento) {
-            const fecha = new Date(fechaNacimiento)
-            const hoy = new Date()
-            const hace150anos = new Date()
-            hace150anos.setFullYear(hoy.getFullYear() - 150)
-            
-            if (fecha > hoy) {
-                alert('La fecha de nacimiento no puede ser futura')
-                return false
-            }
-            
-            if (fecha < hace150anos) {
-                alert('La fecha de nacimiento no es valida')
-                return false
-            }
-        }
-
-        return true
+        return iconos[estado] || "help-circle"
     }
 
-    const manejarSubmit = async (e) => {
-        e.preventDefault()
-
-        if (!validarFormulario()) return
+    // -------------------------------
+    // Eliminar cliente
+    // -------------------------------
+    const manejarEliminar = async (id, nombre) => {
+        if (!confirm(`¿Estás seguro de que deseas eliminar al cliente "${nombre}"?`)) return
 
         setProcesando(true)
+        const clienteBackup = clientes
+        setClientes((prev) => prev.filter((c) => c.id !== id))
+
         try {
-            const datosCliente = {
-                tipo_documento_id: parseInt(tipoDocumentoId),
-                numero_documento: numeroDocumento.trim(),
-                nombre: nombre.trim(),
-                apellidos: apellidos.trim() || null,
-                telefono: telefono.trim() || null,
-                email: email.trim() || null,
-                direccion: direccion.trim() || null,
-                sector: sector.trim() || null,
-                municipio: municipio.trim() || null,
-                provincia: provincia.trim() || null,
-                fecha_nacimiento: fechaNacimiento || null,
-                genero: genero || null
-            }
-
-            let resultado
-
-            if (modoModal === 'crear') {
-                resultado = await crearCliente(datosCliente)
-            } else if (modoModal === 'editar') {
-                datosCliente.cliente_id = clienteSeleccionado.id
-                resultado = await actualizarCliente(datosCliente)
-            }
-
-            if (resultado.success) {
-                await cargarClientes()
-                cerrarModal()
-                alert(resultado.mensaje)
-            } else {
-                alert(resultado.mensaje || 'Error al procesar la solicitud')
+            const resultado = await eliminarCliente(id)
+            if (!resultado.success) {
+                alert(resultado.mensaje || "Error al eliminar cliente")
+                setClientes(clienteBackup)
             }
         } catch (error) {
-            console.error('Error al procesar cliente:', error)
-            alert('Error al procesar la solicitud')
+            console.error("Error al eliminar:", error)
+            alert("Error al eliminar el cliente")
+            setClientes(clienteBackup)
         } finally {
             setProcesando(false)
         }
     }
 
-    const manejarEliminar = async (clienteId, nombreCliente) => {
-        if (!confirm(`¿Estas seguro de eliminar al cliente "${nombreCliente}"? Esta accion no se puede deshacer.`)) {
-            return
-        }
+    // -------------------------------
+    // Configuración de estadísticas
+    // -------------------------------
+    const estadisticas = [
+        {
+            label: "Total Clientes",
+            valor: stats.total,
+            detalle: `${stats.activos} activos`,
+            icon: "people-outline",
+            color: "primary",
+        },
+        {
+            label: "Crédito Normal",
+            valor: stats.creditoNormal,
+            detalle: "Al día",
+            icon: "checkmark-circle-outline",
+            color: "success",
+        },
+        {
+            label: "Atrasados",
+            valor: stats.atrasados,
+            detalle: "Requieren atención",
+            icon: "time-outline",
+            color: "warning",
+        },
+        {
+            label: "Deuda Vencida",
+            valor: formatearMoneda(stats.deudaVencida),
+            detalle: `De ${formatearMoneda(stats.deudaTotal)} total`,
+            icon: "alert-circle-outline",
+            color: "danger",
+        },
+    ]
 
-        setProcesando(true)
-        try {
-            const resultado = await eliminarCliente(clienteId)
-            if (resultado.success) {
-                await cargarClientes()
-                alert(resultado.mensaje)
-            } else {
-                alert(resultado.mensaje || 'Error al eliminar cliente')
-            }
-        } catch (error) {
-            console.error('Error al eliminar cliente:', error)
-            alert('Error al procesar la solicitud')
-        } finally {
-            setProcesando(false)
-        }
+    // -------------------------------
+    // Configuración de filtros
+    // -------------------------------
+    const filtrosChips = [
+        { label: "Todos", value: "todos", icon: null },
+        { label: "Normal", value: "normal", icon: "checkmark-circle", clase: "chipSuccess" },
+        { label: "Atrasados", value: "atrasado", icon: "time", clase: "chipWarning" },
+        { label: "Bloqueados", value: "bloqueado", icon: "lock-closed", clase: "chipDanger" },
+    ]
+
+    // -------------------------------
+    // Renderizado de mensajes vacío
+    // -------------------------------
+    if (!cargando && clientesFiltrados.length === 0) {
+        return (
+            <div className={`${estilos.contenedor} ${estilos[tema]}`}>
+                <div className={estilos.header}>
+                    <div className={estilos.tituloArea}>
+                        <h1 className={estilos.titulo}>Cartera de Clientes</h1>
+                        <p className={estilos.subtitulo}>Gestión profesional de perfiles crediticios</p>
+                    </div>
+                    <button
+                        className={estilos.btnNuevo}
+                        onClick={() => router.push("/admin/clientes/nuevo")}
+                    >
+                        <ion-icon name="person-add-outline"></ion-icon>
+                        <span>Nuevo Cliente</span>
+                    </button>
+                </div>
+
+                <div className={estilos.vacio}>
+                    <ion-icon name="people-outline"></ion-icon>
+                    <h3>No hay clientes registrados</h3>
+                    <p>Comienza agregando tu primer cliente</p>
+                </div>
+            </div>
+        )
     }
-
-    const clientesFiltrados = clientes.filter(cliente => {
-        const cumpleBusqueda = busqueda === '' ||
-            cliente.nombre.toLowerCase().includes(busqueda.toLowerCase()) ||
-            cliente.apellidos?.toLowerCase().includes(busqueda.toLowerCase()) ||
-            cliente.numero_documento.toLowerCase().includes(busqueda.toLowerCase()) ||
-            cliente.telefono?.toLowerCase().includes(busqueda.toLowerCase())
-
-        const cumpleTipoDoc = filtroTipoDoc === 'todos' || cliente.tipo_documento_id === parseInt(filtroTipoDoc)
-
-        return cumpleBusqueda && cumpleTipoDoc
-    })
-
-    const formatearMoneda = (monto) => {
-        return new Intl.NumberFormat('es-DO', {
-            style: 'currency',
-            currency: 'DOP',
-            minimumFractionDigits: 2
-        }).format(monto)
-    }
-
-    const calcularEstadisticas = () => {
-        return {
-            total: clientes.length,
-            conCompras: clientes.filter(c => parseFloat(c.total_compras) > 0).length,
-            valorTotal: clientes.reduce((sum, c) => sum + parseFloat(c.total_compras), 0),
-            activos: clientes.filter(c => c.activo).length
-        }
-    }
-
-    const stats = calcularEstadisticas()
 
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
+            {/* ================= HEADER ================= */}
             <div className={estilos.header}>
-                <div>
-                    <h1 className={estilos.titulo}>Clientes</h1>
-                    <p className={estilos.subtitulo}>Gestiona tu cartera de clientes</p>
+                <div className={estilos.tituloArea}>
+                    <h1 className={estilos.titulo}>Cartera de Clientes</h1>
+                    <p className={estilos.subtitulo}>Gestión profesional de perfiles crediticios</p>
                 </div>
-                <button onClick={abrirModalCrear} className={estilos.btnNuevo}>
-                    <ion-icon name="add-circle-outline"></ion-icon>
+                <button
+                    className={estilos.btnNuevo}
+                    onClick={() => router.push("/admin/clientes/nuevo")}
+                    disabled={procesando}
+                >
+                    <ion-icon name="person-add-outline"></ion-icon>
                     <span>Nuevo Cliente</span>
                 </button>
             </div>
 
-            <div className={`${estilos.estadisticas} ${estilos[tema]}`}>
-                <div className={estilos.estadCard}>
-                    <div className={estilos.estadIcono}>
-                        <ion-icon name="people-outline"></ion-icon>
+            {/* ================= ESTADÍSTICAS ================= */}
+            <div className={estilos.stats}>
+                {estadisticas.map((stat, index) => (
+                    <div key={index} className={estilos.statCard}>
+                        <div className={`${estilos.statIcono} ${estilos[stat.color]}`}>
+                            <ion-icon name={stat.icon}></ion-icon>
+                        </div>
+                        <div className={estilos.statInfo}>
+                            <span className={estilos.statLabel}>{stat.label}</span>
+                            <span className={estilos.statValor}>{stat.valor}</span>
+                            <span className={estilos.statDetalle}>{stat.detalle}</span>
+                        </div>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Total Clientes</span>
-                        <span className={estilos.estadValor}>{stats.total}</span>
-                    </div>
-                </div>
-
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.success}`}>
-                        <ion-icon name="checkmark-circle-outline"></ion-icon>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Activos</span>
-                        <span className={estilos.estadValor}>{stats.activos}</span>
-                    </div>
-                </div>
-
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.warning}`}>
-                        <ion-icon name="cart-outline"></ion-icon>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Con Compras</span>
-                        <span className={estilos.estadValor}>{stats.conCompras}</span>
-                    </div>
-                </div>
-
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.primary}`}>
-                        <ion-icon name="cash-outline"></ion-icon>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Valor Total</span>
-                        <span className={estilos.estadValor}>{formatearMoneda(stats.valorTotal)}</span>
-                    </div>
-                </div>
+                ))}
             </div>
 
+            {/* ================= BÚSQUEDA Y FILTROS ================= */}
             <div className={estilos.controles}>
-                <div className={estilos.busqueda}>
-                    <ion-icon name="search-outline"></ion-icon>
-                    <input
-                        type="text"
-                        placeholder="Buscar por nombre, documento o telefono..."
-                        value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
-                        className={estilos.inputBusqueda}
-                    />
+                <div className={estilos.barraHerramientas}>
+                    <div className={estilos.busqueda}>
+                        <ion-icon name="search-outline"></ion-icon>
+                        <input
+                            type="text"
+                            placeholder="Buscar por nombre, documento o teléfono..."
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                            className={estilos.inputBusqueda}
+                        />
+                    </div>
+
+                    <div className={estilos.selectoresVista}>
+                        <button
+                            className={`${estilos.btnVista} ${vistaActual === 'cards' ? estilos.vistaActiva : ''}`}
+                            onClick={() => setVistaActual('cards')}
+                            title="Vista de Tarjetas"
+                            aria-label="Vista de Tarjetas"
+                        >
+                            <ion-icon name="grid-outline"></ion-icon>
+                        </button>
+                        <button
+                            className={`${estilos.btnVista} ${vistaActual === 'tabla' ? estilos.vistaActiva : ''}`}
+                            onClick={() => setVistaActual('tabla')}
+                            title="Vista de Tabla"
+                            aria-label="Vista de Tabla"
+                        >
+                            <ion-icon name="list-outline"></ion-icon>
+                        </button>
+                    </div>
                 </div>
 
-                <select
-                    value={filtroTipoDoc}
-                    onChange={(e) => setFiltroTipoDoc(e.target.value)}
-                    className={estilos.selectFiltro}
-                >
-                    <option value="todos">Todos los tipos</option>
-                    {tiposDocumento.map(tipo => (
-                        <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
+                <div className={estilos.chips}>
+                    {filtrosChips.map((chip) => (
+                        <button
+                            key={chip.value}
+                            className={`${estilos.chip} ${filtroEstado === chip.value ? estilos.chipActivo : ""} ${chip.clase ? estilos[chip.clase] : ""}`}
+                            onClick={() => setFiltroEstado(chip.value)}
+                            aria-pressed={filtroEstado === chip.value}
+                        >
+                            {chip.icon && <ion-icon name={chip.icon}></ion-icon>}
+                            {chip.label}
+                        </button>
                     ))}
-                </select>
+                </div>
             </div>
 
+            {/* ================= LISTA DE CLIENTES ================= */}
             {cargando ? (
                 <div className={estilos.cargando}>
                     <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
-                    <span>Cargando clientes...</span>
+                    <span>Cargando cartera de clientes...</span>
                 </div>
-            ) : clientesFiltrados.length === 0 ? (
-                <div className={`${estilos.vacio} ${estilos[tema]}`}>
-                    <ion-icon name="people-outline"></ion-icon>
-                    <span>No hay clientes que coincidan con tu busqueda</span>
+            ) : vistaActual === "cards" ? (
+                <div className={estilos.listaClientes}>
+                    {clientesPaginados.map((cliente) => (
+                        <ClienteCard
+                            key={cliente.id}
+                            cliente={cliente}
+                            tema={tema}
+                            router={router}
+                            formatearMoneda={formatearMoneda}
+                            obtenerColorBarra={obtenerColorBarra}
+                            obtenerIconoEstado={obtenerIconoEstado}
+                            estilos={estilos}
+                        />
+                    ))}
                 </div>
             ) : (
-                <div className={estilos.tabla}>
-                    <div className={`${estilos.tablaHeader} ${estilos[tema]}`}>
-                        <div className={estilos.columna}>Cliente</div>
-                        <div className={estilos.columna}>Documento</div>
-                        <div className={estilos.columna}>Contacto</div>
-                        <div className={estilos.columna}>Total Compras</div>
-                        <div className={estilos.columna}>Puntos</div>
-                        <div className={estilos.columna}>Estado</div>
-                        <div className={estilos.columnaAcciones}>Acciones</div>
-                    </div>
-
-                    <div className={estilos.tablaBody}>
-                        {clientesFiltrados.map((cliente) => (
-                            <div key={cliente.id} className={`${estilos.fila} ${estilos[tema]}`}>
-                                <div className={estilos.columna}>
-                                    <div className={estilos.clienteInfo}>
-                                        <span className={estilos.clienteNombre}>
-                                            {cliente.nombre} {cliente.apellidos}
-                                        </span>
-                                        {cliente.email && (
-                                            <span className={estilos.clienteEmail}>{cliente.email}</span>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className={estilos.columna}>
-                                    <span className={estilos.documento}>
-                                        {cliente.tipo_documento_codigo}: {cliente.numero_documento}
-                                    </span>
-                                </div>
-                                <div className={estilos.columna}>
-                                    <span className={estilos.telefono}>
-                                        {cliente.telefono || 'N/A'}
-                                    </span>
-                                </div>
-                                <div className={estilos.columna}>
-                                    <span className={estilos.monto}>
-                                        {formatearMoneda(cliente.total_compras)}
-                                    </span>
-                                </div>
-                                <div className={estilos.columna}>
-                                    <span className={estilos.puntos}>{cliente.puntos_fidelidad}</span>
-                                </div>
-                                <div className={estilos.columna}>
-                                    <span className={`${estilos.badgeEstado} ${cliente.activo ? estilos.activo : estilos.inactivo}`}>
-                                        {cliente.activo ? 'Activo' : 'Inactivo'}
-                                    </span>
-                                </div>
-                                <div className={estilos.columnaAcciones}>
-                                    <button
-                                        onClick={() => abrirModalVer(cliente)}
-                                        className={estilos.btnIcono}
-                                        title="Ver detalles"
-                                    >
-                                        <ion-icon name="eye-outline"></ion-icon>
-                                    </button>
-                                    <button
-                                        onClick={() => abrirModalEditar(cliente)}
-                                        className={`${estilos.btnIcono} ${estilos.editar}`}
-                                        title="Editar"
-                                    >
-                                        <ion-icon name="create-outline"></ion-icon>
-                                    </button>
-                                    <button
-                                        onClick={() => manejarEliminar(cliente.id, `${cliente.nombre} ${cliente.apellidos || ''}`)}
-                                        className={`${estilos.btnIcono} ${estilos.eliminar}`}
-                                        disabled={procesando}
-                                        title="Eliminar"
-                                    >
-                                        <ion-icon name="trash-outline"></ion-icon>
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
+                <TablaClientes
+                    clientesPaginados={clientesPaginados}
+                    tema={tema}
+                    router={router}
+                    formatearMoneda={formatearMoneda}
+                    obtenerColorBarra={obtenerColorBarra}
+                    estilos={estilos}
+                />
             )}
 
-            {mostrarModal && (
-                <div className={estilos.modalOverlay} onClick={modoModal === 'ver' ? cerrarModal : null}>
-                    <div className={`${estilos.modal} ${estilos[tema]}`} onClick={(e) => e.stopPropagation()}>
-                        <div className={estilos.modalHeader}>
-                            <h2>
-                                {modoModal === 'crear' ? 'Nuevo Cliente' : modoModal === 'editar' ? 'Editar Cliente' : 'Detalle del Cliente'}
-                            </h2>
-                            <button
-                                className={estilos.btnCerrarModal}
-                                onClick={cerrarModal}
-                                disabled={procesando && modoModal !== 'ver'}
-                            >
-                                <ion-icon name="close-outline"></ion-icon>
-                            </button>
+            {/* ================= PAGINACIÓN ================= */}
+            {!cargando && clientesFiltrados.length > 0 && totalPaginas > 1 && (
+                <Paginacion
+                    paginaActual={paginaActual}
+                    totalPaginas={totalPaginas}
+                    itemsPorPagina={itemsPorPagina}
+                    totalItems={clientesFiltrados.length}
+                    setPaginaActual={setPaginaActual}
+                    tema={tema}
+                    estilos={estilos}
+                />
+            )}
+        </div>
+    )
+}
+
+// ===============================================================
+// COMPONENTE: ClienteCard
+// ===============================================================
+function ClienteCard({ cliente, tema, router, formatearMoneda, obtenerColorBarra, obtenerIconoEstado, estilos }) {
+    return (
+        <div className={`${estilos.clienteCard} ${estilos[tema]}`}>
+            {/* Header */}
+            <div className={estilos.cardHeader}>
+                <div className={estilos.avatarContenedor}>
+                    {cliente.fotoUrl ? (
+                        <img
+                            src={cliente.fotoUrl}
+                            alt={cliente.nombreCompleto}
+                            className={estilos.avatar}
+                        />
+                    ) : (
+                        <div className={estilos.avatarPlaceholder}>
+                            <ion-icon name="person-outline"></ion-icon>
                         </div>
+                    )}
+                </div>
+                <div className={estilos.infoBasica}>
+                    <h3 className={estilos.nombreCliente}>{cliente.nombreCompleto}</h3>
+                    <p className={estilos.documentoCliente}>
+                        {cliente.tipoDocumentoCodigo}: {cliente.numeroDocumento}
+                    </p>
+                </div>
+                <div className={estilos.badgeEstadoCredito}>
+                    <span className={`${estilos.badge} ${estilos[cliente.credito.badgeColor]}`}>
+                        <ion-icon name={obtenerIconoEstado(cliente.credito.estadoCredito)}></ion-icon>
+                        {cliente.credito.estadoCredito}
+                    </span>
+                </div>
+            </div>
 
-                        {modoModal === 'ver' ? (
-                            <div className={estilos.modalBody}>
-                                <div className={estilos.detalleCliente}>
-                                    <div className={estilos.campo}>
-                                        <span className={estilos.labelDetalle}>Nombre Completo</span>
-                                        <span className={estilos.valorDetalle}>
-                                            {clienteSeleccionado.nombre} {clienteSeleccionado.apellidos}
-                                        </span>
-                                    </div>
-
-                                    <div className={estilos.gridDetalle}>
-                                        <div className={estilos.campo}>
-                                            <span className={estilos.labelDetalle}>Tipo de Documento</span>
-                                            <span className={estilos.valorDetalle}>{clienteSeleccionado.tipo_documento_nombre}</span>
-                                        </div>
-                                        <div className={estilos.campo}>
-                                            <span className={estilos.labelDetalle}>Numero</span>
-                                            <span className={estilos.valorDetalle}>{clienteSeleccionado.numero_documento}</span>
-                                        </div>
-                                    </div>
-
-                                    {(clienteSeleccionado.telefono || clienteSeleccionado.email) && (
-                                        <div className={estilos.gridDetalle}>
-                                            {clienteSeleccionado.telefono && (
-                                                <div className={estilos.campo}>
-                                                    <span className={estilos.labelDetalle}>Telefono</span>
-                                                    <span className={estilos.valorDetalle}>{clienteSeleccionado.telefono}</span>
-                                                </div>
-                                            )}
-                                            {clienteSeleccionado.email && (
-                                                <div className={estilos.campo}>
-                                                    <span className={estilos.labelDetalle}>Email</span>
-                                                    <span className={estilos.valorDetalle}>{clienteSeleccionado.email}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    {clienteSeleccionado.direccion && (
-                                        <div className={estilos.campo}>
-                                            <span className={estilos.labelDetalle}>Direccion</span>
-                                            <span className={estilos.valorDetalle}>{clienteSeleccionado.direccion}</span>
-                                        </div>
-                                    )}
-
-                                    {(clienteSeleccionado.sector || clienteSeleccionado.municipio || clienteSeleccionado.provincia) && (
-                                        <div className={estilos.gridDetalle}>
-                                            {clienteSeleccionado.sector && (
-                                                <div className={estilos.campo}>
-                                                    <span className={estilos.labelDetalle}>Sector</span>
-                                                    <span className={estilos.valorDetalle}>{clienteSeleccionado.sector}</span>
-                                                </div>
-                                            )}
-                                            {clienteSeleccionado.municipio && (
-                                                <div className={estilos.campo}>
-                                                    <span className={estilos.labelDetalle}>Municipio</span>
-                                                    <span className={estilos.valorDetalle}>{clienteSeleccionado.municipio}</span>
-                                                </div>
-                                            )}
-                                            {clienteSeleccionado.provincia && (
-                                                <div className={estilos.campo}>
-                                                    <span className={estilos.labelDetalle}>Provincia</span>
-                                                    <span className={estilos.valorDetalle}>{clienteSeleccionado.provincia}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-
-                                    <div className={estilos.gridDetalle}>
-                                        <div className={estilos.campo}>
-                                            <span className={estilos.labelDetalle}>Total Compras</span>
-                                            <span className={estilos.valorDetalle}>{formatearMoneda(clienteSeleccionado.total_compras)}</span>
-                                        </div>
-                                        <div className={estilos.campo}>
-                                            <span className={estilos.labelDetalle}>Puntos Fidelidad</span>
-                                            <span className={estilos.valorDetalle}>{clienteSeleccionado.puntos_fidelidad}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            <form onSubmit={manejarSubmit} className={estilos.modalBody}>
-                                <div className={estilos.gridForm}>
-                                    <div className={estilos.grupoInput}>
-                                        <label>Tipo de Documento *</label>
-                                        <select
-                                            value={tipoDocumentoId}
-                                            onChange={(e) => setTipoDocumentoId(e.target.value)}
-                                            className={estilos.select}
-                                            required
-                                            disabled={procesando}
-                                        >
-                                            <option value="">Seleccionar...</option>
-                                            {tiposDocumento.map(tipo => (
-                                                <option key={tipo.id} value={tipo.id}>{tipo.nombre}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Numero de Documento *</label>
-                                        <input
-                                            type="text"
-                                            value={numeroDocumento}
-                                            onChange={(e) => setNumeroDocumento(e.target.value)}
-                                            className={estilos.input}
-                                            required
-                                            disabled={procesando}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={estilos.gridForm}>
-                                    <div className={estilos.grupoInput}>
-                                        <label>Nombre *</label>
-                                        <input
-                                            type="text"
-                                            value={nombre}
-                                            onChange={(e) => setNombre(e.target.value)}
-                                            className={estilos.input}
-                                            required
-                                            disabled={procesando}
-                                        />
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Apellidos</label>
-                                        <input
-                                            type="text"
-                                            value={apellidos}
-                                            onChange={(e) => setApellidos(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={estilos.gridForm}>
-                                    <div className={estilos.grupoInput}>
-                                        <label>Telefono</label>
-                                        <input
-                                            type="tel"
-                                            value={telefono}
-                                            onChange={(e) => setTelefono(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Email</label>
-                                        <input
-                                            type="email"
-                                            value={email}
-                                            onChange={(e) => setEmail(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={estilos.grupoInput}>
-                                    <label>Direccion</label>
-                                    <input
-                                        type="text"
-                                        value={direccion}
-                                        onChange={(e) => setDireccion(e.target.value)}
-                                        className={estilos.input}
-                                        disabled={procesando}
-                                    />
-                                </div>
-
-                                <div className={estilos.gridForm}>
-                                    <div className={estilos.grupoInput}>
-                                        <label>Sector</label>
-                                        <input
-                                            type="text"
-                                            value={sector}
-                                            onChange={(e) => setSector(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Municipio</label>
-                                        <input
-                                            type="text"
-                                            value={municipio}
-                                            onChange={(e) => setMunicipio(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Provincia</label>
-                                        <input
-                                            type="text"
-                                            value={provincia}
-                                            onChange={(e) => setProvincia(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={estilos.gridForm}>
-                                    <div className={estilos.grupoInput}>
-                                        <label>Fecha de Nacimiento</label>
-                                        <input
-                                            type="date"
-                                            value={fechaNacimiento}
-                                            onChange={(e) => setFechaNacimiento(e.target.value)}
-                                            className={estilos.input}
-                                            disabled={procesando}
-                                            max={new Date().toISOString().split('T')[0]}
-                                            min={new Date(new Date().setFullYear(new Date().getFullYear() - 150)).toISOString().split('T')[0]}
-                                        />
-                                    </div>
-
-                                    <div className={estilos.grupoInput}>
-                                        <label>Genero</label>
-                                        <select
-                                            value={genero}
-                                            onChange={(e) => setGenero(e.target.value)}
-                                            className={estilos.select}
-                                            disabled={procesando}
-                                        >
-                                            <option value="">Seleccionar...</option>
-                                            <option value="masculino">Masculino</option>
-                                            <option value="femenino">Femenino</option>
-                                            <option value="otro">Otro</option>
-                                            <option value="prefiero_no_decir">Prefiero no decir</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className={estilos.modalFooter}>
-                                    <button
-                                        type="button"
-                                        className={estilos.btnCancelar}
-                                        onClick={cerrarModal}
-                                        disabled={procesando}
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className={estilos.btnGuardar}
-                                        disabled={procesando}
-                                    >
-                                        {procesando ? 'Procesando...' : modoModal === 'crear' ? 'Crear Cliente' : 'Actualizar Cliente'}
-                                    </button>
-                                </div>
-                            </form>
-                        )}
+            {/* Body */}
+            <div className={estilos.cardBody}>
+                <div className={estilos.infoGrid}>
+                    <div className={estilos.infoItem}>
+                        <ion-icon name="call-outline"></ion-icon>
+                        <span>{cliente.telefono || "N/A"}</span>
+                    </div>
+                    <div className={estilos.infoItem}>
+                        <ion-icon name="cash-outline"></ion-icon>
+                        <span className={cliente.deuda.tieneDeuda ? estilos.deudaActiva : estilos.sinDeuda}>
+                            {cliente.deuda.tieneDeuda ? formatearMoneda(cliente.deuda.total) : "$0.00"}
+                        </span>
+                    </div>
+                    <div className={estilos.infoItem}>
+                        <ion-icon name="star-outline"></ion-icon>
+                        <span className={estilos.clasificacion}>Clase {cliente.credito.clasificacion}</span>
+                    </div>
+                    <div className={estilos.infoItem}>
+                        <ion-icon name="trending-up-outline"></ion-icon>
+                        <span className={estilos.score}>Score: {cliente.credito.score}</span>
                     </div>
                 </div>
-            )}
+
+                {/* Barra de crédito */}
+                <div className={estilos.creditoInfo}>
+                    <div className={estilos.creditoHeader}>
+                        <span className={estilos.creditoLabel}>Uso de Crédito</span>
+                        <span className={estilos.creditoPorcentaje}>{cliente.credito.porcentajeUso}%</span>
+                    </div>
+                    <div className={estilos.creditoBarra}>
+                        <div
+                            className={estilos.creditoProgreso}
+                            style={{
+                                width: `${cliente.credito.porcentajeUso}%`,
+                                backgroundColor: obtenerColorBarra(cliente.credito.porcentajeUso),
+                            }}
+                        ></div>
+                    </div>
+                    <div className={estilos.creditoDetalles}>
+                        <span>Utilizado: {formatearMoneda(cliente.credito.utilizado)}</span>
+                        <span>Disponible: {formatearMoneda(cliente.credito.disponible)}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Footer - Acciones */}
+            <div className={estilos.cardFooter}>
+                <button
+                    onClick={() => router.push(`/admin/clientes/ver/${cliente.id}`)}
+                    className={`${estilos.btnAccion} ${estilos.btnVer}`}
+                    title="Ver perfil completo"
+                >
+                    <ion-icon name="eye-outline"></ion-icon>
+                    <span>Ver</span>
+                </button>
+                <button
+                    onClick={() => router.push(`/admin/ventas/nueva?cliente=${cliente.id}`)}
+                    className={`${estilos.btnAccion} ${estilos.btnVender}`}
+                    disabled={!cliente.credito.puedeVender}
+                    title={cliente.credito.puedeVender ? "Realizar venta" : "Crédito no disponible"}
+                >
+                    <ion-icon name="cart-outline"></ion-icon>
+                    <span>Vender</span>
+                </button>
+                <button
+                    onClick={() => router.push(`/admin/clientes/ver/${cliente.id}?tab=pagos`)}
+                    className={`${estilos.btnAccion} ${estilos.btnCobrar}`}
+                    disabled={!cliente.deuda.tieneDeuda}
+                    title={cliente.deuda.tieneDeuda ? "Registrar pago" : "Sin deudas pendientes"}
+                >
+                    <ion-icon name="wallet-outline"></ion-icon>
+                    <span>Cobrar</span>
+                </button>
+                <button
+                    onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
+                    className={`${estilos.btnAccion} ${estilos.btnEditar}`}
+                    title="Editar cliente"
+                >
+                    <ion-icon name="create-outline"></ion-icon>
+                    <span>Editar</span>
+                </button>
+            </div>
+        </div>
+    )
+}
+
+// ===============================================================
+// COMPONENTE: TablaClientes
+// ===============================================================
+function TablaClientes({ clientesPaginados, tema, router, formatearMoneda, obtenerColorBarra, estilos }) {
+    return (
+        <div className={estilos.tablaContenedor}>
+            <table className={estilos.tabla}>
+                <thead>
+                <tr className={estilos[tema]}>
+                    <th>Cliente</th>
+                    <th>Documento</th>
+                    <th>Contacto</th>
+                    <th>Deuda</th>
+                    <th>Uso Crédito</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+                </thead>
+                <tbody>
+                {clientesPaginados.map((cliente) => (
+                    <tr key={cliente.id} className={`${estilos.filaTabla} ${estilos[tema]}`}>
+                        <td className={estilos.tdInfoPrincipal}>
+                            <div className={estilos.avatarTabla}>
+                                {cliente.fotoUrl ? (
+                                    <img src={cliente.fotoUrl} alt="" />
+                                ) : (
+                                    <ion-icon name="person-outline"></ion-icon>
+                                )}
+                            </div>
+                            <div className={estilos.nombreYCelular}>
+                                <strong>{cliente.nombreCompleto}</strong>
+                                <span className={estilos.celularTabla}>
+                                        {cliente.telefono || 'Sin teléfono'}
+                                    </span>
+                            </div>
+                        </td>
+                        <td>
+                            <div className={estilos.infoDocTabla}>
+                                <span className={estilos.docTipo}>{cliente.tipoDocumentoCodigo}</span>
+                                <span className={estilos.docNum}>{cliente.numeroDocumento}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <div className={estilos.infoContactoTabla}>
+                                <span>{cliente.email || 'Sin email'}</span>
+                                <small>{cliente.direccion || 'Sin dirección'}</small>
+                            </div>
+                        </td>
+                        <td>
+                                <span className={cliente.deuda.tieneDeuda ? estilos.deudaTablaActiva : estilos.deudaTablaSin}>
+                                    {formatearMoneda(cliente.deuda.total)}
+                                </span>
+                        </td>
+                        <td>
+                            <div className={estilos.usoCreditoTabla}>
+                                <div className={estilos.barraMini}>
+                                    <div
+                                        className={estilos.progresoMini}
+                                        style={{
+                                            width: `${cliente.credito.porcentajeUso}%`,
+                                            backgroundColor: obtenerColorBarra(cliente.credito.porcentajeUso)
+                                        }}
+                                    ></div>
+                                </div>
+                                <span>{cliente.credito.porcentajeUso}%</span>
+                            </div>
+                        </td>
+                        <td>
+                                <span className={`${estilos.badgeTabla} ${estilos[cliente.credito.badgeColor]}`}>
+                                    {cliente.credito.estadoCredito}
+                                </span>
+                        </td>
+                        <td>
+                            <div className={estilos.accionesTabla}>
+                                <button
+                                    onClick={() => router.push(`/admin/clientes/ver/${cliente.id}`)}
+                                    className={estilos.btnTablaVer}
+                                    title="Ver Perfil"
+                                    aria-label="Ver Perfil"
+                                >
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                </button>
+                                <button
+                                    onClick={() => router.push(`/admin/ventas/nueva?cliente=${cliente.id}`)}
+                                    className={estilos.btnTablaVender}
+                                    disabled={!cliente.credito.puedeVender}
+                                    title="Venta Crédito"
+                                    aria-label="Realizar Venta"
+                                >
+                                    <ion-icon name="cart-outline"></ion-icon>
+                                </button>
+                                <button
+                                    onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
+                                    className={estilos.btnTablaEditar}
+                                    title="Editar"
+                                    aria-label="Editar Cliente"
+                                >
+                                    <ion-icon name="create-outline"></ion-icon>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
+        </div>
+    )
+}
+
+// ===============================================================
+// COMPONENTE: Paginación
+// ===============================================================
+function Paginacion({ paginaActual, totalPaginas, itemsPorPagina, totalItems, setPaginaActual, tema, estilos }) {
+    const inicioItem = (paginaActual - 1) * itemsPorPagina + 1
+    const finItem = Math.min(paginaActual * itemsPorPagina, totalItems)
+
+    // Generar números de página visibles
+    const obtenerNumerosPagina = () => {
+        const numeros = []
+
+        if (totalPaginas <= 7) {
+            // Mostrar todas las páginas si son 7 o menos
+            for (let i = 1; i <= totalPaginas; i++) {
+                numeros.push(i)
+            }
+        } else {
+            // Lógica inteligente para páginas múltiples
+            numeros.push(1)
+
+            if (paginaActual > 3) {
+                numeros.push('...')
+            }
+
+            for (let i = Math.max(2, paginaActual - 1); i <= Math.min(paginaActual + 1, totalPaginas - 1); i++) {
+                numeros.push(i)
+            }
+
+            if (paginaActual < totalPaginas - 2) {
+                numeros.push('...')
+            }
+
+            numeros.push(totalPaginas)
+        }
+
+        return numeros
+    }
+
+    const numerosPagina = obtenerNumerosPagina()
+
+    return (
+        <div className={`${estilos.paginacion} ${estilos[tema]}`}>
+            <div className={estilos.paginacionInfo}>
+                <span>
+                    Mostrando {inicioItem}-{finItem} de {totalItems} clientes
+                </span>
+            </div>
+            <div className={estilos.paginacionControles}>
+                <button
+                    className={estilos.btnPaginacion}
+                    onClick={() => setPaginaActual(p => Math.max(1, p - 1))}
+                    disabled={paginaActual === 1}
+                    aria-label="Página anterior"
+                >
+                    <ion-icon name="chevron-back-outline"></ion-icon>
+                </button>
+
+                <div className={estilos.numerosPagina}>
+                    {numerosPagina.map((num, index) => (
+                        num === '...' ? (
+                            <span key={`ellipsis-${index}`} className={estilos.puntos}>...</span>
+                        ) : (
+                            <button
+                                key={num}
+                                className={`${estilos.btnNumeroPagina} ${paginaActual === num ? estilos.activa : ''}`}
+                                onClick={() => setPaginaActual(num)}
+                                aria-label={`Ir a página ${num}`}
+                                aria-current={paginaActual === num ? 'page' : undefined}
+                            >
+                                {num}
+                            </button>
+                        )
+                    ))}
+                </div>
+
+                <button
+                    className={estilos.btnPaginacion}
+                    onClick={() => setPaginaActual(p => Math.min(totalPaginas, p + 1))}
+                    disabled={paginaActual === totalPaginas}
+                    aria-label="Página siguiente"
+                >
+                    <ion-icon name="chevron-forward-outline"></ion-icon>
+                </button>
+            </div>
         </div>
     )
 }

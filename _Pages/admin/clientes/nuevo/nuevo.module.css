@@ -1,0 +1,761 @@
+/* ============================================
+   CONTENEDOR PRINCIPAL
+   ============================================ */
+
+.contenedor {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+    min-height: calc(100vh - 70px);
+    transition: all 0.3s ease;
+}
+
+.contenedor.light {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.contenedor.dark {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.headerLeft {
+    flex: 1;
+}
+
+.titulo {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.02em;
+}
+
+.light .titulo {
+    background: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.dark .titulo {
+    background: linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitulo {
+    font-size: 16px;
+    font-weight: 500;
+    margin: 0;
+}
+
+.light .subtitulo {
+    color: #64748b;
+}
+
+.dark .subtitulo {
+    color: #94a3b8;
+}
+
+.btnCancelar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 12px;
+    border: 2px solid;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: transparent;
+}
+
+.light .btnCancelar {
+    border-color: #e5e7eb;
+    color: #64748b;
+}
+
+.dark .btnCancelar {
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+.btnCancelar:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.light .btnCancelar:hover:not(:disabled) {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.dark .btnCancelar:hover:not(:disabled) {
+    background: #334155;
+    border-color: #475569;
+}
+
+.btnCancelar ion-icon {
+    font-size: 22px;
+}
+
+/* ============================================
+   FORMULARIO Y LAYOUT
+   ============================================ */
+
+.formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.layoutPrincipal {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 24px;
+}
+
+/* ============================================
+   SECCIONES
+   ============================================ */
+
+.seccion {
+    padding: 28px;
+    border-radius: 16px;
+    border: 2px solid;
+    transition: all 0.3s ease;
+}
+
+.light .seccion {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .seccion {
+    background: #1e293b;
+    border-color: #334155;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+}
+
+.tituloSeccion {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 24px 0;
+}
+
+.light .tituloSeccion {
+    color: #0f172a;
+}
+
+.dark .tituloSeccion {
+    color: #f1f5f9;
+}
+
+.tituloSeccion ion-icon {
+    font-size: 26px;
+    color: #3b82f6;
+}
+
+/* ============================================
+   COLUMNA FOTO
+   ============================================ */
+
+.columnaFoto {
+    position: sticky;
+    top: 20px;
+    align-self: start;
+}
+
+.fotoContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.fotoPreview {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px dashed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.light .fotoPreview {
+    border-color: #e5e7eb;
+    background: #f8fafc;
+}
+
+.dark .fotoPreview {
+    border-color: #334155;
+    background: #0f172a;
+}
+
+.fotoPreview:hover {
+    transform: scale(1.02);
+}
+
+.light .fotoPreview:hover {
+    border-color: #3b82f6;
+    background: #eff6ff;
+}
+
+.dark .fotoPreview:hover {
+    border-color: #60a5fa;
+    background: #1e3a8a;
+}
+
+.fotoImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fotoPlaceholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 40px;
+}
+
+.fotoPlaceholder ion-icon {
+    font-size: 80px;
+}
+
+.light .fotoPlaceholder ion-icon {
+    color: #cbd5e1;
+}
+
+.dark .fotoPlaceholder ion-icon {
+    color: #475569;
+}
+
+.fotoPlaceholder p {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+    text-align: center;
+}
+
+.light .fotoPlaceholder p {
+    color: #64748b;
+}
+
+.dark .fotoPlaceholder p {
+    color: #94a3b8;
+}
+
+.botonesFoto {
+    display: flex;
+    gap: 12px;
+}
+
+.btnFoto {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: 12px;
+    border: 2px solid;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.light .btnFoto {
+    background: #3b82f6;
+    border-color: #3b82f6;
+    color: #ffffff;
+}
+
+.dark .btnFoto {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+}
+
+.btnFoto:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+}
+
+.btnFoto ion-icon {
+    font-size: 20px;
+}
+
+.btnEliminarFoto {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 2px solid;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.light .btnEliminarFoto {
+    background: #fee2e2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.dark .btnEliminarFoto {
+    background: #7f1d1d;
+    border-color: #991b1b;
+    color: #fca5a5;
+}
+
+.btnEliminarFoto:hover {
+    transform: translateY(-2px);
+}
+
+.btnEliminarFoto ion-icon {
+    font-size: 22px;
+}
+
+.ayudaFoto {
+    font-size: 12px;
+    font-weight: 500;
+    margin: 0;
+    text-align: center;
+}
+
+.light .ayudaFoto {
+    color: #94a3b8;
+}
+
+.dark .ayudaFoto {
+    color: #64748b;
+}
+
+/* ============================================
+   COLUMNA DATOS
+   ============================================ */
+
+.columnaDatos {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+/* ============================================
+   SECCIÓN CRÉDITO (ESPECIAL)
+   ============================================ */
+
+.seccionCredito {
+    position: relative;
+}
+
+.light .seccionCredito {
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-color: #93c5fd;
+}
+
+.dark .seccionCredito {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+    border-color: #3b82f6;
+}
+
+.headerCredito {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.badgeObligatorio {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+}
+
+.alertaInfo {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.light .alertaInfo {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+}
+
+.dark .alertaInfo {
+    background: #78350f;
+    border: 1px solid #92400e;
+}
+
+.alertaInfo ion-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.light .alertaInfo ion-icon {
+    color: #f59e0b;
+}
+
+.dark .alertaInfo ion-icon {
+    color: #fbbf24;
+}
+
+.alertaInfo p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.light .alertaInfo p {
+    color: #92400e;
+}
+
+.dark .alertaInfo p {
+    color: #fef3c7;
+}
+
+/* ============================================
+   INPUTS Y FORMULARIOS
+   ============================================ */
+
+.gridDosColumnas {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+.grupoInput {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.grupoInput label {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.light .grupoInput label {
+    color: #475569;
+}
+
+.dark .grupoInput label {
+    color: #cbd5e1;
+}
+
+.input,
+.select,
+.textarea {
+    padding: 14px 16px;
+    border: 2px solid;
+    border-radius: 10px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: all 0.3s ease;
+}
+
+.light .input,
+.light .select,
+.light .textarea {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    color: #0f172a;
+}
+
+.dark .input,
+.dark .select,
+.dark .textarea {
+    background: #0f172a;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+.input:focus,
+.select:focus,
+.textarea:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+.textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.inputMoneda {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.inputMoneda span {
+    position: absolute;
+    left: 16px;
+    font-size: 18px;
+    font-weight: 700;
+    pointer-events: none;
+}
+
+.light .inputMoneda span {
+    color: #10b981;
+}
+
+.dark .inputMoneda span {
+    color: #34d399;
+}
+
+.inputMoneda .input {
+    padding-left: 36px;
+}
+
+.ayuda {
+    font-size: 12px;
+    font-weight: 500;
+    font-style: italic;
+}
+
+.light .ayuda {
+    color: #94a3b8;
+}
+
+.dark .ayuda {
+    color: #64748b;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+
+.footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    padding: 24px 0 0 0;
+    border-top: 2px solid;
+}
+
+.light .footer {
+    border-color: #e5e7eb;
+}
+
+.dark .footer {
+    border-color: #334155;
+}
+
+.btnCancelarFooter {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 12px;
+    border: 2px solid;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: transparent;
+}
+
+.light .btnCancelarFooter {
+    border-color: #e5e7eb;
+    color: #64748b;
+}
+
+.dark .btnCancelarFooter {
+    border-color: #334155;
+    color: #94a3b8;
+}
+
+.btnCancelarFooter:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.light .btnCancelarFooter:hover:not(:disabled) {
+    background: #f1f5f9;
+}
+
+.dark .btnCancelarFooter:hover:not(:disabled) {
+    background: #334155;
+}
+
+.btnGuardar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    border-radius: 12px;
+    border: none;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+}
+
+.btnGuardar:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.4);
+}
+
+.btnGuardar:disabled,
+.btnCancelarFooter:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btnGuardar ion-icon,
+.btnCancelarFooter ion-icon {
+    font-size: 22px;
+}
+
+/* ============================================
+   ESTADOS DE CARGA
+   ============================================ */
+
+.cargando {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    min-height: 400px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.light .cargando {
+    color: #3b82f6;
+}
+
+.dark .cargando {
+    color: #60a5fa;
+}
+
+.iconoCargando {
+    font-size: 64px;
+    animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 1024px) {
+    .layoutPrincipal {
+        grid-template-columns: 1fr;
+    }
+
+    .columnaFoto {
+        position: static;
+        max-width: 400px;
+        margin: 0 auto;
+    }
+}
+
+@media (max-width: 768px) {
+    .contenedor {
+        padding: 20px 16px;
+    }
+
+    .titulo {
+        font-size: 28px;
+    }
+
+    .subtitulo {
+        font-size: 14px;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btnCancelar {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .seccion {
+        padding: 20px;
+    }
+
+    .gridDosColumnas {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .footer {
+        flex-direction: column-reverse;
+    }
+
+    .btnCancelarFooter,
+    .btnGuardar {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .contenedor {
+        padding: 16px 12px;
+    }
+
+    .titulo {
+        font-size: 24px;
+    }
+
+    .seccion {
+        padding: 16px;
+    }
+
+    .tituloSeccion {
+        font-size: 16px;
+    }
+
+    .fotoPlaceholder ion-icon {
+        font-size: 60px;
+    }
+
+    .fotoPlaceholder {
+        padding: 30px;
+    }
+}

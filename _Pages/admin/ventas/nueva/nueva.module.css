@@ -490,6 +490,7 @@
 
 .busquedaClienteContainer {
     max-width: 500px;
+    position: relative;
 }
 
 .busquedaProducto,
@@ -574,7 +575,8 @@
     border: 2px solid var(--border-color);
     border-radius: 8px;
     box-shadow: var(--shadow-md);
-    z-index: 100;
+    box-shadow: var(--shadow-md);
+    z-index: 9999;
 }
 
 .dropdownItem,

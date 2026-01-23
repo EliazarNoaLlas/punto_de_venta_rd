@@ -1,0 +1,279 @@
+.contenedor {
+    padding: 30px;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.titulo {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.subtitulo {
+    color: #64748b;
+    margin: 5px 0 0;
+}
+
+.btnNuevo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btnNuevo:hover {
+    background: #0284c7;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 25px;
+}
+
+.tarjeta {
+    padding: 25px;
+    border-radius: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.light .tarjeta {
+    background: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+}
+
+.dark .tarjeta {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.tarjetaHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.tarjetaHeader h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    max-width: 70%;
+}
+
+.estado {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 20px;
+}
+
+.activa {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.cerrada {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.info {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.itemInfo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #64748b;
+    font-size: 0.95rem;
+}
+
+.presupuesto {
+    font-weight: 700;
+    color: #334155;
+}
+
+.dark .presupuesto {
+    color: #f1f5f9;
+}
+
+.footerCards {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+    padding-top: 15px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.dark .footerCards {
+    border-color: #334155;
+}
+
+.fechas {
+    color: #94a3b8;
+}
+
+.btnVer {
+    padding: 8px 16px;
+    background: transparent;
+    border: 2px solid #0ea5e9;
+    color: #0ea5e9;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btnVer:hover {
+    background: #0ea5e9;
+    color: white;
+}
+
+/* Modal */
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal {
+    width: 90%;
+    max-width: 600px;
+    background: white;
+    border-radius: 28px;
+    overflow: hidden;
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.modalHeader {
+    padding: 24px 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.modalBody {
+    padding: 30px;
+}
+
+.filaForm {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.grupo {
+    margin-bottom: 24px;
+}
+
+.grupo label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #475569;
+}
+
+.grupo input {
+    width: 100%;
+    padding: 14px 18px;
+    border: 2px solid #f1f5f9;
+    border-radius: 14px;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.grupo input:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+.modalFooter {
+    display: flex;
+    gap: 15px;
+    padding: 0 30px 30px;
+}
+
+.modalFooter button {
+    flex: 1;
+    padding: 14px;
+    border-radius: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+}
+
+.btnGuardar {
+    background: #0ea5e9;
+    color: white;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(40px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 20px;
+    }
+
+    .btnNuevo {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .filaForm {
+        grid-template-columns: 1fr;
+        gap: 0;
+    }
+}
