@@ -38,6 +38,7 @@ export default function HeaderAdmin() {
         { href: '/admin/gastos', icon: 'wallet-outline', label: 'Gastos' },
         { href: '/admin/credito', icon: 'card-outline', label: 'Control de Crédito' },
         { href: '/admin/finanzas/cxc', icon: 'calculator-outline', label: 'Cuentas por Cobrar' },
+        { href: '/admin/depuracion', icon: 'analytics-outline', label: 'Depuración de Crédito' },
         { href: '/admin/reportes', icon: 'stats-chart-outline', label: 'Reportes' },
         { href: '/admin/usuarios', icon: 'person-outline', label: 'Usuarios' },
         { href: '/admin/catalogo', icon: 'albums-outline', label: 'Catálogo Online' },

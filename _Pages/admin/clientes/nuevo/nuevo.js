@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { obtenerClientes } from '../servidor'
-import { crearClienteConCredito } from './servidor'
+import { crearCliente, crearClienteConCredito } from './servidor'
 import estilos from './nuevo.module.css'
 
 export default function CrearClienteAdmin() {
@@ -29,7 +29,8 @@ export default function CrearClienteAdmin() {
     const [previewFoto, setPreviewFoto] = useState(null)
     const fileInputRef = useRef(null)
 
-    // Perfil Crediticio (Integrado)
+    // Perfil Crediticio (OPCIONAL)
+    const [asignarCredito, setAsignarCredito] = useState(false)
     const [limiteCredito, setLimiteCredito] = useState('')
     const [frecuenciaPago, setFrecuenciaPago] = useState('mensual')
     const [diasPlazo, setDiasPlazo] = useState(30)
@@ -68,17 +69,14 @@ export default function CrearClienteAdmin() {
             if (resultado.success) {
                 setTiposDocumento(resultado.tiposDocumento || [])
 
-                // Convertimos el array de reglas a un objeto clave: regla
-                const reglasMap = {}
-                    (resultado.reglas || []).forEach(r => {
-                        reglasMap[r.codigo] = r
-                    })
+                // Las reglas ya vienen procesadas como objeto desde el backend
+                const reglasMap = resultado.reglas || {};
                 setReglas(reglasMap)
 
                 // Establecer defaults desde reglas
-                setLimiteCredito(reglasMap.LIMITE_DEFAULT?.configuracion?.limite_default ?? 5000)
-                setFrecuenciaPago(reglasMap.FRECUENCIA_DEFAULT?.configuracion ?? 'mensual')
-                setDiasPlazo(reglasMap.DIAS_PLAZO_DEFAULT?.configuracion ?? 30)
+                setLimiteCredito(reglasMap.LIMITE_DEFAULT?.limite_default ?? 5000)
+                setFrecuenciaPago(reglasMap.FRECUENCIA_DEFAULT ?? 'mensual')
+                setDiasPlazo(reglasMap.DIAS_PLAZO_DEFAULT ?? 30)
             } else {
                 alert(resultado.mensaje || 'Error al cargar datos')
                 router.push('/admin/clientes')
@@ -136,9 +134,12 @@ export default function CrearClienteAdmin() {
             alert('El email no es válido')
             return false
         }
-        if (!limiteCredito || parseFloat(limiteCredito) < 0) {
-            alert('El límite de crédito debe ser un valor válido (mínimo 0)')
-            return false
+        // Validar crédito solo si está habilitado
+        if (asignarCredito) {
+            if (!limiteCredito || parseFloat(limiteCredito) < 0) {
+                alert('El límite de crédito debe ser un valor válido (mínimo 0)')
+                return false
+            }
         }
         return true
     }
@@ -153,33 +154,53 @@ export default function CrearClienteAdmin() {
         setProcesando(true)
 
         try {
-            const datos = {
-                cliente: {
-                    tipo_documento_id: parseInt(tipoDocumentoId),
-                    numero_documento: numeroDocumento.trim(),
-                    nombre: nombre.trim(),
-                    apellidos: apellidos.trim() || null,
-                    telefono: telefono.trim() || null,
-                    email: email.trim() || null,
-                    direccion: direccion.trim() || null,
-                    imagen_base64: imagenBase64
-                },
-                credito: {
-                    limite: parseFloat(limiteCredito),
-                    frecuencia_pago: frecuenciaPago,
-                    dias_plazo: parseInt(diasPlazo),
-                    clasificacion: clasificacion,
-                    observacion: observacionCredito.trim() || null
-                }
+            const datosCliente = {
+                tipo_documento_id: parseInt(tipoDocumentoId),
+                numero_documento: numeroDocumento.trim(),
+                nombre: nombre.trim(),
+                apellidos: apellidos.trim() || null,
+                telefono: telefono.trim() || null,
+                email: email.trim() || null,
+                direccion: direccion.trim() || null,
+                imagen_base64: imagenBase64
             }
 
-            const resultado = await crearClienteConCredito(datos)
+            let resultado
 
-            if (resultado.success) {
-                alert(`✅ ${resultado.mensaje}\n\nCliente ID: ${resultado.clienteId}\nCrédito ID: ${resultado.creditoId}`)
-                router.push('/admin/clientes')
+            if (asignarCredito) {
+                // Crear cliente con crédito
+                const datos = {
+                    cliente: datosCliente,
+                    credito: {
+                        limite: parseFloat(limiteCredito),
+                        frecuencia_pago: frecuenciaPago,
+                        dias_plazo: parseInt(diasPlazo),
+                        clasificacion: clasificacion,
+                        observacion: observacionCredito.trim() || null
+                    }
+                }
+                resultado = await crearClienteConCredito(datos)
+
+                if (resultado.success) {
+                    alert(`✅ ${resultado.mensaje}\n\nCliente ID: ${resultado.clienteId}\nCrédito ID: ${resultado.creditoId}`)
+                    router.push('/admin/clientes')
+                } else if (resultado.clienteId) {
+                    // Cliente creado pero crédito falló
+                    alert(`⚠️ ${resultado.mensaje}\n\nCliente ID: ${resultado.clienteId}\n\nError: ${resultado.creditoError}`)
+                    router.push('/admin/clientes')
+                } else {
+                    alert(`❌ ${resultado.mensaje || 'Error al crear cliente'}`)
+                }
             } else {
-                alert(`❌ ${resultado.mensaje || 'Error al crear cliente'}`)
+                // Crear cliente sin crédito
+                resultado = await crearCliente(datosCliente)
+
+                if (resultado.success) {
+                    alert(`✅ ${resultado.mensaje}\n\nCliente ID: ${resultado.clienteId}\n\n(Sin crédito asignado)`)
+                    router.push('/admin/clientes')
+                } else {
+                    alert(`❌ ${resultado.mensaje || 'Error al crear cliente'}`)
+                }
             }
         } catch (error) {
             console.error('Error al crear cliente:', error)
@@ -400,101 +421,127 @@ export default function CrearClienteAdmin() {
                                     <ion-icon name="card-outline"></ion-icon>
                                     <span>Configuración de Crédito</span>
                                 </h3>
-                                <span className={estilos.badgeObligatorio}>Obligatorio</span>
+                                <label className={estilos.toggleContainer}>
+                                    <input
+                                        type="checkbox"
+                                        checked={asignarCredito}
+                                        onChange={(e) => setAsignarCredito(e.target.checked)}
+                                        disabled={procesando}
+                                        className={estilos.toggleInput}
+                                    />
+                                    <span className={estilos.toggleSlider}></span>
+                                    <span className={estilos.toggleLabel}>
+                                        {asignarCredito ? 'Crédito Habilitado' : 'Sin Crédito'}
+                                    </span>
+                                </label>
                             </div>
 
-                            <div className={estilos.alertaInfo}>
-                                <ion-icon name="information-circle-outline"></ion-icon>
-                                <p>
-                                    El crédito se crea automáticamente al registrar el cliente.
-                                    Puedes usar los valores por defecto o personalizarlos.
-                                </p>
-                            </div>
+                            {asignarCredito ? (
+                                <div className={estilos.alertaInfo}>
+                                    <ion-icon name="information-circle-outline"></ion-icon>
+                                    <p>
+                                        Se creará un perfil crediticio para este cliente.
+                                        Puedes usar los valores por defecto o personalizarlos.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className={estilos.alertaWarning}>
+                                    <ion-icon name="alert-circle-outline"></ion-icon>
+                                    <p>
+                                        Este cliente se creará SIN crédito. Podrás asignarlo más tarde si es necesario.
+                                    </p>
+                                </div>
+                            )}
 
-                            <div className={estilos.gridDosColumnas}>
-                                <div className={estilos.grupoInput}>
-                                    <label>Límite de Crédito *</label>
-                                    <div className={estilos.inputMoneda}>
-                                        <span>$</span>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={limiteCredito}
-                                            onChange={e => setLimiteCredito(e.target.value)}
-                                            className={estilos.input}
-                                            required
+                            {asignarCredito && (
+                                <div className={estilos.camposCredito}>
+
+                                    <div className={estilos.gridDosColumnas}>
+                                        <div className={estilos.grupoInput}>
+                                            <label>Límite de Crédito *</label>
+                                            <div className={estilos.inputMoneda}>
+                                                <span>$</span>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={limiteCredito}
+                                                    onChange={e => setLimiteCredito(e.target.value)}
+                                                    className={estilos.input}
+                                                    required
+                                                    disabled={procesando}
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+                                            {reglas.LIMITE_DEFAULT && (
+                                                <small className={estilos.ayuda}>
+                                                    Default del sistema: {reglas.LIMITE_DEFAULT?.moneda} {reglas.LIMITE_DEFAULT?.limite_default}
+                                                </small>
+                                            )}
+                                        </div>
+
+                                        <div className={estilos.grupoInput}>
+                                            <label>Frecuencia de Pago *</label>
+                                            <select
+                                                value={frecuenciaPago}
+                                                onChange={e => setFrecuenciaPago(e.target.value)}
+                                                className={estilos.select}
+                                                disabled={procesando}
+                                            >
+                                                <option value="semanal">Semanal (7 días)</option>
+                                                <option value="quincenal">Quincenal (15 días)</option>
+                                                <option value="mensual">Mensual (30 días)</option>
+                                            </select>
+                                        </div>
+
+                                        <div className={estilos.grupoInput}>
+                                            <label>Días de Plazo</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={diasPlazo}
+                                                onChange={e => setDiasPlazo(e.target.value)}
+                                                className={estilos.input}
+                                                disabled={procesando}
+                                                placeholder="30"
+                                            />
+                                            <small className={estilos.ayuda}>
+                                                Plazo para pagar desde la fecha de compra
+                                            </small>
+                                        </div>
+
+                                        <div className={estilos.grupoInput}>
+                                            <label>Clasificación Inicial *</label>
+                                            <select
+                                                value={clasificacion}
+                                                onChange={e => setClasificacion(e.target.value)}
+                                                className={estilos.select}
+                                                disabled={procesando}
+                                            >
+                                                <option value="A">A - Excelente (Score: 100)</option>
+                                                <option value="B">B - Bueno (Score: 75)</option>
+                                                <option value="C">C - Regular (Score: 50)</option>
+                                                <option value="D">D - Riesgoso (Score: 25)</option>
+                                            </select>
+                                            <small className={estilos.ayuda}>
+                                                Se ajustará automáticamente según historial de pagos
+                                            </small>
+                                        </div>
+                                    </div>
+
+                                    <div className={estilos.grupoInput}>
+                                        <label>Observación Inicial (Opcional)</label>
+                                        <textarea
+                                            value={observacionCredito}
+                                            onChange={e => setObservacionCredito(e.target.value)}
+                                            className={estilos.textarea}
                                             disabled={procesando}
-                                            placeholder="0.00"
+                                            placeholder="Notas sobre el crédito inicial del cliente..."
+                                            rows={2}
                                         />
                                     </div>
-                                    {reglas.LIMITE_DEFAULT && (
-                                        <small className={estilos.ayuda}>
-                                            Default del sistema: {reglas.LIMITE_DEFAULT.configuracion?.moneda} {reglas.LIMITE_DEFAULT.configuracion?.limite_default}
-                                        </small>
-                                    )}
                                 </div>
-
-                                <div className={estilos.grupoInput}>
-                                    <label>Frecuencia de Pago *</label>
-                                    <select
-                                        value={frecuenciaPago}
-                                        onChange={e => setFrecuenciaPago(e.target.value)}
-                                        className={estilos.select}
-                                        disabled={procesando}
-                                    >
-                                        <option value="semanal">Semanal (7 días)</option>
-                                        <option value="quincenal">Quincenal (15 días)</option>
-                                        <option value="mensual">Mensual (30 días)</option>
-                                    </select>
-                                </div>
-
-                                <div className={estilos.grupoInput}>
-                                    <label>Días de Plazo</label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={diasPlazo}
-                                        onChange={e => setDiasPlazo(e.target.value)}
-                                        className={estilos.input}
-                                        disabled={procesando}
-                                        placeholder="30"
-                                    />
-                                    <small className={estilos.ayuda}>
-                                        Plazo para pagar desde la fecha de compra
-                                    </small>
-                                </div>
-
-                                <div className={estilos.grupoInput}>
-                                    <label>Clasificación Inicial *</label>
-                                    <select
-                                        value={clasificacion}
-                                        onChange={e => setClasificacion(e.target.value)}
-                                        className={estilos.select}
-                                        disabled={procesando}
-                                    >
-                                        <option value="A">A - Excelente (Score: 100)</option>
-                                        <option value="B">B - Bueno (Score: 75)</option>
-                                        <option value="C">C - Regular (Score: 50)</option>
-                                        <option value="D">D - Riesgoso (Score: 25)</option>
-                                    </select>
-                                    <small className={estilos.ayuda}>
-                                        Se ajustará automáticamente según historial de pagos
-                                    </small>
-                                </div>
-                            </div>
-
-                            <div className={estilos.grupoInput}>
-                                <label>Observación Inicial (Opcional)</label>
-                                <textarea
-                                    value={observacionCredito}
-                                    onChange={e => setObservacionCredito(e.target.value)}
-                                    className={estilos.textarea}
-                                    disabled={procesando}
-                                    placeholder="Notas sobre el crédito inicial del cliente..."
-                                    rows={2}
-                                />
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -518,12 +565,12 @@ export default function CrearClienteAdmin() {
                         {procesando ? (
                             <>
                                 <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
-                                <span>Creando cliente y crédito...</span>
+                                <span>{asignarCredito ? 'Creando cliente y crédito...' : 'Creando cliente...'}</span>
                             </>
                         ) : (
                             <>
                                 <ion-icon name="checkmark-circle-outline"></ion-icon>
-                                <span>Crear Cliente + Crédito</span>
+                                <span>{asignarCredito ? 'Crear Cliente + Crédito' : 'Crear Cliente'}</span>
                             </>
                         )}
                     </button>

@@ -121,6 +121,53 @@
     color: #cbd5e1;
 }
 
+/* BOTONES DEL HEADER */
+.headerButtons {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btnDepuracion {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 24px;
+    border-radius: var(--radius-md);
+    border: 2px solid;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    background: transparent;
+}
+
+.light .btnDepuracion {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.dark .btnDepuracion {
+    border-color: var(--color-primary-light);
+    color: var(--color-primary-light);
+}
+
+.btnDepuracion:hover {
+    transform: translateY(-2px);
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    color: #ffffff;
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+.btnDepuracion:active {
+    transform: translateY(0);
+}
+
+.btnDepuracion ion-icon {
+    font-size: 22px;
+}
+
 .btnNuevo {
     display: flex;
     align-items: center;
@@ -1075,8 +1122,13 @@
 }
 
 @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 .vacio {

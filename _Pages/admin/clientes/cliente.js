@@ -249,14 +249,25 @@ export default function ClientesAdmin() {
                     <h1 className={estilos.titulo}>Cartera de Clientes</h1>
                     <p className={estilos.subtitulo}>Gestión profesional de perfiles crediticios</p>
                 </div>
-                <button
-                    className={estilos.btnNuevo}
-                    onClick={() => router.push("/admin/clientes/nuevo")}
-                    disabled={procesando}
-                >
-                    <ion-icon name="person-add-outline"></ion-icon>
-                    <span>Nuevo Cliente</span>
-                </button>
+                <div className={estilos.headerButtons}>
+                    <button
+                        className={estilos.btnDepuracion}
+                        onClick={() => router.push("/admin/depuracion")}
+                        disabled={procesando}
+                        title="Ir a Depuración de Crédito"
+                    >
+                        <ion-icon name="analytics-outline"></ion-icon>
+                        <span>Depuración</span>
+                    </button>
+                    <button
+                        className={estilos.btnNuevo}
+                        onClick={() => router.push("/admin/clientes/nuevo")}
+                        disabled={procesando}
+                    >
+                        <ion-icon name="person-add-outline"></ion-icon>
+                        <span>Nuevo Cliente</span>
+                    </button>
+                </div>
             </div>
 
             {/* ================= ESTADÍSTICAS ================= */}
@@ -501,101 +512,101 @@ function TablaClientes({ clientesPaginados, tema, router, formatearMoneda, obten
         <div className={estilos.tablaContenedor}>
             <table className={estilos.tabla}>
                 <thead>
-                <tr className={estilos[tema]}>
-                    <th>Cliente</th>
-                    <th>Documento</th>
-                    <th>Contacto</th>
-                    <th>Deuda</th>
-                    <th>Uso Crédito</th>
-                    <th>Estado</th>
-                    <th>Acciones</th>
-                </tr>
+                    <tr className={estilos[tema]}>
+                        <th>Cliente</th>
+                        <th>Documento</th>
+                        <th>Contacto</th>
+                        <th>Deuda</th>
+                        <th>Uso Crédito</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
                 </thead>
                 <tbody>
-                {clientesPaginados.map((cliente) => (
-                    <tr key={cliente.id} className={`${estilos.filaTabla} ${estilos[tema]}`}>
-                        <td className={estilos.tdInfoPrincipal}>
-                            <div className={estilos.avatarTabla}>
-                                {cliente.fotoUrl ? (
-                                    <img src={cliente.fotoUrl} alt="" />
-                                ) : (
-                                    <ion-icon name="person-outline"></ion-icon>
-                                )}
-                            </div>
-                            <div className={estilos.nombreYCelular}>
-                                <strong>{cliente.nombreCompleto}</strong>
-                                <span className={estilos.celularTabla}>
+                    {clientesPaginados.map((cliente) => (
+                        <tr key={cliente.id} className={`${estilos.filaTabla} ${estilos[tema]}`}>
+                            <td className={estilos.tdInfoPrincipal}>
+                                <div className={estilos.avatarTabla}>
+                                    {cliente.fotoUrl ? (
+                                        <img src={cliente.fotoUrl} alt="" />
+                                    ) : (
+                                        <ion-icon name="person-outline"></ion-icon>
+                                    )}
+                                </div>
+                                <div className={estilos.nombreYCelular}>
+                                    <strong>{cliente.nombreCompleto}</strong>
+                                    <span className={estilos.celularTabla}>
                                         {cliente.telefono || 'Sin teléfono'}
                                     </span>
-                            </div>
-                        </td>
-                        <td>
-                            <div className={estilos.infoDocTabla}>
-                                <span className={estilos.docTipo}>{cliente.tipoDocumentoCodigo}</span>
-                                <span className={estilos.docNum}>{cliente.numeroDocumento}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <div className={estilos.infoContactoTabla}>
-                                <span>{cliente.email || 'Sin email'}</span>
-                                <small>{cliente.direccion || 'Sin dirección'}</small>
-                            </div>
-                        </td>
-                        <td>
+                                </div>
+                            </td>
+                            <td>
+                                <div className={estilos.infoDocTabla}>
+                                    <span className={estilos.docTipo}>{cliente.tipoDocumentoCodigo}</span>
+                                    <span className={estilos.docNum}>{cliente.numeroDocumento}</span>
+                                </div>
+                            </td>
+                            <td>
+                                <div className={estilos.infoContactoTabla}>
+                                    <span>{cliente.email || 'Sin email'}</span>
+                                    <small>{cliente.direccion || 'Sin dirección'}</small>
+                                </div>
+                            </td>
+                            <td>
                                 <span className={cliente.deuda.tieneDeuda ? estilos.deudaTablaActiva : estilos.deudaTablaSin}>
                                     {formatearMoneda(cliente.deuda.total)}
                                 </span>
-                        </td>
-                        <td>
-                            <div className={estilos.usoCreditoTabla}>
-                                <div className={estilos.barraMini}>
-                                    <div
-                                        className={estilos.progresoMini}
-                                        style={{
-                                            width: `${cliente.credito.porcentajeUso}%`,
-                                            backgroundColor: obtenerColorBarra(cliente.credito.porcentajeUso)
-                                        }}
-                                    ></div>
+                            </td>
+                            <td>
+                                <div className={estilos.usoCreditoTabla}>
+                                    <div className={estilos.barraMini}>
+                                        <div
+                                            className={estilos.progresoMini}
+                                            style={{
+                                                width: `${cliente.credito.porcentajeUso}%`,
+                                                backgroundColor: obtenerColorBarra(cliente.credito.porcentajeUso)
+                                            }}
+                                        ></div>
+                                    </div>
+                                    <span>{cliente.credito.porcentajeUso}%</span>
                                 </div>
-                                <span>{cliente.credito.porcentajeUso}%</span>
-                            </div>
-                        </td>
-                        <td>
+                            </td>
+                            <td>
                                 <span className={`${estilos.badgeTabla} ${estilos[cliente.credito.badgeColor]}`}>
                                     {cliente.credito.estadoCredito}
                                 </span>
-                        </td>
-                        <td>
-                            <div className={estilos.accionesTabla}>
-                                <button
-                                    onClick={() => router.push(`/admin/clientes/ver/${cliente.id}`)}
-                                    className={estilos.btnTablaVer}
-                                    title="Ver Perfil"
-                                    aria-label="Ver Perfil"
-                                >
-                                    <ion-icon name="eye-outline"></ion-icon>
-                                </button>
-                                <button
-                                    onClick={() => router.push(`/admin/ventas/nueva?cliente=${cliente.id}`)}
-                                    className={estilos.btnTablaVender}
-                                    disabled={!cliente.credito.puedeVender}
-                                    title="Venta Crédito"
-                                    aria-label="Realizar Venta"
-                                >
-                                    <ion-icon name="cart-outline"></ion-icon>
-                                </button>
-                                <button
-                                    onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
-                                    className={estilos.btnTablaEditar}
-                                    title="Editar"
-                                    aria-label="Editar Cliente"
-                                >
-                                    <ion-icon name="create-outline"></ion-icon>
-                                </button>
-                            </div>
-                        </td>
-                    </tr>
-                ))}
+                            </td>
+                            <td>
+                                <div className={estilos.accionesTabla}>
+                                    <button
+                                        onClick={() => router.push(`/admin/clientes/ver/${cliente.id}`)}
+                                        className={estilos.btnTablaVer}
+                                        title="Ver Perfil"
+                                        aria-label="Ver Perfil"
+                                    >
+                                        <ion-icon name="eye-outline"></ion-icon>
+                                    </button>
+                                    <button
+                                        onClick={() => router.push(`/admin/ventas/nueva?cliente=${cliente.id}`)}
+                                        className={estilos.btnTablaVender}
+                                        disabled={!cliente.credito.puedeVender}
+                                        title="Venta Crédito"
+                                        aria-label="Realizar Venta"
+                                    >
+                                        <ion-icon name="cart-outline"></ion-icon>
+                                    </button>
+                                    <button
+                                        onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
+                                        className={estilos.btnTablaEditar}
+                                        title="Editar"
+                                        aria-label="Editar Cliente"
+                                    >
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    ))}
                 </tbody>
             </table>
         </div>

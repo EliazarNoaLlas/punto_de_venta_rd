@@ -1,8 +1,8 @@
 "use server"
 
 import db from "@/_DB/db"
-import { cookies } from 'next/headers'
-import { obtenerCajaAbierta } from '../servidor'
+import {cookies} from 'next/headers'
+import {obtenerCajaAbierta} from '../servidor'
 
 export async function obtenerDatosVenta() {
     let connection
@@ -158,7 +158,7 @@ export async function buscarClientes(termino = '') {
         const userTipo = cookieStore.get('userTipo')?.value
 
         if (!userId || !empresaId || !['admin', 'vendedor'].includes(userTipo)) {
-            return { success: false, mensaje: 'Sesión inválida' }
+            return {success: false, mensaje: 'Sesión inválida'}
         }
 
         // =========================
@@ -171,7 +171,7 @@ export async function buscarClientes(termino = '') {
 
         // Caso: término muy corto pero no vacío (evita búsquedas pobres)
         if (terminoLimpio.length > 0 && terminoLimpio.length < 2) {
-            return { success: true, clientes: [] }
+            return {success: true, clientes: []}
         }
 
         connection = await db.getConnection()
@@ -198,8 +198,7 @@ export async function buscarClientes(termino = '') {
                 WHERE c.empresa_id = ?
                   AND c.activo = TRUE
                   AND c.estado = 'activo'
-                ORDER BY c.nombre ASC
-                LIMIT 20
+                ORDER BY c.nombre ASC LIMIT 20
             `
             params = [empresaId]
         } else {
@@ -225,8 +224,7 @@ export async function buscarClientes(termino = '') {
                         OR c.telefono LIKE ?
                         OR c.email LIKE ?
                     )
-                ORDER BY c.nombre ASC
-                LIMIT 20
+                ORDER BY c.nombre ASC LIMIT 20
             `
             params = [
                 empresaId,
@@ -344,7 +342,7 @@ export async function crearVenta(datosVenta) {
                 mensaje: 'Sesion invalida'
             }
         }
-
+        connection = await db.getConnection()
         if (!datosVenta.metodo_pago) {
             return {
                 success: false,
@@ -359,25 +357,19 @@ export async function crearVenta(datosVenta) {
             }
         }
 
-        connection = await db.getConnection()
-        await connection.beginTransaction()
+        // ============================================
+        // FASE 0: PRE-VALIDACIONES ESPECÍFICAS
+        // ============================================
 
-        // ============================================
-        // VALIDACIÓN COMPLETA DE CRÉDITO
-        // ============================================
+        // Validar Crédito antes de iniciar transacción
         if (datosVenta.metodo_pago === 'credito') {
+            // 1. Validar Cliente
             if (!datosVenta.cliente_id) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'Venta a crédito requiere un cliente seleccionado'
-                }
+                return {success: false, mensaje: 'Venta a crédito requiere un cliente seleccionado'}
             }
 
-            // 1. Verificar configuración de crédito
-            const [credito] = await connection.execute(
-                `SELECT *
+            // 2. Obtener y Validar Estado Crediticio
+            const [credito] = await connection.execute(                `SELECT *
                  FROM credito_clientes
                  WHERE cliente_id = ?
                    AND empresa_id = ?
@@ -385,87 +377,45 @@ export async function crearVenta(datosVenta) {
                 [datosVenta.cliente_id, empresaId]
             )
 
-            if (credito.length === 0) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'El cliente no tiene configuración de crédito'
-                }
-            }
+            if (credito.length === 0) return {success: false, mensaje: 'El cliente no tiene configuración de crédito'}
 
             const c = credito[0]
+            if (c.estado_credito === 'bloqueado') return {
+                success: false,
+                mensaje: 'Crédito bloqueado por incumplimiento'
+            }
+            if (c.estado_credito === 'suspendido') return {success: false, mensaje: 'Crédito suspendido temporalmente'}
+            if (c.clasificacion === 'D') return {
+                success: false,
+                mensaje: 'Cliente clasificado D (Moroso). Crédito no permitido'
+            }
 
-            // 2. Verificar estado del crédito
-            if (c.estado_credito === 'bloqueado') {
-                await connection.rollback()
-                connection.release()
+            if (parseFloat(c.saldo_disponible) < parseFloat(datosVenta.total)) {
                 return {
                     success: false,
-                    mensaje: 'El crédito de este cliente está bloqueado por incumplimiento'
+                    mensaje: `Venta excede saldo disponible. Disponible: ${new Intl.NumberFormat('es-DO', {
+                        style: 'currency',
+                        currency: 'DOP'
+                    }).format(c.saldo_disponible)}`
                 }
             }
 
-            if (c.estado_credito === 'suspendido') {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'El crédito de este cliente está suspendido temporalmente'
-                }
-            }
-
-            // 3. Verificar clasificación crediticia
-            if (c.clasificacion === 'D') {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'Cliente con clasificación D (Moroso). No se puede otorgar crédito'
-                }
-            }
-
-            // 4. Verificar saldo disponible
-            if (parseFloat(c.saldo_disponible) <= 0) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'El cliente no tiene saldo de crédito disponible'
-                }
-            }
-
-            // 5. Verificar que la venta no exceda el límite
-            if (parseFloat(datosVenta.total) > parseFloat(c.saldo_disponible)) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: `Esta venta (${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(datosVenta.total)}) excede el saldo disponible (${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(c.saldo_disponible)})`
-                }
-            }
-
-            // 6. Verificar deudas vencidas
-            const [deudasVencidas] = await connection.execute(
-                `SELECT COUNT(*) as total, SUM(saldo_pendiente) as monto
+            // 3. Deudas Vencidas
+            const [deudas] = await connection.execute(
+                `SELECT COUNT(*) as total
                  FROM cuentas_por_cobrar
                  WHERE cliente_id = ?
                    AND empresa_id = ?
                    AND estado_cxc = 'vencida'`,
                 [datosVenta.cliente_id, empresaId]
             )
-
-            if (deudasVencidas[0].total > 0) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: `Cliente tiene ${deudasVencidas[0].total} factura(s) vencida(s) por ${new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(deudasVencidas[0].monto || 0)}. Debe regularizar antes de nueva compra a crédito`
-                }
+            if (deudas[0].total > 0) return {
+                success: false,
+                mensaje: 'Cliente posee facturas vencidas. Debe regularizar su estado.'
             }
 
-            // 7. Verificar alertas críticas
-            const [alertasCriticas] = await connection.execute(
+            // 4. Alertas Críticas
+            const [alertas] = await connection.execute(
                 `SELECT COUNT(*) as total
                  FROM alertas_credito
                  WHERE cliente_id = ?
@@ -474,15 +424,26 @@ export async function crearVenta(datosVenta) {
                    AND severidad = 'critica'`,
                 [datosVenta.cliente_id, empresaId]
             )
-
-            if (alertasCriticas[0].total > 0) {
-                await connection.rollback()
-                connection.release()
-                return {
-                    success: false,
-                    mensaje: 'El cliente tiene alertas críticas activas. Consulte con el administrador'
-                }
+            if (alertas[0].total > 0) return {
+                success: false,
+                mensaje: 'Cliente con alertas críticas de crédito activas'
             }
+        }
+
+        connection = await db.getConnection()
+        await connection.beginTransaction()
+
+        // Validaciones de crédito ya realizadas en Fase 0, pero mantenemos referencia para lógica posterior se aplica
+        let creditoCliente = null
+        if (datosVenta.metodo_pago === 'credito') {
+            const [credito] = await connection.execute(
+                `SELECT *
+                 FROM credito_clientes
+                 WHERE cliente_id = ?
+                   AND empresa_id = ?`,
+                [datosVenta.cliente_id, empresaId]
+            )
+            creditoCliente = credito[0]
         }
 
         // Obtener tipo de comprobante y generar NCF
@@ -624,55 +585,29 @@ export async function crearVenta(datosVenta) {
             ]
         )
 
-        // ACTUALIZAR TOTALES DE CAJA (CRÍTICO PARA POS)
-        await connection.execute(
-            `UPDATE cajas
-             SET total_ventas          = total_ventas + ?,
-                 total_efectivo        = total_efectivo + IF(? = 'efectivo', ?, 0),
-                 total_tarjeta_debito  = total_tarjeta_debito + IF(? = 'tarjeta_debito', ?, 0),
-                 total_tarjeta_credito = total_tarjeta_credito + IF(? = 'tarjeta_credito', ?, 0),
-                 total_transferencia   = total_transferencia + IF(? = 'transferencia', ?, 0),
-                 total_cheque          = total_cheque + IF(? = 'cheque', ?, 0)
-             WHERE id = ?`,
-            [
-                datosVenta.total,
-                datosVenta.metodo_pago, datosVenta.total,
-                datosVenta.metodo_pago, datosVenta.total,
-                datosVenta.metodo_pago, datosVenta.total,
-                datosVenta.metodo_pago, datosVenta.total,
-                datosVenta.metodo_pago, datosVenta.total,
-                cajaId
-            ]
-        )
 
         const ventaId = resultadoVenta.insertId
 
-        // Registrar Cuenta por Cobrar si es crédito
-        if (datosVenta.metodo_pago === 'credito') {
-            const [credito] = await connection.execute(
-                `SELECT id, dias_plazo
-                 FROM credito_clientes
-                 WHERE cliente_id = ?
-                   AND empresa_id = ?`,
-                [datosVenta.cliente_id, empresaId]
-            )
-
-            const diasPlazo = credito[0].dias_plazo || 30
+        // ============================================
+        // FASE 3: REGISTRAR CUENTA POR COBRAR
+        // ============================================
+        if (datosVenta.metodo_pago === 'credito' && creditoCliente) {
+            const diasPlazo = creditoCliente.dias_plazo || 30
             const fechaVencimiento = new Date()
             fechaVencimiento.setDate(fechaVencimiento.getDate() + diasPlazo)
             const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0]
 
+            // Insertar CxC (Trigger actualizará saldo_utilizado)
             await connection.execute(
                 `INSERT INTO cuentas_por_cobrar (credito_cliente_id, empresa_id, cliente_id, venta_id,
                                                  origen, numero_documento, monto_total, fecha_emision,
                                                  fecha_vencimiento, fecha_vencimiento_original, creado_por)
                  VALUES (?, ?, ?, ?, 'venta', ?, ?, CURDATE(), ?, ?, ?)`,
                 [
-                    credito[0].id, empresaId, datosVenta.cliente_id, ventaId,
+                    creditoCliente.id, empresaId, datosVenta.cliente_id, ventaId,
                     ncf, datosVenta.total, fechaVencimientoStr, fechaVencimientoStr, userId
                 ]
             )
-            // Note: Trigger trg_actualizar_saldo_credito_insert will update saldo_utilizado in credito_clientes
         }
 
         // Insertar detalle de productos
@@ -844,7 +779,79 @@ export async function crearVenta(datosVenta) {
             }
         }
 
-        // Actualizar totales de cliente
+        // ============================================
+        // FASE 6: ACTUALIZAR TOTALES DE CAJA
+        // ============================================
+        if (datosVenta.metodo_pago === 'credito') {
+            // Caso Crédito: Solo suma al total vendido, NO entra dinero
+            await connection.execute(
+                `UPDATE cajas
+                 SET total_ventas = total_ventas + ?
+                 WHERE id = ?`,
+                [datosVenta.total, cajaId]
+            )
+        } else {
+            // Otros métodos: Suma total vendido Y total por tipo de pago
+            await connection.execute(
+                `UPDATE cajas
+                 SET total_ventas          = total_ventas + ?,
+                     total_efectivo        = total_efectivo + IF(? = 'efectivo', ?, 0),
+                     total_tarjeta_debito  = total_tarjeta_debito + IF(? = 'tarjeta_debito', ?, 0),
+                     total_tarjeta_credito = total_tarjeta_credito + IF(? = 'tarjeta_credito', ?, 0),
+                     total_transferencia   = total_transferencia + IF(? = 'transferencia', ?, 0),
+                     total_cheque          = total_cheque + IF(? = 'cheque', ?, 0)
+                 WHERE id = ?`,
+                [
+                    datosVenta.total,
+                    datosVenta.metodo_pago, datosVenta.total,
+                    datosVenta.metodo_pago, datosVenta.total,
+                    datosVenta.metodo_pago, datosVenta.total,
+                    datosVenta.metodo_pago, datosVenta.total,
+                    datosVenta.metodo_pago, datosVenta.total,
+                    cajaId
+                ]
+            )
+        }
+
+        // ============================================
+        // FASE 7: REGISTRAR HISTORIAL DE CRÉDITO
+        // ============================================
+        if (datosVenta.metodo_pago === 'credito' && creditoCliente) {
+            const diasPlazo = creditoCliente.dias_plazo || 30
+            const fechaVencimiento = new Date()
+            fechaVencimiento.setDate(fechaVencimiento.getDate() + diasPlazo)
+            const fechaVencimientoStr = fechaVencimiento.toISOString().split('T')[0]
+
+            await connection.execute(
+                `INSERT INTO historial_credito (credito_cliente_id, empresa_id, cliente_id, tipo_evento,
+                                                descripcion, datos_anteriores, datos_nuevos,
+                                                clasificacion_momento, score_momento, generado_por, usuario_id)
+                 VALUES (?, ?, ?, 'creacion_credito', ?, ?, ?, ?, ?, 'usuario', ?)`,
+                [
+                    creditoCliente.id,
+                    empresaId,
+                    datosVenta.cliente_id,
+                    `Venta a crédito ${numeroInterno} - NCF: ${ncf}`,
+                    JSON.stringify({
+                        saldo_utilizado: creditoCliente.saldo_utilizado,
+                        saldo_disponible: creditoCliente.saldo_disponible
+                    }),
+                    JSON.stringify({
+                        venta_id: ventaId,
+                        ncf: ncf,
+                        monto: datosVenta.total,
+                        vence: fechaVencimientoStr
+                    }),
+                    creditoCliente.clasificacion,
+                    creditoCliente.score_crediticio,
+                    userId
+                ]
+            )
+        }
+
+        // ============================================
+        // FASE 8: ACTUALIZAR TOTALES DE CLIENTE
+        // ============================================
         if (datosVenta.cliente_id) {
             await connection.execute(
                 `UPDATE clientes
@@ -880,5 +887,42 @@ export async function crearVenta(datosVenta) {
             success: false,
             mensaje: 'Error al crear la venta'
         }
+    }
+}
+
+export async function obtenerCreditoCliente(clienteId) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!userId || !empresaId) {
+            return {success: false, mensaje: 'Sesión no válida'}
+        }
+
+        connection = await db.getConnection()
+
+        const [credito] = await connection.execute(
+            `SELECT *
+             FROM credito_clientes
+             WHERE cliente_id = ?
+               AND empresa_id = ?
+               AND activo = TRUE`,
+            [clienteId, empresaId]
+        )
+
+        connection.release()
+
+        if (credito.length === 0) {
+            return {success: false, mensaje: 'Cliente sin crédito configurado'}
+        }
+
+        return {success: true, credito: credito[0]}
+
+    } catch (error) {
+        console.error('Error al obtener crédito:', error)
+        if (connection) connection.release()
+        return {success: false, mensaje: 'Error al consultar crédito'}
     }
 }

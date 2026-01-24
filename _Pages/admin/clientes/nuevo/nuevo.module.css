@@ -445,6 +445,128 @@
     color: #fef3c7;
 }
 
+.alertaWarning {
+    display: flex;
+    gap: 12px;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.light .alertaWarning {
+    background: #fff1f2;
+    border: 1px solid #fecdd3;
+}
+
+.dark .alertaWarning {
+    background: #7f1d1d;
+    border: 1px solid #991b1b;
+}
+
+.alertaWarning ion-icon {
+    font-size: 24px;
+    flex-shrink: 0;
+}
+
+.light .alertaWarning ion-icon {
+    color: #f43f5e;
+}
+
+.dark .alertaWarning ion-icon {
+    color: #fb7185;
+}
+
+.alertaWarning p {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.light .alertaWarning p {
+    color: #9f1239;
+}
+
+.dark .alertaWarning p {
+    color: #ffe4e6;
+}
+
+.camposCredito {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* TOGGLE SWITCH */
+.toggleContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.toggleInput {
+    display: none;
+}
+
+.toggleSlider {
+    position: relative;
+    width: 50px;
+    height: 26px;
+    background-color: #cbd5e1;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+}
+
+.dark .toggleSlider {
+    background-color: #475569;
+}
+
+.toggleSlider::before {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggleInput:checked+.toggleSlider {
+    background-color: #10b981;
+}
+
+.toggleInput:checked+.toggleSlider::before {
+    transform: translateX(24px);
+}
+
+.toggleLabel {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.light .toggleLabel {
+    color: #475569;
+}
+
+.dark .toggleLabel {
+    color: #cbd5e1;
+}
+
 /* ============================================
    INPUTS Y FORMULARIOS
    ============================================ */
@@ -671,8 +793,13 @@
 }
 
 @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* ============================================

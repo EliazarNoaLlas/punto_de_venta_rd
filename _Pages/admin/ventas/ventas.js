@@ -2,28 +2,69 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { obtenerDatosCaja, abrirCaja, obtenerVentas, anularVenta } from './servidor'
+import { obtenerDatosCaja, abrirCaja, cerrarCaja, obtenerVentas, anularVenta } from './servidor'
 import estilos from './ventas.module.css'
+import Swal from 'sweetalert2' // Para alertas bonitas
 
 export default function VentasAdmin() {
     const router = useRouter()
     const [tema, setTema] = useState('light')
-    const [cargando, setCargando] = useState(true)
+    const [cargando, setCargando] = useState(false)
     const [cajaAbierta, setCajaAbierta] = useState(false)
     const [datosCaja, setDatosCaja] = useState(null)
-    const [mostrarModalCaja, setMostrarModalCaja] = useState(false)
+
+    // Modales y formularios
+    const [mostrarModalCaja, setMostrarModalCaja] = useState(false) // Para abrir
+    const [mostrarModalCierre, setMostrarModalCierre] = useState(false) // Para cerrar
+
     const [montoInicial, setMontoInicial] = useState('')
+    const [montoFinal, setMontoFinal] = useState('') // Efectivo en caja al cierre
+
     const [procesando, setProcesando] = useState(false)
+
+    // 📊 Datos de ventas
     const [ventas, setVentas] = useState([])
-    const [filtroEstado, setFiltroEstado] = useState('todos')
-    const [filtroMetodo, setFiltroMetodo] = useState('todos')
+    const [resumen, setResumen] = useState({
+        totalVentas: 0,
+        cantidadEmitidas: 0,
+        cantidadAnuladas: 0,
+        cantidadPendientes: 0
+    })
+
+    // ... (States de filtros quedan igual)
+    // 🎯 Filtros principales
+    const [periodo, setPeriodo] = useState('hoy') // 'hoy', 'semana', 'mes', 'personalizado'
+    const [soloCajaAbierta, setSoloCajaAbierta] = useState(false)
     const [busqueda, setBusqueda] = useState('')
+
+    // 🎯 Filtros avanzados (Bottom Sheet en móvil)
+    const [mostrarFiltros, setMostrarFiltros] = useState(false)
+    const [filtrosAvanzados, setFiltrosAvanzados] = useState({
+        vendedorId: '',
+        clienteId: '',
+        // tipo: '',
+        estado: '', // 'emitida', 'anulada', 'pendiente'
+        metodo: '', // 'efectivo', 'tarjeta_debito', etc.
+        minTotal: '',
+        maxTotal: ''
+    })
+
+    // 📅 Rango personalizado
     const [fechaInicio, setFechaInicio] = useState('')
     const [fechaFin, setFechaFin] = useState('')
-    const [vistaMovil, setVistaMovil] = useState(false)
+
+    // 📄 Paginación
     const [paginaActual, setPaginaActual] = useState(1)
     const [totalPaginas, setTotalPaginas] = useState(1)
     const [totalVentas, setTotalVentas] = useState(0)
+    const [limite] = useState(20) // Fijo en 20 por página
+
+    // 📱 Detección de móvil
+    const [vistaMovil, setVistaMovil] = useState(false)
+
+    // ============================================
+    // 🎨 EFECTOS INICIALES
+    // ============================================
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -56,21 +97,21 @@ export default function VentasAdmin() {
 
     useEffect(() => {
         verificarCaja()
+        cargarVentas() // 🔹 NUEVO: Cargar ventas aunque no haya caja abierta
     }, [])
 
-    useEffect(() => {
-        if (cajaAbierta) {
-            setPaginaActual(1) // Reset a primera página cuando se abre la caja
-            cargarVentas(1)
-        }
-    }, [cajaAbierta])
+    // ============================================
+    // 🔄 RECARGAR CUANDO CAMBIAN LOS FILTROS
+    // ============================================
 
     useEffect(() => {
-        if (cajaAbierta) {
-            setPaginaActual(1) // Reset a primera página cuando cambian los filtros
-            cargarVentas(1)
-        }
-    }, [filtroEstado, filtroMetodo, fechaInicio, fechaFin])
+        setPaginaActual(1) // Reset a primera página
+        cargarVentas()
+    }, [periodo, soloCajaAbierta, filtrosAvanzados, fechaInicio, fechaFin])
+
+    // ============================================
+    // 🎯 FUNCIONES PRINCIPALES
+    // ============================================
 
     const verificarCaja = async () => {
         try {
@@ -81,29 +122,50 @@ export default function VentasAdmin() {
                     setDatosCaja(resultado.caja)
                 } else {
                     setCajaAbierta(false)
-                    setMostrarModalCaja(true)
+                    // Eliminamos el modal automático para no ser intrusivos, 
+                    // pero si se desea comportamiento anterior, descomentar:
+                    // setMostrarModalCaja(true) 
                 }
             }
         } catch (error) {
             console.error('Error al verificar caja:', error)
-        } finally {
-            setCargando(false)
         }
     }
 
     const cargarVentas = async (pagina = paginaActual) => {
         setCargando(true)
         try {
-            const resultado = await obtenerVentas(
+            // 🔹 Construir objeto de filtros
+            const filtros = {
                 pagina,
-                10, // límite fijo de 10 por página
-                filtroEstado,
-                filtroMetodo,
-                fechaInicio || null,
-                fechaFin || null
-            )
+                limite,
+                soloCajaAbierta,
+                busqueda: busqueda.trim() || null
+            }
+
+            // Período
+            if (periodo && periodo !== 'personalizado') {
+                filtros.periodo = periodo
+            } else if (periodo === 'personalizado') {
+                filtros.fechaInicio = fechaInicio || null
+                filtros.fechaFin = fechaFin || null
+            }
+
+            // Filtros avanzados
+            if (filtrosAvanzados.vendedorId) filtros.vendedorId = filtrosAvanzados.vendedorId
+            if (filtrosAvanzados.clienteId) filtros.clienteId = filtrosAvanzados.clienteId
+            // if (filtrosAvanzados.tipo) filtros.tipo = filtrosAvanzados.tipo
+            if (filtrosAvanzados.estado) filtros.estado = filtrosAvanzados.estado
+            if (filtrosAvanzados.metodo) filtros.metodo = filtrosAvanzados.metodo
+            if (filtrosAvanzados.minTotal) filtros.minTotal = parseFloat(filtrosAvanzados.minTotal)
+            if (filtrosAvanzados.maxTotal) filtros.maxTotal = parseFloat(filtrosAvanzados.maxTotal)
+
+            const resultado = await obtenerVentas(filtros)
+
             if (resultado.success) {
                 setVentas(resultado.ventas)
+                setResumen(resultado.resumen)
+
                 if (resultado.paginacion) {
                     setPaginaActual(resultado.paginacion.pagina)
                     setTotalPaginas(resultado.paginacion.totalPaginas)
@@ -121,7 +183,7 @@ export default function VentasAdmin() {
         e.preventDefault()
 
         if (!montoInicial || parseFloat(montoInicial) < 0) {
-            alert('Por favor ingresa un monto inicial valido')
+            Swal.fire('Error', 'Por favor ingresa un monto inicial válido', 'error')
             return
         }
 
@@ -132,55 +194,117 @@ export default function VentasAdmin() {
                 setCajaAbierta(true)
                 setDatosCaja(resultado.caja)
                 setMostrarModalCaja(false)
-                alert(resultado.mensaje)
+                Swal.fire('Éxito', resultado.mensaje, 'success')
             } else {
-                alert(resultado.mensaje || 'Error al abrir caja')
+                Swal.fire('Error', resultado.mensaje || 'Error al abrir caja', 'error')
             }
         } catch (error) {
             console.error('Error al abrir caja:', error)
-            alert('Error al procesar la solicitud')
+            Swal.fire('Error', 'Error al procesar la solicitud', 'error')
+        } finally {
+            setProcesando(false)
+        }
+    }
+
+    const manejarCerrarCaja = async (e) => {
+        e.preventDefault()
+
+        if (!montoFinal || parseFloat(montoFinal) < 0) {
+            Swal.fire('Error', 'Por favor ingresa el monto final en efectivo (cuadre)', 'error')
+            return
+        }
+
+        // Confirmación
+        const confirmacion = await Swal.fire({
+            title: '¿Cerrar Caja?',
+            text: "Esta acción finalizará el turno actual y calculará las diferencias. ¿Estás seguro?",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#3085d6',
+            cancelButtonColor: '#d33',
+            confirmButtonText: 'Sí, cerrar caja',
+            cancelButtonText: 'Cancelar'
+        })
+
+        if (!confirmacion.isConfirmed) return
+
+        setProcesando(true)
+        try {
+            const resultado = await cerrarCaja(parseFloat(montoFinal))
+            if (resultado.success) {
+                setCajaAbierta(false)
+                setDatosCaja(null)
+                setMostrarModalCierre(false)
+
+                // Mostrar resumen de cierre
+                Swal.fire({
+                    title: 'Caja Cerrada',
+                    html: `
+                        <p><strong>Efectivo Contado:</strong> ${formatearMoneda(resultado.resumen.contado)}</p>
+                        <p><strong>Efectivo Esperado:</strong> ${formatearMoneda(resultado.resumen.esperado)}</p>
+                        <p><strong>Diferencia:</strong> <span style="color: ${resultado.resumen.diferencia < 0 ? 'red' : 'green'}">${formatearMoneda(resultado.resumen.diferencia)}</span></p>
+                    `,
+                    icon: 'success'
+                })
+
+                cargarVentas() // Recargar para limpiar info si es necesario
+            } else {
+                Swal.fire('Error', resultado.mensaje || 'Error al cerrar caja', 'error')
+            }
+        } catch (error) {
+            console.error('Error al cerrar caja:', error)
+            Swal.fire('Error', 'Error al procesar la solicitud', 'error')
         } finally {
             setProcesando(false)
         }
     }
 
     const manejarAnularVenta = async (ventaId, numeroInterno) => {
-        const razon = prompt(`Ingresa la razon de anulacion para la venta ${numeroInterno}:`)
+        const { value: razon } = await Swal.fire({
+            title: `Anular Venta ${numeroInterno}`,
+            input: 'textarea',
+            inputLabel: 'Razón de anulación',
+            inputPlaceholder: 'Escribe la razón aquí...',
+            inputAttributes: {
+                'aria-label': 'Escribe la razón de anulación'
+            },
+            showCancelButton: true
+        })
 
-        if (!razon || razon.trim() === '') {
-            alert('Debes proporcionar una razon para anular la venta')
-            return
-        }
-
-        if (!confirm(`Estas seguro de anular la venta ${numeroInterno}? Esta accion no se puede deshacer.`)) {
-            return
-        }
+        if (!razon) return
 
         setProcesando(true)
         try {
             const resultado = await anularVenta(ventaId, razon.trim())
             if (resultado.success) {
                 await cargarVentas()
-                alert(resultado.mensaje)
+                Swal.fire('Anulada', resultado.mensaje, 'success')
             } else {
-                alert(resultado.mensaje || 'Error al anular venta')
+                Swal.fire('Error', resultado.mensaje || 'Error al anular venta', 'error')
             }
         } catch (error) {
             console.error('Error al anular venta:', error)
-            alert('Error al procesar la solicitud')
+            Swal.fire('Error', 'Error al procesar la solicitud', 'error')
         } finally {
             setProcesando(false)
         }
     }
 
-    // Filtro de búsqueda en el cliente (para búsqueda rápida sin recargar)
-    const ventasFiltradas = ventas.filter(venta => {
-        if (!busqueda) return true
+    const limpiarFiltrosAvanzados = () => {
+        setFiltrosAvanzados({
+            vendedorId: '',
+            clienteId: '',
+            // tipo: '',
+            estado: '',
+            metodo: '',
+            minTotal: '',
+            maxTotal: ''
+        })
+    }
 
-        return venta.vendedor_nombre?.toLowerCase().includes(busqueda.toLowerCase()) ||
-            venta.numero_interno.toLowerCase().includes(busqueda.toLowerCase()) ||
-            venta.cliente_nombre?.toLowerCase().includes(busqueda.toLowerCase())
-    })
+    // ============================================
+    // 🎨 FUNCIONES DE UTILIDAD
+    // ============================================
 
     const formatearMoneda = (monto) => {
         return new Intl.NumberFormat('es-DO', {
@@ -193,59 +317,43 @@ export default function VentasAdmin() {
     const getMetodoPagoBadge = (metodo) => {
         const metodos = {
             efectivo: { texto: 'Efectivo', color: 'efectivo' },
-            tarjeta_debito: { texto: 'Tarjeta Debito', color: 'tarjeta' },
-            tarjeta_credito: { texto: 'Tarjeta Credito', color: 'tarjeta' },
-            transferencia: { texto: 'Transferencia', color: 'transferencia' },
+            tarjeta_debito: { texto: 'Débito', color: 'debito' },
+            tarjeta_credito: { texto: 'Crédito TC', color: 'tarjetaCredito' },
+            transferencia: { texto: 'Transfer.', color: 'transferencia' },
             cheque: { texto: 'Cheque', color: 'cheque' },
-            mixto: { texto: 'Mixto', color: 'mixto' }
+            credito: { texto: 'Crédito', color: 'credito' }
         }
         return metodos[metodo] || metodos.efectivo
     }
 
-    const calcularTotales = () => {
-        const totales = {
-            totalVentas: 0,
-            totalEmitidas: 0,
-            totalAnuladas: 0,
-            montoTotal: 0
+    const getDgiiBadge = (estado) => {
+        const estados = {
+            enviado: { texto: 'Enviado', color: 'debito' },
+            aceptado: { texto: 'Aceptado', color: 'emitida' },
+            rechazado: { texto: 'Rechazado', color: 'anulada' },
+            no_enviado: { texto: 'No Enviado', color: 'pendiente' }
         }
-
-        ventasFiltradas.forEach(venta => {
-            totales.totalVentas++
-            if (venta.estado === 'emitida') {
-                totales.totalEmitidas++
-                totales.montoTotal += parseFloat(venta.total)
-            } else if (venta.estado === 'anulada') {
-                totales.totalAnuladas++
-            }
-        })
-
-        return totales
+        return estados[estado] || estados.no_enviado
     }
 
-    const totales = calcularTotales()
+    // ============================================
+    // 🎨 RENDERIZADO
+    // ============================================
 
-    if (cargando && !cajaAbierta) {
-        return (
-            <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-                <div className={estilos.cargando}>
-                    <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
-                    <span>Verificando estado de caja...</span>
+    return (
+        <div className={`${estilos.contenedorOptimizado} ${estilos[tema]}`}>
+            {/* ========== HEADER ========== */}
+            <div className={estilos.header}>
+                <div className={estilos.headerInfo}>
+                    <h1 className={estilos.titulo}>Ventas</h1>
+                    <p className={estilos.subtitulo}>
+                        {soloCajaAbierta
+                            ? 'Mostrando ventas de la caja abierta'
+                            : 'Mostrando todas las ventas de la empresa'}
+                    </p>
                 </div>
-            </div>
-        )
-    }
-
-    if (!cajaAbierta) {
-        return (
-            <>
-                <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-                    <div className={`${estilos.cajaRequerida} ${estilos[tema]}`}>
-                        <div className={estilos.cajaIcono}>
-                            <ion-icon name="cash-outline"></ion-icon>
-                        </div>
-                        <h2>Caja Cerrada</h2>
-                        <p>Para comenzar a realizar ventas, primero debes abrir la caja del dia</p>
+                <div className={estilos.headerAcciones}>
+                    {!cajaAbierta ? (
                         <button
                             className={estilos.btnAbrirCaja}
                             onClick={() => setMostrarModalCaja(true)}
@@ -253,284 +361,323 @@ export default function VentasAdmin() {
                             <ion-icon name="lock-open-outline"></ion-icon>
                             <span>Abrir Caja</span>
                         </button>
-                    </div>
+                    ) : (
+                        <button
+                            className={estilos.btnAbrirCaja} // Usamos mismos estilos base pero quizás color diferente
+                            style={{ background: 'var(--danger)', color: 'white' }}
+                            onClick={() => setMostrarModalCierre(true)}
+                        >
+                            <ion-icon name="lock-closed-outline"></ion-icon>
+                            <span>Cerrar Caja</span>
+                        </button>
+                    )}
+                    <Link href="/admin/ventas/nueva" className={estilos.btnNuevo}>
+                        <ion-icon name="add-circle-outline"></ion-icon>
+                        <span>Nueva Venta</span>
+                    </Link>
                 </div>
-
-                {mostrarModalCaja && (
-                    <div className={estilos.modalOverlay}>
-                        <div className={`${estilos.modal} ${estilos[tema]}`}>
-                            <div className={estilos.modalHeader}>
-                                <h2>Abrir Caja</h2>
-                                <button
-                                    className={estilos.btnCerrar}
-                                    onClick={() => !procesando && setMostrarModalCaja(false)}
-                                    disabled={procesando}
-                                >
-                                    <ion-icon name="close-outline"></ion-icon>
-                                </button>
-                            </div>
-
-                            <form onSubmit={manejarAbrirCaja} className={estilos.modalBody}>
-                                <div className={estilos.infoCaja}>
-                                    <ion-icon name="information-circle-outline"></ion-icon>
-                                    <p>Ingresa el monto con el que iniciaras las operaciones del dia. Este monto sera el efectivo inicial disponible en caja.</p>
-                                </div>
-
-                                <div className={estilos.grupoInput}>
-                                    <label>Monto Inicial (RD$)</label>
-                                    <div className={estilos.inputMoneda}>
-                                        <span className={estilos.simboloMoneda}>RD$</span>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={montoInicial}
-                                            onChange={(e) => setMontoInicial(e.target.value)}
-                                            placeholder="0.00"
-                                            required
-                                            disabled={procesando}
-                                            autoFocus
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className={estilos.modalFooter}>
-                                    <button
-                                        type="button"
-                                        className={estilos.btnCancelar}
-                                        onClick={() => setMostrarModalCaja(false)}
-                                        disabled={procesando}
-                                    >
-                                        Cancelar
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className={estilos.btnGuardar}
-                                        disabled={procesando}
-                                    >
-                                        {procesando ? 'Abriendo...' : 'Abrir Caja'}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
-            </>
-        )
-    }
-
-    return (
-        <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-            <div className={estilos.header}>
-                <div>
-                    <h1 className={estilos.titulo}>Ventas</h1>
-                    <p className={estilos.subtitulo}>Gestiona las ventas y comprobantes fiscales</p>
-                </div>
-                <Link href="/admin/ventas/nueva" className={estilos.btnNuevo}>
-                    <ion-icon name="add-circle-outline"></ion-icon>
-                    <span>Nueva Venta</span>
-                </Link>
             </div>
 
-            {datosCaja && (
-                <div className={`${estilos.infoCajaAbierta} ${estilos[tema]}`}>
-                    <div className={estilos.cajaInfo}>
+            {/* ========== INFO CAJA ABIERTA ========== */}
+            {datosCaja && cajaAbierta && (
+                <div className={estilos.alertaCaja}>
+                    <div className={estilos.alertaIcono}>
                         <ion-icon name="cash-outline"></ion-icon>
-                        <div className={estilos.cajaTexto}>
-                            <span className={estilos.cajaLabel}>Caja Abierta</span>
-                            <span className={estilos.cajaNumero}>Caja #{datosCaja.numero_caja}</span>
-                        </div>
                     </div>
-                    <div className={estilos.cajaMontos}>
-                        <div className={estilos.montoItem}>
-                            <span>Monto Inicial:</span>
-                            <strong>{formatearMoneda(datosCaja.monto_inicial)}</strong>
-                        </div>
-                        <div className={estilos.montoItem}>
-                            <span>Ventas del Dia:</span>
-                            <strong>{formatearMoneda(datosCaja.total_ventas)}</strong>
-                        </div>
+                    <div className={estilos.alertaInfo}>
+                        <span className={estilos.alertaTitulo}>Caja #{datosCaja.numero_caja} Abierta</span>
+                        <span className={estilos.alertaTexto}>
+                            Monto inicial: {formatearMoneda(datosCaja.monto_inicial)} |
+                            Ventas del día: {formatearMoneda(datosCaja.total_ventas)}
+                        </span>
                     </div>
                 </div>
             )}
 
-            <div className={`${estilos.estadisticas} ${estilos[tema]}`}>
-                <div className={estilos.estadCard}>
-                    <div className={estilos.estadIcono}>
-                        <ion-icon name="receipt-outline"></ion-icon>
+            {/* ========== RESUMEN RÁPIDO ========== */}
+            <div className={estilos.resumen}>
+                <div className={estilos.resumenCard}>
+                    <div className={estilos.resumenIcono}>
+                        <ion-icon name="trending-up-outline"></ion-icon>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Total Ventas</span>
-                        <span className={estilos.estadValor}>{totales.totalVentas}</span>
+                    <div className={estilos.resumenInfo}>
+                        <span className={estilos.resumenLabel}>Total Ventas</span>
+                        <span className={estilos.resumenValor}>{formatearMoneda(resumen.totalVentas)}</span>
                     </div>
                 </div>
 
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.success}`}>
+                <div className={estilos.resumenCard}>
+                    <div className={`${estilos.resumenIcono} ${estilos.success}`}>
                         <ion-icon name="checkmark-circle-outline"></ion-icon>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Emitidas</span>
-                        <span className={estilos.estadValor}>{totales.totalEmitidas}</span>
+                    <div className={estilos.resumenInfo}>
+                        <span className={estilos.resumenLabel}>Emitidas</span>
+                        <span className={estilos.resumenValor}>{resumen.cantidadEmitidas}</span>
                     </div>
                 </div>
 
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.danger}`}>
+                <div className={estilos.resumenCard}>
+                    <div className={`${estilos.resumenIcono} ${estilos.danger}`}>
                         <ion-icon name="close-circle-outline"></ion-icon>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Anuladas</span>
-                        <span className={estilos.estadValor}>{totales.totalAnuladas}</span>
+                    <div className={estilos.resumenInfo}>
+                        <span className={estilos.resumenLabel}>Anuladas</span>
+                        <span className={estilos.resumenValor}>{resumen.cantidadAnuladas}</span>
                     </div>
                 </div>
 
-                <div className={estilos.estadCard}>
-                    <div className={`${estilos.estadIcono} ${estilos.primary}`}>
-                        <ion-icon name="cash-outline"></ion-icon>
+                <div className={estilos.resumenCard}>
+                    <div className={`${estilos.resumenIcono} ${estilos.warning}`}>
+                        <ion-icon name="time-outline"></ion-icon>
                     </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Monto Total</span>
-                        <span className={estilos.estadValor}>{formatearMoneda(totales.montoTotal)}</span>
+                    <div className={estilos.resumenInfo}>
+                        <span className={estilos.resumenLabel}>Pendientes</span>
+                        <span className={estilos.resumenValor}>{resumen.cantidadPendientes}</span>
                     </div>
                 </div>
             </div>
 
-            <div className={estilos.controles}>
-                <div className={estilos.busqueda}>
-                    <ion-icon name="search-outline"></ion-icon>
-                    <input
-                        type="text"
-                        placeholder="Buscar por vendedor, numero interno o cliente..."
-                        value={busqueda}
-                        onChange={(e) => setBusqueda(e.target.value)}
-                        className={estilos.inputBusqueda}
-                    />
+            {/* ========== FILTROS RÁPIDOS (PERÍODO) ========== */}
+            <div className={estilos.filtrosRapidos}>
+                <div className={estilos.chipsPeriodo}>
+                    <button
+                        className={`${estilos.chip} ${periodo === 'hoy' ? estilos.chipActivo : ''}`}
+                        onClick={() => setPeriodo('hoy')}
+                    >
+                        Hoy
+                    </button>
+                    <button
+                        className={`${estilos.chip} ${periodo === 'semana' ? estilos.chipActivo : ''}`}
+                        onClick={() => setPeriodo('semana')}
+                    >
+                        Semana
+                    </button>
+                    <button
+                        className={`${estilos.chip} ${periodo === 'mes' ? estilos.chipActivo : ''}`}
+                        onClick={() => setPeriodo('mes')}
+                    >
+                        Mes
+                    </button>
+                    <button
+                        className={`${estilos.chip} ${periodo === 'personalizado' ? estilos.chipActivo : ''}`}
+                        onClick={() => setPeriodo('personalizado')}
+                    >
+                        <ion-icon name="calendar-outline"></ion-icon>
+                        Rango
+                    </button>
                 </div>
 
-                <div className={estilos.filtros}>
-                    <select
-                        value={filtroEstado}
-                        onChange={(e) => setFiltroEstado(e.target.value)}
-                        className={estilos.selectFiltro}
-                    >
-                        <option value="todos">Todos los estados</option>
-                        <option value="emitida">Emitidas</option>
-                        <option value="anulada">Anuladas</option>
-                        <option value="pendiente">Pendientes</option>
-                    </select>
+                <div className={estilos.toggleCaja}>
+                    <label className={estilos.checkboxLabel}>
+                        <input
+                            type="checkbox"
+                            checked={soloCajaAbierta}
+                            onChange={(e) => setSoloCajaAbierta(e.target.checked)}
+                            className={estilos.checkbox}
+                        />
+                        <span>Solo caja abierta</span>
+                    </label>
+                </div>
+            </div>
 
-                    <select
-                        value={filtroMetodo}
-                        onChange={(e) => setFiltroMetodo(e.target.value)}
-                        className={estilos.selectFiltro}
-                    >
-                        <option value="todos">Todos los metodos</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="tarjeta_debito">Tarjeta Debito</option>
-                        <option value="tarjeta_credito">Tarjeta Credito</option>
-                        <option value="transferencia">Transferencia</option>
-                        <option value="cheque">Cheque</option>
-                        <option value="mixto">Mixto</option>
-                    </select>
-
+            {/* ========== RANGO PERSONALIZADO ========== */}
+            {periodo === 'personalizado' && (
+                <div className={estilos.rangoPers}>
                     <div className={estilos.grupoFecha}>
-                        <label className={estilos.labelFecha}>Fecha Inicio</label>
+                        <label>Desde</label>
                         <input
                             type="date"
                             value={fechaInicio}
                             onChange={(e) => setFechaInicio(e.target.value)}
                             className={estilos.inputFecha}
-                            placeholder="Fecha de inicio"
                         />
                     </div>
-
                     <div className={estilos.grupoFecha}>
-                        <label className={estilos.labelFecha}>Fecha Fin</label>
+                        <label>Hasta</label>
                         <input
                             type="date"
                             value={fechaFin}
                             onChange={(e) => setFechaFin(e.target.value)}
                             className={estilos.inputFecha}
-                            placeholder="Fecha de fin"
                             min={fechaInicio || undefined}
                         />
                     </div>
                 </div>
+            )}
+
+            {/* ========== BÚSQUEDA Y FILTROS AVANZADOS ========== */}
+            <div className={estilos.barraBusqueda}>
+                <div className={estilos.busqueda}>
+                    <ion-icon name="search-outline"></ion-icon>
+                    <input
+                        type="text"
+                        placeholder="Buscar por número, cliente o vendedor..."
+                        value={busqueda}
+                        onChange={(e) => setBusqueda(e.target.value)}
+                        className={estilos.inputBusqueda}
+                    />
+                </div>
+                <button
+                    className={estilos.btnFiltros}
+                    onClick={() => setMostrarFiltros(!mostrarFiltros)}
+                >
+                    <ion-icon name="options-outline"></ion-icon>
+                    <span>Filtros</span>
+                </button>
             </div>
 
+            {/* ========== PANEL DE FILTROS AVANZADOS ========== */}
+            {mostrarFiltros && (
+                <div className={estilos.filtrosAvanzados}>
+                    <div className={estilos.filtrosGrid}>
+                        <div className={estilos.grupoFiltro}>
+                            <label>Estado</label>
+                            <select
+                                value={filtrosAvanzados.estado}
+                                onChange={(e) => setFiltrosAvanzados({ ...filtrosAvanzados, estado: e.target.value })}
+                                className={estilos.selectFiltro}
+                            >
+                                <option value="">Todos</option>
+                                <option value="emitida">Emitida</option>
+                                <option value="anulada">Anulada</option>
+                                <option value="pendiente">Pendiente</option>
+                            </select>
+                        </div>
+
+
+
+                        <div className={estilos.grupoFiltro}>
+                            <label>Método de Pago</label>
+                            <select
+                                value={filtrosAvanzados.metodo}
+                                onChange={(e) => setFiltrosAvanzados({ ...filtrosAvanzados, metodo: e.target.value })}
+                                className={estilos.selectFiltro}
+                            >
+                                <option value="">Todos</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="tarjeta_debito">Tarjeta Débito</option>
+                                <option value="tarjeta_credito">Tarjeta Crédito</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="credito">Crédito</option>
+                            </select>
+                        </div>
+
+                        <div className={estilos.grupoFiltro}>
+                            <label>Monto Mínimo</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={filtrosAvanzados.minTotal}
+                                onChange={(e) => setFiltrosAvanzados({ ...filtrosAvanzados, minTotal: e.target.value })}
+                                placeholder="RD$ 0.00"
+                                className={estilos.inputFiltro}
+                            />
+                        </div>
+
+                        <div className={estilos.grupoFiltro}>
+                            <label>Monto Máximo</label>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={filtrosAvanzados.maxTotal}
+                                onChange={(e) => setFiltrosAvanzados({ ...filtrosAvanzados, maxTotal: e.target.value })}
+                                placeholder="RD$ 0.00"
+                                className={estilos.inputFiltro}
+                            />
+                        </div>
+                    </div>
+
+                    <div className={estilos.filtrosAcciones}>
+                        <button
+                            className={estilos.btnLimpiar}
+                            onClick={limpiarFiltrosAvanzados}
+                        >
+                            Limpiar
+                        </button>
+                        <button
+                            className={estilos.btnAplicar}
+                            onClick={() => {
+                                setPaginaActual(1)
+                                cargarVentas()
+                                if (vistaMovil) setMostrarFiltros(false)
+                            }}
+                        >
+                            Aplicar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== LISTA DE VENTAS ========== */}
             {cargando ? (
                 <div className={estilos.cargando}>
                     <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
                     <span>Cargando ventas...</span>
                 </div>
-            ) : ventasFiltradas.length === 0 ? (
-                <div className={`${estilos.vacio} ${estilos[tema]}`}>
+            ) : ventas.length === 0 ? (
+                <div className={estilos.vacio}>
                     <ion-icon name="receipt-outline"></ion-icon>
-                    <span>No hay ventas que coincidan con tu busqueda</span>
+                    <span>No hay ventas que coincidan con tus filtros</span>
                 </div>
             ) : vistaMovil ? (
+                // ========== VISTA MÓVIL (CARDS) ==========
                 <div className={estilos.listaMovil}>
-                    {ventasFiltradas.map((venta) => {
+                    {ventas.map((venta) => {
                         const tieneDespachoPendiente = venta.tipo_entrega === 'parcial' && venta.despacho_completo === 0 && venta.estado === 'emitida'
+                        const metodoBadge = getMetodoPagoBadge(venta.metodo_pago)
+                        const dgiiBadge = getDgiiBadge(venta.estado_dgii)
 
                         return (
-                            <div key={venta.id} className={`${estilos.cardMovil} ${estilos[tema]}`}>
+                            <div key={venta.id} className={estilos.cardMovil}>
                                 <div className={estilos.cardHeader}>
-                                    <div className={estilos.cardHeaderInfo}>
-                                        <span className={estilos.numeroMovil}>{venta.numero_interno}</span>
-                                        <span className={estilos.montoTotalMovil}>{formatearMoneda(venta.total)}</span>
+                                    <div className={estilos.cardNumero}>
+                                        <span className={estilos.numeroInterno}>{venta.numero_interno}</span>
+                                        <span className={estilos.numeroCaja}>{venta.ncf || 'Sin NCF'}</span>
                                     </div>
-                                    <div className={estilos.estadoContainer}>
-                                        <span className={`${estilos.badgeEstado} ${estilos[venta.estado]}`}>
-                                            {venta.estado === 'emitida' ? 'Emitida' : venta.estado === 'anulada' ? 'Anulada' : 'Pendiente'}
-                                        </span>
-                                        {tieneDespachoPendiente && (
-                                            <span className={estilos.badgePendiente}>
-                                                Por Desp.
-                                            </span>
-                                        )}
-                                    </div>
+                                    <span className={estilos.cardMonto}>{formatearMoneda(venta.total)}</span>
                                 </div>
 
                                 <div className={estilos.cardBody}>
-                                    <div className={estilos.cardRow}>
-                                        <span className={estilos.cardLabel}>Vendedor:</span>
-                                        <span className={estilos.cardValue}>{venta.vendedor_nombre || 'Sin vendedor'}</span>
-                                    </div>
                                     <div className={estilos.cardRow}>
                                         <span className={estilos.cardLabel}>Cliente:</span>
                                         <span className={estilos.cardValue}>{venta.cliente_nombre || 'Consumidor Final'}</span>
                                     </div>
                                     <div className={estilos.cardRow}>
-                                        <span className={estilos.cardLabel}>Metodo:</span>
-                                        <span className={`${estilos.badgeMetodo} ${estilos[getMetodoPagoBadge(venta.metodo_pago).color]}`}>
-                                            {getMetodoPagoBadge(venta.metodo_pago).texto}
-                                        </span>
+                                        <span className={estilos.cardLabel}>Vendedor:</span>
+                                        <span className={estilos.cardValue}>{venta.vendedor_nombre || 'N/A'}</span>
+                                    </div>
+                                    <div className={estilos.cardRow}>
+                                        <div className={estilos.cardBadges}>
+                                            <span className={`${estilos.badge} ${estilos[metodoBadge.color]}`}>
+                                                {metodoBadge.texto}
+                                            </span>
+                                            <span className={`${estilos.badge} ${estilos[dgiiBadge.color]}`} title={`DGII: ${dgiiBadge.texto}`}>
+                                                {dgiiBadge.texto}
+                                            </span>
+                                            <span className={`${estilos.badge} ${estilos[venta.estado]}`}>
+                                                {venta.estado === 'emitida' ? 'Emitida' : venta.estado === 'anulada' ? 'Anulada' : 'Pendiente'}
+                                            </span>
+                                            {tieneDespachoPendiente && (
+                                                <span className={`${estilos.badge} ${estilos.despachoPendiente}`}>
+                                                    Desp. Pend.
+                                                </span>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
                                 <div className={estilos.cardAcciones}>
-                                    <Link
-                                        href={`/admin/ventas/ver/${venta.id}`}
-                                        className={estilos.btnIcono}
-                                        title="Ver detalles"
-                                    >
+                                    <Link href={`/admin/ventas/ver/${venta.id}`} className={estilos.btnIcono} title="Ver">
                                         <ion-icon name="eye-outline"></ion-icon>
                                     </Link>
-                                    <Link
-                                        href={`/admin/ventas/imprimir/${venta.id}`}
-                                        className={`${estilos.btnIcono} ${estilos.imprimir}`}
-                                        title="Imprimir"
-                                    >
+                                    <Link href={`/admin/ventas/imprimir/${venta.id}`} className={`${estilos.btnIcono} ${estilos.imprimir}`} title="Imprimir">
                                         <ion-icon name="print-outline"></ion-icon>
                                     </Link>
                                     {tieneDespachoPendiente && (
-                                        <Link
-                                            href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`}
-                                            className={`${estilos.btnIcono} ${estilos.despachar}`}
-                                            title="Generar Conduce"
-                                        >
+                                        <Link href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`} className={`${estilos.btnIcono} ${estilos.despachar}`} title="Despachar">
                                             <ion-icon name="cube-outline"></ion-icon>
                                         </Link>
                                     )}
@@ -539,7 +686,7 @@ export default function VentasAdmin() {
                                             className={`${estilos.btnIcono} ${estilos.anular}`}
                                             onClick={() => manejarAnularVenta(venta.id, venta.numero_interno)}
                                             disabled={procesando}
-                                            title="Anular venta"
+                                            title="Anular"
                                         >
                                             <ion-icon name="close-circle-outline"></ion-icon>
                                         </button>
@@ -550,110 +697,98 @@ export default function VentasAdmin() {
                     })}
                 </div>
             ) : (
-                <div className={estilos.tabla}>
-                    <div className={`${estilos.tablaHeader} ${estilos[tema]}`}>
-                        <div className={estilos.columna}>Vendedor</div>
-                        <div className={estilos.columna}>Numero</div>
-                        <div className={estilos.columna}>Cliente</div>
-                        <div className={estilos.columna}>Metodo Pago</div>
-                        <div className={estilos.columna}>Subtotal</div>
-                        <div className={estilos.columna}>ITBIS</div>
-                        <div className={estilos.columna}>Total</div>
-                        <div className={estilos.columna}>Estado</div>
-                        <div className={estilos.columnaAcciones}>Acciones</div>
-                    </div>
+                // ========== VISTA DESKTOP (TABLA) ==========
+                <div className={estilos.tablaContainer}>
+                    <table className={estilos.tabla}>
+                        <thead className={estilos.tablaHeader}>
+                            <tr>
+                                <th>Número</th>
+                                <th>NCF</th>
+                                <th>Caja</th>
+                                <th>Cliente</th>
+                                <th>Vendedor</th>
+                                <th>Método</th>
+                                <th>DGII</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {ventas.map((venta) => {
+                                const tieneDespachoPendiente = venta.tipo_entrega === 'parcial' && venta.despacho_completo === 0 && venta.estado === 'emitida'
+                                const metodoBadge = getMetodoPagoBadge(venta.metodo_pago)
+                                const dgiiBadge = getDgiiBadge(venta.estado_dgii)
 
-                    <div className={estilos.tablaBody}>
-                        {ventasFiltradas.map((venta) => {
-                            const tieneDespachoPendiente = venta.tipo_entrega === 'parcial' && venta.despacho_completo === 0 && venta.estado === 'emitida'
-
-                            return (
-                                <div key={venta.id} className={`${estilos.fila} ${estilos[tema]}`}>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.vendedor}>{venta.vendedor_nombre || 'Sin vendedor'}</span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.numero}>{venta.numero_interno}</span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.cliente}>
-                                            {venta.cliente_nombre || 'Consumidor Final'}
-                                        </span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={`${estilos.badgeMetodo} ${estilos[getMetodoPagoBadge(venta.metodo_pago).color]}`}>
-                                            {getMetodoPagoBadge(venta.metodo_pago).texto}
-                                        </span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.monto}>{formatearMoneda(venta.subtotal)}</span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.monto}>{formatearMoneda(venta.itbis)}</span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <span className={estilos.montoTotal}>{formatearMoneda(venta.total)}</span>
-                                    </div>
-                                    <div className={estilos.columna}>
-                                        <div className={estilos.estadoContainer}>
-                                            <span className={`${estilos.badgeEstado} ${estilos[venta.estado]}`}>
-                                                {venta.estado === 'emitida' ? 'Emitida' : venta.estado === 'anulada' ? 'Anulada' : 'Pendiente'}
+                                return (
+                                    <tr key={venta.id} className={estilos.fila}>
+                                        <td className={estilos.numeroCol}>{venta.numero_interno}</td>
+                                        <td className={estilos.numeroCol}>{venta.ncf || '-'}</td>
+                                        <td>{venta.numero_caja ? `#${venta.numero_caja}` : 'N/A'}</td>
+                                        <td>{venta.cliente_nombre || 'Consumidor Final'}</td>
+                                        <td>{venta.vendedor_nombre || 'N/A'}</td>
+                                        <td>
+                                            <span className={`${estilos.badge} ${estilos[metodoBadge.color]}`}>
+                                                {metodoBadge.texto}
                                             </span>
-                                            {tieneDespachoPendiente && (
-                                                <span className={estilos.badgePendiente}>
-                                                    Por Desp.
+                                        </td>
+                                        <td>
+                                            <span className={`${estilos.badge} ${estilos[dgiiBadge.color]}`}>
+                                                {dgiiBadge.texto}
+                                            </span>
+                                        </td>
+                                        <td className={estilos.montoCol}>{formatearMoneda(venta.total)}</td>
+                                        <td>
+                                            <div className={estilos.estadoContainer}>
+                                                <span className={`${estilos.badge} ${estilos[venta.estado]}`}>
+                                                    {venta.estado === 'emitida' ? 'Emitida' : venta.estado === 'anulada' ? 'Anulada' : 'Pendiente'}
                                                 </span>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className={estilos.columnaAcciones}>
-                                        <Link
-                                            href={`/admin/ventas/ver/${venta.id}`}
-                                            className={estilos.btnIcono}
-                                            title="Ver detalles"
-                                        >
-                                            <ion-icon name="eye-outline"></ion-icon>
-                                        </Link>
-                                        <Link
-                                            href={`/admin/ventas/imprimir/${venta.id}`}
-                                            className={`${estilos.btnIcono} ${estilos.imprimir}`}
-                                            title="Imprimir"
-                                        >
-                                            <ion-icon name="print-outline"></ion-icon>
-                                        </Link>
-                                        {tieneDespachoPendiente && (
-                                            <Link
-                                                href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`}
-                                                className={`${estilos.btnIcono} ${estilos.despachar}`}
-                                                title="Generar Conduce"
-                                            >
-                                                <ion-icon name="cube-outline"></ion-icon>
-                                            </Link>
-                                        )}
-                                        {venta.estado === 'emitida' && (
-                                            <button
-                                                className={`${estilos.btnIcono} ${estilos.anular}`}
-                                                onClick={() => manejarAnularVenta(venta.id, venta.numero_interno)}
-                                                disabled={procesando}
-                                                title="Anular venta"
-                                            >
-                                                <ion-icon name="close-circle-outline"></ion-icon>
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
+                                                {tieneDespachoPendiente && (
+                                                    <span className={`${estilos.badge} ${estilos.despachoPendiente}`}>
+                                                        Desp. Pend.
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div className={estilos.accionesTabla}>
+                                                <Link href={`/admin/ventas/ver/${venta.id}`} className={estilos.btnIcono} title="Ver">
+                                                    <ion-icon name="eye-outline"></ion-icon>
+                                                </Link>
+                                                <Link href={`/admin/ventas/imprimir/${venta.id}`} className={`${estilos.btnIcono} ${estilos.imprimir}`} title="Imprimir">
+                                                    <ion-icon name="print-outline"></ion-icon>
+                                                </Link>
+                                                {tieneDespachoPendiente && (
+                                                    <Link href={`/admin/conduces/crear?origen=venta&numero=${venta.numero_interno}`} className={`${estilos.btnIcono} ${estilos.despachar}`} title="Despachar">
+                                                        <ion-icon name="cube-outline"></ion-icon>
+                                                    </Link>
+                                                )}
+                                                {venta.estado === 'emitida' && (
+                                                    <button
+                                                        className={`${estilos.btnIcono} ${estilos.anular}`}
+                                                        onClick={() => manejarAnularVenta(venta.id, venta.numero_interno)}
+                                                        disabled={procesando}
+                                                        title="Anular"
+                                                    >
+                                                        <ion-icon name="close-circle-outline"></ion-icon>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             )}
 
-            {/* Paginación */}
-            {!cargando && ventasFiltradas.length > 0 && totalPaginas > 1 && (
-                <div className={`${estilos.paginacion} ${estilos[tema]}`}>
+            {/* ========== PAGINACIÓN ========== */}
+            {!cargando && ventas.length > 0 && totalPaginas > 1 && (
+                <div className={estilos.paginacion}>
                     <div className={estilos.paginacionInfo}>
                         <span>
-                            Mostrando {(paginaActual - 1) * 10 + 1}-{Math.min(paginaActual * 10, totalVentas)} de {totalVentas} ventas
+                            Mostrando {(paginaActual - 1) * limite + 1}-{Math.min(paginaActual * limite, totalVentas)} de {totalVentas} ventas
                         </span>
                     </div>
                     <div className={estilos.paginacionControles}>
@@ -665,7 +800,6 @@ export default function VentasAdmin() {
                                 cargarVentas(nuevaPagina)
                             }}
                             disabled={paginaActual === 1 || cargando}
-                            title="Página anterior"
                         >
                             <ion-icon name="chevron-back-outline"></ion-icon>
                         </button>
@@ -707,10 +841,132 @@ export default function VentasAdmin() {
                                 cargarVentas(nuevaPagina)
                             }}
                             disabled={paginaActual === totalPaginas || cargando}
-                            title="Página siguiente"
                         >
                             <ion-icon name="chevron-forward-outline"></ion-icon>
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== MODAL ABRIR CAJA ========== */}
+            {mostrarModalCaja && (
+                <div className={estilos.modalOverlay}>
+                    <div className={estilos.modal}>
+                        <div className={estilos.modalHeader}>
+                            <h2>Abrir Caja</h2>
+                            <button
+                                className={estilos.btnCerrar}
+                                onClick={() => !procesando && setMostrarModalCaja(false)}
+                                disabled={procesando}
+                            >
+                                <ion-icon name="close-outline"></ion-icon>
+                            </button>
+                        </div>
+
+                        <form onSubmit={manejarAbrirCaja} className={estilos.modalBody}>
+                            <div className={estilos.infoCaja}>
+                                <ion-icon name="information-circle-outline"></ion-icon>
+                                <p>Ingresa el monto con el que iniciarás las operaciones del día.</p>
+                            </div>
+
+                            <div className={estilos.grupoInput}>
+                                <label>Monto Inicial (RD$)</label>
+                                <div className={estilos.inputMoneda}>
+                                    <span className={estilos.simboloMoneda}>RD$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={montoInicial}
+                                        onChange={(e) => setMontoInicial(e.target.value)}
+                                        placeholder="0.00"
+                                        required
+                                        disabled={procesando}
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div className={estilos.modalFooter}>
+                                <button
+                                    type="button"
+                                    className={estilos.btnCancelar}
+                                    onClick={() => setMostrarModalCaja(false)}
+                                    disabled={procesando}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={estilos.btnGuardar}
+                                    disabled={procesando}
+                                >
+                                    {procesando ? 'Abriendo...' : 'Abrir Caja'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== MODAL CERRAR CAJA ========== */}
+            {mostrarModalCierre && (
+                <div className={estilos.modalOverlay}>
+                    <div className={estilos.modal}>
+                        <div className={estilos.modalHeader}>
+                            <h2>Cerrar Caja</h2>
+                            <button
+                                className={estilos.btnCerrar}
+                                onClick={() => !procesando && setMostrarModalCierre(false)}
+                                disabled={procesando}
+                            >
+                                <ion-icon name="close-outline"></ion-icon>
+                            </button>
+                        </div>
+
+                        <form onSubmit={manejarCerrarCaja} className={estilos.modalBody}>
+                            <div className={estilos.infoCaja}>
+                                <ion-icon name="alert-circle-outline"></ion-icon>
+                                <p>Ingresa el monto total en efectivo que tienes físicamente en la caja para realizar el cuadre.</p>
+                            </div>
+
+                            <div className={estilos.grupoInput}>
+                                <label>Efectivo en Caja (RD$)</label>
+                                <div className={estilos.inputMoneda}>
+                                    <span className={estilos.simboloMoneda}>RD$</span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={montoFinal}
+                                        onChange={(e) => setMontoFinal(e.target.value)}
+                                        placeholder="0.00"
+                                        required
+                                        disabled={procesando}
+                                        autoFocus
+                                    />
+                                </div>
+                            </div>
+
+                            <div className={estilos.modalFooter}>
+                                <button
+                                    type="button"
+                                    className={estilos.btnCancelar}
+                                    onClick={() => setMostrarModalCierre(false)}
+                                    disabled={procesando}
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className={estilos.btnGuardar} // o btnPeligro si defines ese estilo
+                                    style={{ background: 'var(--danger)', color: 'white' }}
+                                    disabled={procesando}
+                                >
+                                    {procesando ? 'Cerrando...' : 'Cerrar Caja'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -10,6 +10,7 @@ export default function VerClienteAdmin() {
     const [tema, setTema] = useState("light")
     const [cargando, setCargando] = useState(true)
     const [cliente, setCliente] = useState(null)
+    const [mostrarMenu, setMostrarMenu] = useState(false)
 
     // Detectar tema
     useEffect(() => {
@@ -58,11 +59,31 @@ export default function VerClienteAdmin() {
     const formatearMoneda = (valor) =>
         new Intl.NumberFormat("es-DO", { style: "currency", currency: "DOP" }).format(valor || 0)
 
+    const calcularPorcentajeCredito = () => {
+        if (!cliente?.credito?.limite) return 0
+        return Math.round((cliente.credito.utilizado / cliente.credito.limite) * 100)
+    }
+
+    const obtenerColorCredito = () => {
+        const porcentaje = calcularPorcentajeCredito()
+        if (porcentaje >= 90) return '#ef4444'
+        if (porcentaje >= 70) return '#f59e0b'
+        return '#10b981'
+    }
+
+    const puedeVender = () => {
+        return cliente?.clienteActivo && cliente?.credito?.disponible > 0
+    }
+
+    const tieneDeuda = () => {
+        return cliente?.credito?.utilizado > 0
+    }
+
     if (cargando) {
         return (
             <div className={`${estilos.contenedor} ${estilos[tema]}`}>
                 <div className={estilos.cargando}>
-                    <ion-icon name="sync-outline" className={estilos.iconoCargando}></ion-icon>
+                    <div className={estilos.loaderSpinner}></div>
                     <span>Cargando perfil del cliente...</span>
                 </div>
             </div>
@@ -73,162 +94,277 @@ export default function VerClienteAdmin() {
 
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-            {/* HEADER */}
+
+            {/* HEADER MEJORADO */}
             <div className={estilos.header}>
-                <div className={estilos.tituloArea}>
-                    <h1>Detalle del Cliente</h1>
-                    <p className={estilos.subtitulo}>Información detallada y resumen financiero</p>
+                <button
+                    className={estilos.btnVolver}
+                    onClick={() => router.push('/admin/clientes')}
+                >
+                    <ion-icon name="arrow-back-outline"></ion-icon>
+                </button>
+                <div className={estilos.headerInfo}>
+                    <h1>Perfil del Cliente</h1>
+                    <p>{cliente.nombreCompleto}</p>
                 </div>
-                <div className={estilos.accionesHeader}>
+                <div className={estilos.headerAcciones}>
                     <button
-                        className={`${estilos.btnAccion} ${estilos.secundario}`}
-                        onClick={() => router.push('/admin/clientes')}
+                        className={estilos.btnHeaderAccion}
+                        onClick={() => setMostrarMenu(!mostrarMenu)}
                     >
-                        <ion-icon name="arrow-back-outline"></ion-icon>
-                        <span>Volver</span>
-                    </button>
-                    <button
-                        className={`${estilos.btnAccion} ${estilos.primario}`}
-                        onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
-                    >
-                        <ion-icon name="create-outline"></ion-icon>
-                        <span>Editar Perfil</span>
+                        <ion-icon name="ellipsis-horizontal"></ion-icon>
                     </button>
                 </div>
             </div>
 
             {/* LAYOUT PRINCIPAL */}
-            <div className={estilos.layoutDetalle}>
+            <div className={estilos.layoutPrincipal}>
 
-                {/* COLUMNA PERFIL */}
-                <div className={estilos.columnaPerfil}>
+                {/* COLUMNA IZQUIERDA - PERFIL */}
+                <div className={estilos.columnaIzquierda}>
+
+                    {/* CARD PERFIL */}
                     <div className={estilos.cardPerfil}>
-                        <div className={estilos.fotoContenedor}>
-                            {cliente.fotoUrl ? (
-                                <img src={cliente.fotoUrl} alt={cliente.nombreCompleto} />
-                            ) : (
-                                <ion-icon name="person-outline" className={estilos.iconoFoto}></ion-icon>
-                            )}
-                        </div>
-
-                        <span
-                            className={`${estilos.badgeEstado} ${cliente.clienteActivo ? estilos.activo : estilos.inactivo}`}>
-                            {cliente.clienteActivo ? 'Cuenta Activa' : 'Cuenta Inactiva'}
-                        </span>
-
-                        <div className={estilos.infoPrincipal}>
-                            <h2>{cliente.nombreCompleto}</h2>
-                            <p>{cliente.tipoDocumentoNombre} ({cliente.tipoDocumentoCodigo}): {cliente.numeroDocumento}</p>
-                        </div>
-
-                        <div className={estilos.divisor}></div>
-
-                        <div className={estilos.estadMini}>
-                            <div className={estilos.datoMini}>
-                                <span className={estilos.labelMini}>Compras Totales</span>
-                                <span className={estilos.valorMini}>{formatearMoneda(cliente.totalCompras)}</span>
+                        <div className={estilos.perfilHeader}>
+                            <div className={estilos.avatarContenedor}>
+                                {cliente.fotoUrl ? (
+                                    <img src={cliente.fotoUrl} alt={cliente.nombreCompleto} />
+                                ) : (
+                                    <div className={estilos.avatarPlaceholder}>
+                                        <ion-icon name="person-outline"></ion-icon>
+                                    </div>
+                                )}
+                                <div className={`${estilos.estadoPunto} ${cliente.clienteActivo ? estilos.activo : estilos.inactivo}`}></div>
                             </div>
-                            <div className={estilos.datoMini}>
-                                <span className={estilos.labelMini}>Puntos</span>
-                                <span className={estilos.valorMini}>{cliente.puntosFidelidad || 0}</span>
+                            <div className={estilos.perfilNombre}>
+                                <h2>{cliente.nombreCompleto}</h2>
+                                <p className={estilos.documento}>
+                                    {cliente.tipoDocumentoCodigo}: {cliente.numeroDocumento}
+                                </p>
+                                <span className={`${estilos.badge} ${cliente.clienteActivo ? estilos.badgeActivo : estilos.badgeInactivo}`}>
+                                    {cliente.clienteActivo ? 'Activo' : 'Inactivo'}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div className={estilos.statsGrid}>
+                            <div className={estilos.statItem}>
+                                <div className={estilos.statIcono}>
+                                    <ion-icon name="cart-outline"></ion-icon>
+                                </div>
+                                <div className={estilos.statInfo}>
+                                    <span className={estilos.statLabel}>Compras Totales</span>
+                                    <span className={estilos.statValor}>{formatearMoneda(cliente.totalCompras)}</span>
+                                </div>
+                            </div>
+                            <div className={estilos.statItem}>
+                                <div className={estilos.statIcono}>
+                                    <ion-icon name="star-outline"></ion-icon>
+                                </div>
+                                <div className={estilos.statInfo}>
+                                    <span className={estilos.statLabel}>Puntos</span>
+                                    <span className={estilos.statValor}>{cliente.puntosFidelidad || 0}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
+
+                    {/* CONTACTO */}
+                    <div className={estilos.cardContacto}>
+                        <h3 className={estilos.cardTitulo}>
+                            <ion-icon name="call-outline"></ion-icon>
+                            Contacto
+                        </h3>
+                        <div className={estilos.contactoLista}>
+                            {cliente.contacto?.telefono && (
+                                <a href={`tel:${cliente.contacto.telefono}`} className={estilos.contactoItem}>
+                                    <ion-icon name="call"></ion-icon>
+                                    <span>{cliente.contacto.telefono}</span>
+                                </a>
+                            )}
+                            {cliente.contacto?.email && (
+                                <a href={`mailto:${cliente.contacto.email}`} className={estilos.contactoItem}>
+                                    <ion-icon name="mail"></ion-icon>
+                                    <span>{cliente.contacto.email}</span>
+                                </a>
+                            )}
+                            {cliente.contacto?.direccion && (
+                                <div className={estilos.contactoItem}>
+                                    <ion-icon name="location"></ion-icon>
+                                    <span>{cliente.contacto.direccion}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
                 </div>
 
-                {/* COLUMNA INFO */}
-                <div className={estilos.columnaInfo}>
+                {/* COLUMNA DERECHA - CRÉDITO Y ACCIONES */}
+                <div className={estilos.columnaDerecha}>
 
-                    {/* DATOS DE CONTACTO */}
-                    <div className={estilos.seccionInfo}>
-                        <h3 className={estilos.tituloSeccion}>
-                            <ion-icon name="call-outline"></ion-icon>
-                            <span>Información de Contacto</span>
+                    {/* TARJETA DE CRÉDITO VISUAL */}
+                    {cliente.credito?.tienePerfil ? (
+                        <div className={estilos.tarjetaCreditoContenedor}>
+                            <div className={estilos.tarjetaCredito} style={{
+                                background: `linear-gradient(135deg, ${obtenerColorCredito()}, ${obtenerColorCredito()}dd)`
+                            }}>
+                                <div className={estilos.tarjetaHeader}>
+                                    <ion-icon name="card-outline"></ion-icon>
+                                    <span>Perfil Crediticio</span>
+                                    <ion-icon name="wifi" className={estilos.iconoChip}></ion-icon>
+                                </div>
+
+                                <div className={estilos.tarjetaMonto}>
+                                    <span className={estilos.tarjetaLabel}>Disponible</span>
+                                    <span className={estilos.tarjetaDisponible}>
+                                        {formatearMoneda(cliente.credito.disponible)}
+                                    </span>
+                                </div>
+
+                                <div className={estilos.tarjetaProgreso}>
+                                    <div className={estilos.progresoInfo}>
+                                        <span>{calcularPorcentajeCredito()}% usado</span>
+                                        <span>{formatearMoneda(cliente.credito.utilizado)} / {formatearMoneda(cliente.credito.limite)}</span>
+                                    </div>
+                                    <div className={estilos.barraProgreso}>
+                                        <div
+                                            className={estilos.barraFill}
+                                            style={{ width: `${calcularPorcentajeCredito()}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+
+                                <div className={estilos.tarjetaFooter}>
+                                    <div className={estilos.tarjetaDato}>
+                                        <span>Score</span>
+                                        <strong>{cliente.credito.score || 100}</strong>
+                                    </div>
+                                    <div className={estilos.tarjetaDato}>
+                                        <span>Nivel</span>
+                                        <strong>{cliente.credito.clasificacion || 'A'}</strong>
+                                    </div>
+                                    <div className={estilos.tarjetaDato}>
+                                        <span>Plazo</span>
+                                        <strong>{cliente.credito.diasPlazo || 30}d</strong>
+                                    </div>
+                                    <div className={estilos.tarjetaDato}>
+                                        <span>Frecuencia</span>
+                                        <strong style={{ textTransform: 'capitalize' }}>
+                                            {cliente.credito.frecuenciaPago || 'Mensual'}
+                                        </strong>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* ACCIONES PRINCIPALES */}
+                            <div className={estilos.accionesPrincipales}>
+                                <button
+                                    className={`${estilos.btnAccion} ${estilos.btnVender}`}
+                                    disabled={!puedeVender()}
+                                    onClick={() => router.push(`/admin/ventas/nueva?cliente=${cliente.id}`)}
+                                >
+                                    <div className={estilos.btnIcono}>
+                                        <ion-icon name="cart-outline"></ion-icon>
+                                    </div>
+                                    <div className={estilos.btnTexto}>
+                                        <span className={estilos.btnLabel}>Vender</span>
+                                        <span className={estilos.btnSubLabel}>
+                                            {puedeVender() ? 'Nueva venta' : 'Sin crédito'}
+                                        </span>
+                                    </div>
+                                </button>
+
+                                <button
+                                    className={`${estilos.btnAccion} ${estilos.btnCobrar}`}
+                                    disabled={!tieneDeuda()}
+                                    onClick={() => router.push(`/admin/clientes/ver/${cliente.id}?tab=pagos`)}
+                                >
+                                    <div className={estilos.btnIcono}>
+                                        <ion-icon name="wallet-outline"></ion-icon>
+                                    </div>
+                                    <div className={estilos.btnTexto}>
+                                        <span className={estilos.btnLabel}>Cobrar</span>
+                                        <span className={estilos.btnSubLabel}>
+                                            {tieneDeuda() ? formatearMoneda(cliente.credito.utilizado) : 'Sin deuda'}
+                                        </span>
+                                    </div>
+                                </button>
+
+                                <button
+                                    className={`${estilos.btnAccion} ${estilos.btnEditar}`}
+                                    onClick={() => router.push(`/admin/clientes/editar/${cliente.id}`)}
+                                >
+                                    <div className={estilos.btnIcono}>
+                                        <ion-icon name="create-outline"></ion-icon>
+                                    </div>
+                                    <div className={estilos.btnTexto}>
+                                        <span className={estilos.btnLabel}>Editar</span>
+                                        <span className={estilos.btnSubLabel}>Modificar perfil</span>
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* ESTADO DE CRÉDITO */}
+                            <div className={`${estilos.alertaEstado} ${puedeVender() ? estilos.alertaOk : estilos.alertaError}`}>
+                                <ion-icon name={puedeVender() ? "checkmark-circle" : "alert-circle"}></ion-icon>
+                                <span>
+                                    {puedeVender()
+                                        ? `Puede vender hasta ${formatearMoneda(cliente.credito.disponible)} a crédito`
+                                        : 'Límite de crédito alcanzado. Requiere pago para nuevas ventas'}
+                                </span>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className={estilos.sinCredito}>
+                            <ion-icon name="card-outline"></ion-icon>
+                            <h3>Sin Perfil Crediticio</h3>
+                            <p>Este cliente no tiene configurado un perfil de crédito.</p>
+                            <button
+                                className={estilos.btnCrearCredito}
+                                onClick={() => router.push(`/admin/clientes/editar/${cliente.id}?tab=credito`)}
+                            >
+                                <ion-icon name="add-circle-outline"></ion-icon>
+                                Configurar Crédito
+                            </button>
+                        </div>
+                    )}
+
+                    {/* INFORMACIÓN ADICIONAL */}
+                    <div className={estilos.cardInfo}>
+                        <h3 className={estilos.cardTitulo}>
+                            <ion-icon name="information-circle-outline"></ion-icon>
+                            Información General
                         </h3>
-                        <div className={estilos.gridInfo}>
-                            <div className={estilos.campo}>
-                                <span className={estilos.labelCampo}>Teléfono</span>
-                                <span className={estilos.valorCampo}>{cliente.telefono || 'No registrado'}</span>
+                        <div className={estilos.infoGrid}>
+                            <div className={estilos.infoItem}>
+                                <span className={estilos.infoLabel}>Fecha de Nacimiento</span>
+                                <span className={estilos.infoValor}>
+                                    {cliente.fechaNacimiento || 'No registrado'}
+                                </span>
                             </div>
-                            <div className={estilos.campo}>
-                                <span className={estilos.labelCampo}>Correo Electrónico</span>
-                                <span className={estilos.valorCampo}>{cliente.email || 'No registrado'}</span>
+                            <div className={estilos.infoItem}>
+                                <span className={estilos.infoLabel}>Género</span>
+                                <span className={estilos.infoValor}>
+                                    {cliente.genero || 'No especificado'}
+                                </span>
                             </div>
-                            <div className={estilos.campo}>
-                                <span className={estilos.labelCampo}>Dirección</span>
-                                <span
-                                    className={estilos.valorCampo}>{cliente.direccion || 'Sin dirección registrada'}</span>
+                            <div className={estilos.infoItem}>
+                                <span className={estilos.infoLabel}>Registro</span>
+                                <span className={estilos.infoValor}>
+                                    {new Date(cliente.createdAt).toLocaleDateString('es-DO')}
+                                </span>
+                            </div>
+                            <div className={estilos.infoItem}>
+                                <span className={estilos.infoLabel}>Última actualización</span>
+                                <span className={estilos.infoValor}>
+                                    {new Date(cliente.updatedAt).toLocaleDateString('es-DO')}
+                                </span>
                             </div>
                         </div>
                     </div>
-
-                    {/* PERFIL CREDITICIO */}
-                    {cliente.credito?.tienePerfil ? (
-                        <div className={`${estilos.seccionInfo} ${estilos.cardCredito}`}>
-                            <h3 className={estilos.tituloSeccion}>
-                                <ion-icon name="card-outline"></ion-icon>
-                                <span>Perfil Crediticio Profesional</span>
-                            </h3>
-
-                            <div className={estilos.gridInfo}>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Límite Autorizado</span>
-                                    <span
-                                        className={estilos.valorCampo}>{formatearMoneda(cliente.credito.limite)}</span>
-                                </div>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Saldo Utilizado</span>
-                                    <span className={estilos.valorCampo}
-                                        style={{ color: '#ef4444' }}>{formatearMoneda(cliente.credito.utilizado)}</span>
-                                </div>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Saldo Disponible</span>
-                                    <span className={estilos.valorCampo}
-                                        style={{ color: '#10b981' }}>{formatearMoneda(cliente.credito.disponible)}</span>
-                                </div>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Frecuencia de Pago</span>
-                                    <span className={estilos.valorCampo}
-                                        style={{ textTransform: 'capitalize' }}>{cliente.credito.frecuenciaPago || 'N/A'}</span>
-                                </div>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Días de Plazo</span>
-                                    <span className={estilos.valorCampo}>{cliente.credito.diasPlazo || 0} días</span>
-                                </div>
-                                <div className={estilos.campo}>
-                                    <span className={estilos.labelCampo}>Clasificación</span>
-                                    <span
-                                        className={estilos.valorCampo}>Nivel {cliente.credito.clasificacion || 'A'} (Score: {cliente.credito.score || 100})</span>
-                                </div>
-                            </div>
-
-                            {/* ALERTA DE CRÉDITO */}
-                            {cliente.credito.limite > 0 ? (
-                                <div
-                                    className={`${estilos.alertaCredito} ${cliente.credito.disponible > 0 ? estilos.disponible : estilos.agotado}`}>
-                                    <ion-icon
-                                        name={cliente.credito.disponible > 0 ? "checkmark-circle" : "alert-circle"}></ion-icon>
-                                    <span>
-                                        {cliente.credito.disponible > 0
-                                            ? `El cliente dispone de ${formatearMoneda(cliente.credito.disponible)} para nuevas compras a crédito.`
-                                            : 'El límite de crédito ha sido alcanzado. Se requiere un abono para nuevas ventas a crédito.'}
-                                    </span>
-                                </div>
-                            ) : (
-                                <p style={{ marginTop: '20px', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>
-                                    Este cliente no tiene una línea de crédito habilitada actualmente.
-                                </p>
-                            )}
-                        </div>
-                    ) : (
-                        <p style={{ marginTop: '20px', color: '#94a3b8', fontStyle: 'italic', fontSize: '14px' }}>
-                            Este cliente no tiene un perfil crediticio registrado.
-                        </p>
-                    )}
 
                 </div>
             </div>
         </div>
     )
-
 }

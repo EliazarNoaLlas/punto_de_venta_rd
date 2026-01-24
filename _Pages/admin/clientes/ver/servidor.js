@@ -1,7 +1,7 @@
 "use server"
 
 import db from "@/_DB/db";
-import { cookies } from "next/headers";
+import {cookies} from "next/headers";
 
 // ============================================
 // OBTENER CLIENTE POR ID (DETALLE COMPLETO)
@@ -16,7 +16,7 @@ export async function obtenerClientePorId(clienteId) {
         const userTipo = cookieStore.get("userTipo")?.value;
 
         if (!userId || !empresaId || (userTipo !== "admin" && userTipo !== "vendedor")) {
-            return { success: false, mensaje: "Sesión inválida" };
+            return {success: false, mensaje: "Sesión inválida"};
         }
 
         connection = await db.getConnection();
@@ -30,8 +30,8 @@ export async function obtenerClientePorId(clienteId) {
                     c.apellidos,
                     c.numero_documento,
                     c.tipo_documento_id,
-                    td.codigo AS tipo_documento_codigo,
-                    td.nombre AS tipo_documento_nombre,
+                    td.codigo                         AS tipo_documento_codigo,
+                    td.nombre                         AS tipo_documento_nombre,
                     c.telefono,
                     c.email,
                     c.direccion,
@@ -41,11 +41,11 @@ export async function obtenerClientePorId(clienteId) {
                     c.fecha_nacimiento,
                     c.genero,
                     c.foto_url,
-                    c.estado AS cliente_estado,
+                    c.estado                          AS cliente_estado,
                     c.total_compras,
                     c.puntos_fidelidad,
 
-                    cc.id AS credito_id,
+                    cc.id                             AS credito_id,
                     cc.limite_credito,
                     cc.saldo_utilizado,
                     cc.saldo_disponible,
@@ -54,35 +54,37 @@ export async function obtenerClientePorId(clienteId) {
                     cc.estado_credito,
                     cc.clasificacion,
                     cc.score_crediticio,
-                    cc.activo AS credito_activo,
-                    cc.fecha_creacion AS credito_fecha_creacion,
-                    cc.fecha_actualizacion AS credito_fecha_actualizacion,
+                    cc.activo                         AS credito_activo,
+                    cc.fecha_creacion                 AS credito_fecha_creacion,
+                    cc.fecha_actualizacion            AS credito_fecha_actualizacion,
 
                     -- Subconsulta de deudas
-                    COALESCE(d.deuda_total, 0) AS deuda_total,
-                    COALESCE(d.deuda_vencida, 0) AS deuda_vencida,
-                    COALESCE(d.deudas_activas, 0) AS deudas_activas,
+                    COALESCE(d.deuda_total, 0)        AS deuda_total,
+                    COALESCE(d.deuda_vencida, 0)      AS deuda_vencida,
+                    COALESCE(d.deudas_activas, 0)     AS deudas_activas,
                     COALESCE(d.dias_atraso_maximo, 0) AS dias_atraso_maximo
 
              FROM clientes c
-             INNER JOIN tipos_documento td ON c.tipo_documento_id = td.id
-             LEFT JOIN credito_clientes cc ON cc.cliente_id = c.id AND cc.empresa_id = c.empresa_id
-             LEFT JOIN (
-                 SELECT cxc.credito_cliente_id,
-                        SUM(CASE WHEN cxc.estado_cxc IN ('activa','vencida','parcial') THEN cxc.saldo_pendiente ELSE 0 END) AS deuda_total,
-                        SUM(CASE WHEN cxc.estado_cxc='vencida' THEN cxc.saldo_pendiente ELSE 0 END) AS deuda_vencida,
-                        COUNT(CASE WHEN cxc.estado_cxc IN ('activa','vencida','parcial') THEN 1 END) AS deudas_activas,
-                        MAX(cxc.dias_atraso) AS dias_atraso_maximo
-                 FROM cuentas_por_cobrar cxc
-                 GROUP BY cxc.credito_cliente_id
-             ) d ON d.credito_cliente_id = cc.id
-             
-             WHERE c.id = ? AND c.empresa_id = ?`,
+                      INNER JOIN tipos_documento td ON c.tipo_documento_id = td.id
+                      LEFT JOIN credito_clientes cc ON cc.cliente_id = c.id AND cc.empresa_id = c.empresa_id
+                      LEFT JOIN (SELECT cxc.credito_cliente_id,
+                                        SUM(CASE
+                                                WHEN cxc.estado_cxc IN ('activa', 'vencida', 'parcial')
+                                                    THEN cxc.saldo_pendiente
+                                                ELSE 0 END)                                                            AS deuda_total,
+                                        SUM(CASE WHEN cxc.estado_cxc = 'vencida' THEN cxc.saldo_pendiente ELSE 0 END)  AS deuda_vencida,
+                                        COUNT(CASE WHEN cxc.estado_cxc IN ('activa', 'vencida', 'parcial') THEN 1 END) AS deudas_activas,
+                                        MAX(cxc.dias_atraso)                                                           AS dias_atraso_maximo
+                                 FROM cuentas_por_cobrar cxc
+                                 GROUP BY cxc.credito_cliente_id) d ON d.credito_cliente_id = cc.id
+
+             WHERE c.id = ?
+               AND c.empresa_id = ?`,
             [clienteId, empresaId]
         );
 
         if (!rows || rows.length === 0) {
-            return { success: false, mensaje: "Cliente no encontrado" };
+            return {success: false, mensaje: "Cliente no encontrado"};
         }
 
         const c = rows[0];
@@ -150,10 +152,10 @@ export async function obtenerClientePorId(clienteId) {
         // ================================
         // Devolver resultado
         // ================================
-        return { success: true, cliente: clienteFormateado };
+        return {success: true, cliente: clienteFormateado};
     } catch (error) {
         console.error("Error al obtener cliente:", error);
-        return { success: false, mensaje: "Error al cargar el cliente" };
+        return {success: false, mensaje: "Error al cargar el cliente"};
     } finally {
         if (connection) connection.release();
     }
