@@ -1,7 +1,7 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
-import { listarConduces } from '@/_Pages/admin/conduces/servidor'
+import { listarConduces } from './servidor'
 import estilos from './conduces.module.css'
 
 export default function ListaConduces() {
@@ -10,8 +10,10 @@ export default function ListaConduces() {
     const [conduces, setConduces] = useState([])
     const [busqueda, setBusqueda] = useState('')
     const [vistaMovil, setVistaMovil] = useState(false)
+    const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
+        setMounted(true)
         const temaLocal = localStorage.getItem('tema') || 'light'
         setTema(temaLocal)
         cargarConduces()
@@ -42,11 +44,28 @@ export default function ListaConduces() {
     }, [busqueda])
 
     // Estadísticas calculadas
-    const stats = {
-        total: conduces.length,
-        hoy: conduces.filter(c => new Date(c.created_at).toDateString() === new Date().toDateString()).length,
-        entregados: conduces.filter(c => c.estado === 'entregado').length,
-        emitidos: conduces.filter(c => c.estado === 'emitido').length
+    const stats = useMemo(() => {
+        const hoy = new Date().toDateString()
+        return {
+            total: conduces.length,
+            hoy: conduces.filter(c => new Date(c.created_at).toDateString() === hoy).length,
+            entregados: conduces.filter(c => c.estado === 'entregado').length,
+            emitidos: conduces.filter(c => c.estado === 'emitido').length
+        }
+    }, [conduces])
+
+    // Evitar error de hidratación
+    if (!mounted) {
+        return (
+            <div className={`${estilos.contenedor} ${estilos.light}`}>
+                <div className={estilos.header}>
+                    <div>
+                        <h1 className={estilos.titulo}>Conduces de Despacho</h1>
+                        <p className={estilos.subtitulo}>Control de entregas y saldos de materiales</p>
+                    </div>
+                </div>
+            </div>
+        )
     }
 
     return (
@@ -56,7 +75,7 @@ export default function ListaConduces() {
                     <h1 className={estilos.titulo}>Conduces de Despacho</h1>
                     <p className={estilos.subtitulo}>Control de entregas y saldos de materiales</p>
                 </div>
-                <Link href="/admin/conduces/crear" className={estilos.btnNuevo}>
+                <Link href="/admin/conduces/nuevo" className={estilos.btnNuevo}>
                     <ion-icon name="basket-outline"></ion-icon>
                     <span>Nuevo Conduce</span>
                 </Link>
@@ -124,7 +143,7 @@ export default function ListaConduces() {
                     {conduces.map(c => (
                         <div key={c.id} className={estilos.cardMovil}>
                             <div className={estilos.cardTop}>
-                                <div className={stats.cardInfo}>
+                                <div className={estilos.cardInfo}>
                                     <h4 style={{ color: '#3b82f6', fontWeight: 800 }}>{c.numero_conduce}</h4>
                                     <p>{new Date(c.fecha_conduce).toLocaleDateString()}</p>
                                 </div>
@@ -211,3 +230,4 @@ export default function ListaConduces() {
         </div>
     )
 }
+

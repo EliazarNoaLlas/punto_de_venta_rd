@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from 'react'
-import { obtenerDetalleConduce } from '@/_Pages/admin/conduces/servidor'
+import { obtenerDatosImpresion } from './imprimir/servidor'
 import estilos from './conduces.module.css'
 
 export default function ImprimirConduce({ id }) {
@@ -8,8 +8,10 @@ export default function ImprimirConduce({ id }) {
     const [detalle, setDetalle] = useState([])
 
     useEffect(() => {
+        if (!id) return
+
         const cargarData = async () => {
-            const res = await obtenerDetalleConduce(id)
+            const res = await obtenerDatosImpresion(id)
             if (res.success) {
                 setConduce(res.conduce)
                 setDetalle(res.detalle)
@@ -84,3 +86,4 @@ export default function ImprimirConduce({ id }) {
         </div>
     )
 }
+

@@ -1,4 +1,4 @@
-import DetalleCotizacion from "@/_Pages/admin/cotizaciones/DetalleCotizacion"
+import VerCotizacionAdmin from "@/_Pages/admin/cotizaciones/ver/ver"
 
 export const metadata = {
     title: 'Detalle de Cotización - Admin',
@@ -6,5 +6,5 @@ export const metadata = {
 
 export default async function VerCotizacionPage({ params }) {
     const { id } = await params
-    return <DetalleCotizacion id={id} />
+    return <VerCotizacionAdmin id={id} />
 }

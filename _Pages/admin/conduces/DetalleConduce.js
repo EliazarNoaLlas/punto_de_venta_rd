@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { obtenerDetalleConduce } from '@/_Pages/admin/conduces/servidor'
+import { obtenerDetalleConduce } from './ver/servidor'
 import estilos from './conduces.module.css'
 
 export default function DetalleConduce({ id }) {
@@ -54,7 +54,7 @@ export default function DetalleConduce({ id }) {
             <div className={estilos.gridCuerpo}>
                 <div className={estilos.infoPanel}>
                     <div className={estilos.datosSeccion}>
-                        <h3 className={estilos.logisticaSeccion} style={{ border: 'none', padding: 0, color: '#1e293b' }}>Información General</h3>
+                        <h3 className={estilos.logisticaSeccion} style={{ border: 'none', padding: 0, color: '#191726' }}>Información General</h3>
                         <div className={estilos.infoGrid}>
                             <div className={estilos.dato}>
                                 <label>Cliente</label>
@@ -92,7 +92,7 @@ export default function DetalleConduce({ id }) {
                     {conduce.observaciones && (
                         <div className={estilos.logisticaSeccion}>
                             <h4>Observaciones</h4>
-                            <p className={estilos.subtitulo} style={{ color: '#1e293b', fontSize: '1rem' }}>{conduce.observaciones}</p>
+                            <p className={estilos.subtitulo} style={{ color: '#191726', fontSize: '1rem' }}>{conduce.observaciones}</p>
                         </div>
                     )}
                 </div>
@@ -121,3 +121,4 @@ export default function DetalleConduce({ id }) {
         </div>
     )
 }
+

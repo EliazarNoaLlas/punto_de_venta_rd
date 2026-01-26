@@ -1,0 +1,194 @@
+/* ============================================
+   CARD
+   ============================================ */
+
+.card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e5e7eb;
+}
+
+.dark .card {
+    background: #191726;
+    border-color: #334155;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.titulo {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 0 0 1rem 0;
+    color: #111827;
+}
+
+.dark .titulo {
+    color: #f9fafb;
+}
+
+.cargando,
+.vacio {
+    text-align: center;
+    color: #6b7280;
+    padding: 2rem 0;
+}
+
+.dark .cargando,
+.dark .vacio {
+    color: #9ca3af;
+}
+
+/* ============================================
+   LISTA DE HISTORIAL
+   ============================================ */
+
+.listaHistorial {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.itemHistorial {
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-left: 3px solid #e5e7eb;
+    border-radius: 0.25rem;
+    transition: all 0.2s;
+}
+
+.dark .itemHistorial {
+    border-left-color: #4b5563;
+}
+
+.itemPar {
+    background: #f9fafb;
+}
+
+.dark .itemPar {
+    background: rgba(55, 65, 81, 0.3);
+}
+
+.itemImpar {
+    background: white;
+}
+
+.dark .itemImpar {
+    background: rgba(31, 41, 55, 0.3);
+}
+
+.itemHistorial:hover {
+    border-left-color: #3b82f6;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.dark .itemHistorial:hover {
+    border-left-color: #60a5fa;
+}
+
+.iconoAccion {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.contenidoItem {
+    flex: 1;
+    min-width: 0;
+}
+
+.headerItem {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.usuarioNombre {
+    font-size: 0.875rem;
+    color: #111827;
+}
+
+.dark .usuarioNombre {
+    color: #f9fafb;
+}
+
+.accionTexto {
+    font-size: 0.75rem;
+    color: #6b7280;
+    text-transform: capitalize;
+}
+
+.dark .accionTexto {
+    color: #9ca3af;
+}
+
+.comentario {
+    font-size: 0.875rem;
+    color: #374151;
+    margin: 0.25rem 0;
+    line-height: 1.5;
+}
+
+.dark .comentario {
+    color: #d1d5db;
+}
+
+.cambioCampo {
+    font-size: 0.75rem;
+    color: #6b7280;
+    margin-top: 0.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.dark .cambioCampo {
+    color: #9ca3af;
+}
+
+.campoNombre {
+    font-weight: 500;
+}
+
+.valorAnterior {
+    text-decoration: line-through;
+    margin: 0 0.25rem;
+    color: #9ca3af;
+}
+
+.dark .valorAnterior {
+    color: #6b7280;
+}
+
+.valorNuevo {
+    color: #059669;
+    font-weight: 500;
+}
+
+.dark .valorNuevo {
+    color: #34d399;
+}
+
+.fechaItem {
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.dark .fechaItem {
+    color: #6b7280;
+}
+
+.iconoFecha {
+    width: 0.875rem;
+    height: 0.875rem;
+}
+

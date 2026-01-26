@@ -1,98 +1,18 @@
 "use server"
 
 import db from "@/_DB/db"
-import { cookies } from 'next/headers'
-import { formatearNumeroCotizacion, calcularTotalesCotizacion } from "@/utils/cotizacionUtils"
+import {cookies} from 'next/headers'
 
-export async function crearCotizacion(datos) {
-    let connection
-    try {
-        const cookieStore = await cookies()
-        const userId = cookieStore.get('userId')?.value
-        const empresaId = cookieStore.get('empresaId')?.value
-
-        if (!userId || !empresaId) {
-            return { success: false, mensaje: 'Sesion invalida' }
-        }
-
-        connection = await db.getConnection()
-        await connection.beginTransaction()
-
-        // 1. Obtener configuración de numeración
-        const [settings] = await connection.execute(
-            `SELECT name, value FROM settings WHERE empresa_id = ? AND name IN ('cotizacion_prefijo', 'cotizacion_numero_actual')`,
-            [empresaId]
-        )
-
-        const prefijo = settings.find(s => s.name === 'cotizacion_prefijo')?.value || 'COT'
-        const numeroActual = settings.find(s => s.name === 'cotizacion_numero_actual')?.value || '1'
-        const numeroCotizacion = formatearNumeroCotizacion(prefijo, numeroActual)
-
-        // 2. Calcular totales
-        const totales = calcularTotalesCotizacion(datos.productos)
-
-        // 3. Insertar cotización
-        const [resCot] = await connection.execute(
-            `INSERT INTO cotizaciones (
-                empresa_id, cliente_id, usuario_id, numero_cotizacion, 
-                estado, subtotal, descuento, monto_gravado, itbis, total, 
-                fecha_emision, fecha_vencimiento, observaciones
-            ) VALUES (?, ?, ?, ?, 'borrador', ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [
-                empresaId, datos.cliente_id, userId, numeroCotizacion,
-                totales.subtotal, datos.descuento || 0, totales.monto_gravado,
-                totales.itbis, totales.total, datos.fecha_emision,
-                datos.fecha_vencimiento, datos.observaciones
-            ]
-        )
-
-        const cotizacionId = resCot.insertId
-
-        // 4. Insertar detalle
-        for (const prod of datos.productos) {
-            const lineTotales = calcularTotalesCotizacion([prod])
-            await connection.execute(
-                `INSERT INTO cotizacion_detalle (
-                    cotizacion_id, producto_id, nombre_producto, descripcion_producto,
-                    cantidad, precio_unitario, subtotal, aplica_itbis, 
-                    monto_gravado, itbis, total
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    cotizacionId, prod.producto_id, prod.nombre_producto, prod.descripcion_producto,
-                    prod.cantidad, prod.precio_unitario, lineTotales.subtotal, prod.aplica_itbis ? 1 : 0,
-                    lineTotales.monto_gravado, lineTotales.itbis, lineTotales.total
-                ]
-            )
-        }
-
-        // 5. Actualizar número actual en settings
-        await connection.execute(
-            `UPDATE settings SET value = ? WHERE empresa_id = ? AND name = 'cotizacion_numero_actual'`,
-            [(parseInt(numeroActual) + 1).toString(), empresaId]
-        )
-
-        await connection.commit()
-        connection.release()
-
-        return { success: true, mensaje: 'Cotización creada exitosamente', id: cotizacionId }
-
-    } catch (error) {
-        console.error('Error al crear cotización:', error)
-        if (connection) {
-            await connection.rollback()
-            connection.release()
-        }
-        return { success: false, mensaje: 'Error al crear la cotización' }
-    }
-}
-
+/**
+ * Obtiene todas las cotizaciones con filtros
+ */
 export async function obtenerCotizaciones(filtros = {}) {
     let connection
     try {
         const cookieStore = await cookies()
         const empresaId = cookieStore.get('empresaId')?.value
 
-        if (!empresaId) return { success: false, mensaje: 'Sesion invalida' }
+        if (!empresaId) return {success: false, mensaje: 'Sesion invalida'}
 
         connection = await db.getConnection()
 
@@ -104,6 +24,10 @@ export async function obtenerCotizaciones(filtros = {}) {
             WHERE c.empresa_id = ?
         `
         const params = [empresaId]
+
+        // Filtrar cotizaciones eliminadas: usar estado != 'anulada' por defecto
+        // Si existe la columna activa, se puede agregar ese filtro también
+        query += " AND (c.estado != 'anulada' OR c.estado IS NULL)"
 
         if (filtros.estado && filtros.estado !== 'todos') {
             query += " AND c.estado = ?"
@@ -120,137 +44,114 @@ export async function obtenerCotizaciones(filtros = {}) {
         const [rows] = await connection.execute(query, params)
         connection.release()
 
-        return { success: true, cotizaciones: rows }
+        return {success: true, cotizaciones: rows}
 
     } catch (error) {
         console.error('Error al obtener cotizaciones:', error)
         if (connection) connection.release()
-        return { success: false, mensaje: 'Error al cargar cotizaciones' }
+        return {success: false, mensaje: 'Error al cargar cotizaciones'}
     }
 }
 
-export async function obtenerCotizacionPorId(id) {
+/**
+ * Elimina una cotización (eliminación lógica)
+ */
+export async function eliminarCotizacion(cotizacionId) {
     let connection
     try {
         const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
         const empresaId = cookieStore.get('empresaId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
 
-        if (!empresaId) return { success: false, mensaje: 'Sesion invalida' }
-
-        connection = await db.getConnection()
-
-        const [cot] = await connection.execute(
-            `SELECT c.*, cl.nombre as cliente_nombre, cl.numero_documento as cliente_documento, cl.telefono as cliente_telefono
-             FROM cotizaciones c
-             LEFT JOIN clientes cl ON c.cliente_id = cl.id
-             WHERE c.id = ? AND c.empresa_id = ?`,
-            [id, empresaId]
-        )
-
-        if (cot.length === 0) {
-            connection.release()
-            return { success: false, mensaje: 'Cotización no encontrada' }
+        if (!userId || !empresaId || userTipo !== 'admin') {
+            return {success: false, mensaje: 'No tienes permisos para eliminar cotizaciones'}
         }
-
-        const [detalle] = await connection.execute(
-            `SELECT cd.*, p.codigo_barras
-             FROM cotizacion_detalle cd
-             LEFT JOIN productos p ON cd.producto_id = p.id
-             WHERE cd.cotizacion_id = ?`,
-            [id]
-        )
-
-        connection.release()
-
-        return { success: true, cotizacion: cot[0], detalle }
-
-    } catch (error) {
-        console.error('Error al obtener detalle de cotización:', error)
-        if (connection) connection.release()
-        return { success: false, mensaje: 'Error al cargar la cotización' }
-    }
-}
-
-export async function actualizarEstadoCotizacion(id, estado) {
-    let connection
-    try {
-        const cookieStore = await cookies()
-        const empresaId = cookieStore.get('empresaId')?.value
-
-        if (!empresaId) return { success: false, mensaje: 'Sesion invalida' }
-
-        connection = await db.getConnection()
-        await connection.execute(
-            `UPDATE cotizaciones SET estado = ? WHERE id = ? AND empresa_id = ?`,
-            [estado, id, empresaId]
-        )
-        connection.release()
-
-        return { success: true, mensaje: 'Estado actualizado' }
-
-    } catch (error) {
-        console.error('Error al actualizar estado:', error)
-        if (connection) connection.release()
-        return { success: false, mensaje: 'Error al actualizar estado' }
-    }
-}
-
-export async function convertirCotizacionAVenta(id) {
-    let connection
-    try {
-        const cookieStore = await cookies()
-        const empresaId = cookieStore.get('empresaId')?.value
-        if (!empresaId) return { success: false, mensaje: 'Sesion invalida' }
 
         connection = await db.getConnection()
         await connection.beginTransaction()
 
-        // 1. Obtener la cotización y su detalle
-        const [cot] = await connection.execute(
-            `SELECT * FROM cotizaciones WHERE id = ? AND empresa_id = ?`,
-            [id, empresaId]
+        // Verificar que la cotización existe y pertenece a la empresa
+        const [cotizacion] = await connection.execute(
+            `SELECT id, estado, numero_cotizacion
+             FROM cotizaciones
+             WHERE id = ? AND empresa_id = ? AND estado != 'anulada'`,
+            [cotizacionId, empresaId]
         )
 
-        if (cot.length === 0) {
+        if (cotizacion.length === 0) {
             await connection.rollback()
             connection.release()
-            return { success: false, mensaje: 'Cotización no encontrada' }
+            return {success: false, mensaje: 'Cotización no encontrada o ya eliminada'}
         }
 
-        if (cot[0].estado === 'convertida') {
+        const cotizacionInfo = cotizacion[0]
+
+        // Verificar si la cotización puede ser eliminada
+        // No se puede eliminar si está convertida en venta
+        if (cotizacionInfo.estado === 'convertida') {
             await connection.rollback()
             connection.release()
-            return { success: false, mensaje: 'Esta cotización ya fue convertida' }
+            return {
+                success: false,
+                mensaje: 'No se puede eliminar una cotización que ya fue convertida en venta'
+            }
         }
 
-        const [detalle] = await connection.execute(
-            `SELECT * FROM cotizacion_detalle WHERE cotizacion_id = ?`,
-            [id]
-        )
-
-        // 2. Marcar como convertida
+        // Eliminación lógica: cambiar estado a 'anulada'
+        // Si existe la columna activa, también se puede actualizar
         await connection.execute(
-            `UPDATE cotizaciones SET estado = 'convertida' WHERE id = ?`,
-            [id]
+            `UPDATE cotizaciones
+             SET estado = 'anulada'
+             WHERE id = ? AND empresa_id = ?`,
+            [cotizacionId, empresaId]
         )
+
+        // Intentar actualizar columna activa si existe
+        try {
+            await connection.execute(
+                `UPDATE cotizaciones
+                 SET activa = FALSE
+                 WHERE id = ? AND empresa_id = ?`,
+                [cotizacionId, empresaId]
+            )
+        } catch (err) {
+            // Si la columna activa no existe, ignorar el error
+            if (err.code !== 'ER_BAD_FIELD_ERROR') {
+                throw err
+            }
+        }
+
+        // Registrar en historial
+        try {
+            const {registrarHistorial} = await import('@/_Pages/admin/cotizaciones/historial/servidor')
+            await registrarHistorial(
+                cotizacionId,
+                'cancelada',
+                'estado',
+                cotizacionInfo.estado,
+                'anulada',
+                `Cotización eliminada por usuario ${userId}`
+            )
+        } catch (historialError) {
+            // Si falla el historial, no es crítico, continuar con la eliminación
+            console.warn('Error al registrar en historial:', historialError)
+        }
 
         await connection.commit()
         connection.release()
 
-        // Devolvemos los datos para que el frontend pueda "precargar" la venta
         return {
             success: true,
-            cotizacion: cot[0],
-            detalle: detalle,
-            mensaje: 'Cotización lista para ser facturada'
+            mensaje: 'Cotización eliminada exitosamente'
         }
 
     } catch (error) {
-        console.error('Error al convertir cotización:', error)
+        console.error('Error al eliminar cotización:', error)
         if (connection) {
             await connection.rollback()
             connection.release()
         }
-        return { success: false, mensaje: 'Error al procesar la conversión' }
+        return {success: false, mensaje: 'Error al eliminar la cotización'}
     }
 }

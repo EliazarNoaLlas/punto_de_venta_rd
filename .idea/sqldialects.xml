@@ -3,13 +3,16 @@
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/_DB/migracion_catalogo_b2b.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_catalogo_superadmin.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/_DB/migracion_conduces.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_cotizaciones.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_creditos_cliente.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_depuracion1.sql" dialect="MySQL" />
+    <file url="file://$PROJECT_DIR$/_DB/migracion_financiamiento.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migracion_terminos_condiciones.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/migrar_depuracion.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_DB/punto_venta_rd_full.sql" dialect="MySQL" />
     <file url="file://$PROJECT_DIR$/_Pages/admin/clientes/servidor.js" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/_Pages/admin/cotizaciones/servidor.js" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/base_datos.sql" dialect="MySQL" />
   </component>
 </project>
