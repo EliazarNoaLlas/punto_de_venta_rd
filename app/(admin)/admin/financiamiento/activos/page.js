@@ -1,7 +1,12 @@
-import ActivosFinanciamiento from '@/_Pages/admin/financiamiento/activos/activos'
+import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
+import ActivosFinanciamiento from "@/_Pages/admin/activos/activos";
 
 export default function ActivosPage() {
-    return <ActivosFinanciamiento />
+  return (
+    <ClienteWrapper>
+      <ActivosFinanciamiento />
+    </ClienteWrapper>
+  );
 }
 
 

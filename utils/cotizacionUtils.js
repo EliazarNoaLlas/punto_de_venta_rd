@@ -14,6 +14,20 @@ export function formatearNumeroCotizacion(prefijo, numeroActual) {
 }
 
 /**
+ * Formatea un valor como moneda dominicana
+ * @param {number} valor - Valor a formatear
+ * @returns {string} Valor formateado
+ */
+export function formatearMoneda(valor) {
+    return new Intl.NumberFormat('es-DO', {
+        style: 'currency',
+        currency: 'DOP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(valor || 0);
+}
+
+/**
  * Calcula los totales de una cotización
  * @param {Array} productos 
  * @returns {Object}

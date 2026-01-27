@@ -68,10 +68,36 @@ export async function obtenerContratos(filtros = {}) {
             params.push(filtros.cliente_id)
         }
 
-        // Contar total
-        const countQuery = query.replace(/SELECT.*FROM/, 'SELECT COUNT(*) as total FROM')
-        const [countResult] = await connection.execute(countQuery, params)
-        const total = countResult[0].total
+        // Contar total (sin LIMIT y OFFSET)
+        let countQuery = `
+            SELECT COUNT(*) as total
+            FROM contratos_financiamiento c
+            LEFT JOIN clientes cl ON c.cliente_id = cl.id
+            LEFT JOIN planes_financiamiento p ON c.plan_id = p.id
+            LEFT JOIN usuarios u ON c.usuario_id = u.id
+            WHERE c.empresa_id = ?
+        `
+        const countParams = [empresaId]
+
+        // Aplicar los mismos filtros que la consulta principal
+        if (filtros.estado) {
+            countQuery += ` AND c.estado = ?`
+            countParams.push(filtros.estado)
+        }
+
+        if (filtros.buscar) {
+            countQuery += ` AND (c.numero_contrato LIKE ? OR cl.nombre LIKE ? OR c.ncf LIKE ?)`
+            const busqueda = `%${filtros.buscar}%`
+            countParams.push(busqueda, busqueda, busqueda)
+        }
+
+        if (filtros.cliente_id) {
+            countQuery += ` AND c.cliente_id = ?`
+            countParams.push(filtros.cliente_id)
+        }
+
+        const [countResult] = await connection.execute(countQuery, countParams)
+        const total = countResult && countResult[0] ? parseInt(countResult[0].total) : 0
 
         query += ` ORDER BY c.fecha_creacion DESC LIMIT ? OFFSET ?`
         params.push(limite, offset)

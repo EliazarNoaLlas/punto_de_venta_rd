@@ -4,10 +4,21 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import {
     obtenerContratoPorId
-} from '../../../contratos/servidor'
+} from '../../../../contratos/servidor'
 // Los pagos se gestionan desde el módulo pagos (independiente)
 // import { registrarPagoCuota } from '../../../pagos/servidor'
-import { formatearMoneda, calcularDiasAtraso, formatearEstadoCuota } from '@/Pages/admin/core/finance/calculos'
+import { calcularDiasAtraso } from '@/_Pages/admin/core/finance/calculos'
+import { formatearEstadoCuota } from '@/_Pages/admin/core/finance/estados'
+
+// Función para formatear moneda
+function formatearMoneda(valor) {
+    return new Intl.NumberFormat('es-DO', {
+        style: 'currency',
+        currency: 'DOP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    }).format(valor || 0)
+}
 import estilos from './ver.module.css'
 
 export default function VerContratoFinanciamiento() {
@@ -69,12 +80,12 @@ export default function VerContratoFinanciamiento() {
                 setActivos(resultado.activos || [])
             } else {
                 alert(resultado.mensaje || 'No se pudo cargar el contrato')
-                router.push('/admin/financiamiento/contratos')
+                router.push('/admin/contratos')
             }
         } catch (error) {
             console.error('Error:', error)
             alert('Error al cargar contrato')
-            router.push('/admin/financiamiento/contratos')
+            router.push('/admin/contratos')
         } finally {
             setCargando(false)
         }

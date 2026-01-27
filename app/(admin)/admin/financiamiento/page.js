@@ -1,7 +1,12 @@
-import FinanciamientoAdmin from '@/_Pages/admin/financiamiento/financiamiento'
+import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
+import FinanciamientoAdmin from "@/_Pages/admin/financiamiento/financiamiento";
 
 export default function FinanciamientoPage() {
-    return <FinanciamientoAdmin />
+  return (
+    <ClienteWrapper>
+      <FinanciamientoAdmin />
+    </ClienteWrapper>
+  );
 }
 
 

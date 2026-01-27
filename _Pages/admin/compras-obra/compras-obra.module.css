@@ -1,0 +1,122 @@
+@import '../proyectos/proyectos.module.css';
+
+.obraNombre {
+    color: #64748b;
+    font-size: 0.9rem;
+    margin-top: 5px;
+}
+
+.monto {
+    font-weight: 700;
+    color: #059669;
+    font-size: 1.1rem;
+}
+
+.registrada { background: #dbeafe; color: #1e40af; }
+.validada { background: #d1fae5; color: #065f46; }
+.anulada { background: #fee2e2; color: #991b1b; }
+
+.seccion {
+    margin-top: 30px;
+}
+
+.agregarItem {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: end;
+}
+
+.btnAgregar {
+    padding: 14px 20px;
+    background: #10b981;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.btnAgregar:hover {
+    background: #059669;
+}
+
+.tablaDetalle {
+    overflow-x: auto;
+    margin-top: 20px;
+}
+
+.tablaDetalle table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.tablaDetalle th {
+    background: #f8fafc;
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.tablaDetalle td {
+    padding: 12px;
+    border-bottom: 1px solid #f1f5f9;
+}
+
+.tablaDetalle tr:hover {
+    background: #f8fafc;
+}
+
+.totales {
+    margin-top: 30px;
+    padding: 20px;
+    background: #f8fafc;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+.totales > div {
+    display: flex;
+    justify-content: space-between;
+    width: 300px;
+    font-size: 1rem;
+}
+
+.totales label {
+    font-weight: 600;
+    color: #64748b;
+}
+
+.totales span {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.total {
+    padding-top: 15px;
+    border-top: 2px solid #e2e8f0;
+    font-size: 1.2rem;
+}
+
+.total label, .total span {
+    color: #059669;
+}
+
+@media (max-width: 768px) {
+    .agregarItem {
+        grid-template-columns: 1fr;
+    }
+
+    .totales > div {
+        width: 100%;
+    }
+}
+

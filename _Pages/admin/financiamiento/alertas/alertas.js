@@ -271,7 +271,7 @@ export default function AlertasFinanciamiento() {
                                     )}
                                     {alerta.contrato_id && (
                                         <Link
-                                            href={`/admin/financiamiento/contratos/${alerta.contrato_id}`}
+                                            href={`/admin/contratos/ver/${alerta.contrato_id}`}
                                             className={estilos.btnAccion}
                                             title="Ver contrato"
                                         >

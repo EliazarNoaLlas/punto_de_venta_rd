@@ -2,11 +2,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import {
-    obtenerDashboardFinanciamiento,
-    obtenerContratos,
-    obtenerAlertas
-} from './servidor'
+import { obtenerDashboardFinanciamiento } from './servidor'
+import { obtenerContratos } from '../contratos/servidor'
+import { obtenerAlertas } from '../alertas/servidor'
 import estilos from './financiamiento.module.css'
 
 export default function FinanciamientoAdmin() {
@@ -111,16 +109,32 @@ export default function FinanciamientoAdmin() {
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
             <div className={estilos.header}>
-                <div>
+                <div className={estilos.tituloArea}>
                     <h1 className={estilos.titulo}>Dashboard de Financiamiento</h1>
                     <p className={estilos.subtitulo}>Gestión integral de créditos y cobranzas</p>
                 </div>
                 <div className={estilos.headerAcciones}>
-                    <Link href="/admin/financiamiento/planes" className={estilos.btnSecundario}>
+                    <Link href="/admin/planes" className={estilos.btnSecundario}>
                         <ion-icon name="document-text-outline"></ion-icon>
                         Planes
                     </Link>
-                    <Link href="/admin/financiamiento/activos" className={estilos.btnSecundario}>
+                    <Link href="/admin/contratos" className={estilos.btnSecundario}>
+                        <ion-icon name="document-outline"></ion-icon>
+                        Contratos
+                    </Link>
+                    <Link href="/admin/cuotas" className={estilos.btnSecundario}>
+                        <ion-icon name="calendar-outline"></ion-icon>
+                        Cuotas
+                    </Link>
+                    <Link href="/admin/pagos" className={estilos.btnSecundario}>
+                        <ion-icon name="cash-outline"></ion-icon>
+                        Pagos
+                    </Link>
+                    <Link href="/admin/alertas" className={estilos.btnSecundario}>
+                        <ion-icon name="warning-outline"></ion-icon>
+                        Alertas
+                    </Link>
+                    <Link href="/admin/activos" className={estilos.btnSecundario}>
                         <ion-icon name="cube-outline"></ion-icon>
                         Activos
                     </Link>
@@ -184,7 +198,7 @@ export default function FinanciamientoAdmin() {
                             <ion-icon name="warning-outline"></ion-icon>
                             Alertas Prioritarias
                         </h2>
-                        <Link href="/admin/financiamiento/alertas" className={estilos.btnVerTodas}>
+                        <Link href="/admin/alertas" className={estilos.btnVerTodas}>
                             Ver todas
                         </Link>
                     </div>
@@ -208,7 +222,7 @@ export default function FinanciamientoAdmin() {
                                         <ion-icon name="logo-whatsapp"></ion-icon>
                                     </button>
                                     <Link
-                                        href={`/admin/financiamiento/contratos/${alerta.contrato_id}`}
+                                        href={`/admin/contratos/ver/${alerta.contrato_id}`}
                                         className={estilos.btnAccion}
                                         title="Ver contrato"
                                     >
@@ -303,7 +317,7 @@ export default function FinanciamientoAdmin() {
                                         </td>
                                         <td>
                                             <Link
-                                                href={`/admin/financiamiento/contratos/${contrato.id}`}
+                                                href={`/admin/contratos/ver/${contrato.id}`}
                                                 className={estilos.btnVer}
                                             >
                                                 Ver detalles

@@ -1,7 +1,12 @@
-import PlanesFinanciamiento from '@/_Pages/admin/financiamiento/planes/planes'
+import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
+import PlanesFinanciamiento from "@/_Pages/admin/planes/planes";
 
 export default function PlanesPage() {
-    return <PlanesFinanciamiento />
+  return (
+    <ClienteWrapper>
+      <PlanesFinanciamiento />
+    </ClienteWrapper>
+  );
 }
 
 

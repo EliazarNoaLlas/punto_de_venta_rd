@@ -23,6 +23,8 @@ export default function HeaderAdmin() {
         { href: '/admin/catalogo/pedidos', icon: 'receipt-outline', label: 'Pedidos' },
         { href: '/admin/productos', icon: 'cube-outline', label: 'Productos' },
         { href: '/admin/clientes', icon: 'people-outline', label: 'Clientes' },
+        { href: '/admin/financiamiento', icon: 'card-outline', label: 'Financiamiento' },
+        { href: '/admin/constructora', icon: 'build-outline', label: 'Construcción' },
         { href: '/admin/dashboard', icon: 'speedometer-outline', label: 'Dashboard' }
     ]
 
@@ -39,6 +41,24 @@ export default function HeaderAdmin() {
         { href: '/admin/credito', icon: 'card-outline', label: 'Control de Crédito' },
         { href: '/admin/finanzas/cxc', icon: 'calculator-outline', label: 'Cuentas por Cobrar' },
         { href: '/admin/depuracion', icon: 'analytics-outline', label: 'Depuración de Crédito' },
+        // Módulos de Financiamiento
+        { href: '/admin/financiamiento', icon: 'speedometer-outline', label: 'Dashboard Financiamiento' },
+        { href: '/admin/planes', icon: 'document-text-outline', label: 'Planes' },
+        { href: '/admin/contratos', icon: 'document-text-outline', label: 'Contratos' },
+        { href: '/admin/cuotas', icon: 'calendar-outline', label: 'Cuotas' },
+        { href: '/admin/pagos', icon: 'cash-outline', label: 'Pagos' },
+        { href: '/admin/alertas', icon: 'warning-outline', label: 'Alertas' },
+        { href: '/admin/activos', icon: 'cube-outline', label: 'Activos' },
+        // Módulos de Construcción
+        { href: '/admin/constructora', icon: 'build-outline', label: 'Dashboard Construcción' },
+        { href: '/admin/obras', icon: 'business-outline', label: 'Obras' },
+        { href: '/admin/proyectos', icon: 'folder-outline', label: 'Proyectos' },
+        { href: '/admin/servicios', icon: 'build-outline', label: 'Servicios' },
+        { href: '/admin/bitacora', icon: 'document-text-outline', label: 'Bitácora' },
+        { href: '/admin/personal', icon: 'people-outline', label: 'Personal' },
+        { href: '/admin/presupuesto', icon: 'calculator-outline', label: 'Presupuesto' },
+        { href: '/admin/compras-obra', icon: 'bag-handle-outline', label: 'Compras Obra' },
+        { href: '/admin/conduces-obra', icon: 'basket-outline', label: 'Conduces Obra' },
         { href: '/admin/reportes', icon: 'stats-chart-outline', label: 'Reportes' },
         { href: '/admin/usuarios', icon: 'person-outline', label: 'Usuarios' },
         { href: '/admin/catalogo', icon: 'albums-outline', label: 'Catálogo Online' },
@@ -333,7 +353,80 @@ export default function HeaderAdmin() {
 
                                 <div className={estilos.menuSeccion}>
                                     <span className={estilos.menuSeccionTitulo}>Gestion</span>
-                                    {navegacionMenu.map((item) => {
+                                    {navegacionMenu.filter(item => 
+                                        !item.href.includes('/financiamiento') && 
+                                        !item.href.includes('/planes') && 
+                                        !item.href.includes('/contratos') && 
+                                        !item.href.includes('/cuotas') && 
+                                        !item.href.includes('/pagos') && 
+                                        !item.href.includes('/alertas') && 
+                                        !item.href.includes('/activos') &&
+                                        !item.href.includes('/constructora') && 
+                                        !item.href.includes('/obras') && 
+                                        !item.href.includes('/proyectos') && 
+                                        !item.href.includes('/servicios') && 
+                                        !item.href.includes('/bitacora') && 
+                                        !item.href.includes('/personal') && 
+                                        !item.href.includes('/presupuesto') && 
+                                        !item.href.includes('/compras-obra') && 
+                                        !item.href.includes('/conduces-obra')
+                                    ).map((item) => {
+                                        const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
+
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`}
+                                                onClick={cerrarMenu}
+                                            >
+                                                <ion-icon name={item.icon}></ion-icon>
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+
+                                <div className={estilos.menuSeccion}>
+                                    <span className={estilos.menuSeccionTitulo}>Financiamiento</span>
+                                    {navegacionMenu.filter(item => 
+                                        item.href.includes('/financiamiento') || 
+                                        item.href.includes('/planes') || 
+                                        item.href.includes('/contratos') || 
+                                        item.href.includes('/cuotas') || 
+                                        item.href.includes('/pagos') || 
+                                        item.href.includes('/alertas') || 
+                                        item.href.includes('/activos')
+                                    ).map((item) => {
+                                        const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
+
+                                        return (
+                                            <Link
+                                                key={item.href}
+                                                href={item.href}
+                                                className={`${estilos.menuItem} ${esActivo ? estilos.activo : ''}`}
+                                                onClick={cerrarMenu}
+                                            >
+                                                <ion-icon name={item.icon}></ion-icon>
+                                                <span>{item.label}</span>
+                                            </Link>
+                                        )
+                                    })}
+                                </div>
+
+                                <div className={estilos.menuSeccion}>
+                                    <span className={estilos.menuSeccionTitulo}>Construcción</span>
+                                    {navegacionMenu.filter(item => 
+                                        item.href.includes('/constructora') || 
+                                        item.href.includes('/obras') || 
+                                        item.href.includes('/proyectos') || 
+                                        item.href.includes('/servicios') || 
+                                        item.href.includes('/bitacora') || 
+                                        item.href.includes('/personal') || 
+                                        item.href.includes('/presupuesto') || 
+                                        item.href.includes('/compras-obra') || 
+                                        item.href.includes('/conduces-obra')
+                                    ).map((item) => {
                                         const esActivo = pathname === item.href || pathname.startsWith(item.href + '/')
 
                                         return (

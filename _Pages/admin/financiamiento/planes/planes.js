@@ -208,8 +208,11 @@ export default function PlanesFinanciamiento() {
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
             <div className={estilos.header}>
-                <div>
-                    <h1 className={estilos.titulo}>Planes de Financiamiento</h1>
+                <div className={estilos.tituloArea}>
+                    <h1 className={estilos.titulo}>
+                        <ion-icon name="card-outline"></ion-icon>
+                        Planes de Financiamiento
+                    </h1>
                     <p className={estilos.subtitulo}>Gestiona los planes disponibles para financiamiento</p>
                 </div>
                 <button className={estilos.btnPrimario} onClick={abrirModalCrear}>
@@ -268,23 +271,38 @@ export default function PlanesFinanciamiento() {
 
                             <div className={estilos.planDetalles}>
                                 <div className={estilos.detalleItem}>
-                                    <span className={estilos.detalleLabel}>Plazo:</span>
+                                    <span className={estilos.detalleLabel}>
+                                        <ion-icon name="calendar-outline"></ion-icon>
+                                        Plazo
+                                    </span>
                                     <span className={estilos.detalleValor}>{plan.plazo_meses} meses</span>
                                 </div>
                                 <div className={estilos.detalleItem}>
-                                    <span className={estilos.detalleLabel}>Tasa Anual:</span>
+                                    <span className={estilos.detalleLabel}>
+                                        <ion-icon name="trending-up-outline"></ion-icon>
+                                        Tasa Anual
+                                    </span>
                                     <span className={estilos.detalleValor}>{plan.tasa_interes_anual}%</span>
                                 </div>
                                 <div className={estilos.detalleItem}>
-                                    <span className={estilos.detalleLabel}>Inicial Mínimo:</span>
+                                    <span className={estilos.detalleLabel}>
+                                        <ion-icon name="cash-outline"></ion-icon>
+                                        Inicial Mínimo
+                                    </span>
                                     <span className={estilos.detalleValor}>{plan.pago_inicial_minimo_pct}%</span>
                                 </div>
                                 <div className={estilos.detalleItem}>
-                                    <span className={estilos.detalleLabel}>Mora:</span>
+                                    <span className={estilos.detalleLabel}>
+                                        <ion-icon name="alert-circle-outline"></ion-icon>
+                                        Mora
+                                    </span>
                                     <span className={estilos.detalleValor}>{plan.penalidad_mora_pct}%</span>
                                 </div>
                                 <div className={estilos.detalleItem}>
-                                    <span className={estilos.detalleLabel}>Días Gracia:</span>
+                                    <span className={estilos.detalleLabel}>
+                                        <ion-icon name="time-outline"></ion-icon>
+                                        Días Gracia
+                                    </span>
                                     <span className={estilos.detalleValor}>{plan.dias_gracia}</span>
                                 </div>
                             </div>

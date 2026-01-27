@@ -71,78 +71,6 @@ export function validarDatosPlan(datos) {
   }
 }
 
-/**
- * Valida los datos de un contrato de financiamiento
- * @param {Object} datos - Datos del contrato a validar
- * @returns {Object} { valido: boolean, errores: string[] }
- */
-export function validarDatosContrato(datos) {
-  const errores = []
-  
-  // Validar cliente
-  if (!datos.cliente_id || typeof datos.cliente_id !== 'number') {
-    errores.push('El cliente es requerido')
-  }
-  
-  // Validar plan
-  if (!datos.plan_id || typeof datos.plan_id !== 'number') {
-    errores.push('El plan de financiamiento es requerido')
-  }
-  
-  // Validar venta asociada
-  if (!datos.venta_id || typeof datos.venta_id !== 'number') {
-    errores.push('La venta asociada es requerida')
-  }
-  
-  // Validar NCF
-  if (!datos.ncf || typeof datos.ncf !== 'string' || datos.ncf.trim().length === 0) {
-    errores.push('El NCF es requerido')
-  }
-  
-  // Validar precio del producto
-  if (!datos.precio_producto || typeof datos.precio_producto !== 'number' || datos.precio_producto <= 0) {
-    errores.push('El precio del producto debe ser mayor a cero')
-  }
-  
-  // Validar pago inicial
-  if (datos.pago_inicial === undefined || typeof datos.pago_inicial !== 'number' || datos.pago_inicial < 0) {
-    errores.push('El pago inicial debe ser un número válido mayor o igual a cero')
-  }
-  
-  // Validar monto financiado
-  const montoFinanciado = datos.precio_producto - (datos.pago_inicial || 0)
-  if (montoFinanciado <= 0) {
-    errores.push('El monto financiado debe ser mayor a cero')
-  }
-  
-  const validacionMonto = validarMontoFinanciable(montoFinanciado)
-  if (!validacionMonto.valido) {
-    errores.push(validacionMonto.error)
-  }
-  
-  // Validar fechas
-  if (!datos.fecha_contrato) {
-    errores.push('La fecha del contrato es requerida')
-  }
-  
-  if (!datos.fecha_primer_pago) {
-    errores.push('La fecha del primer pago es requerida')
-  }
-  
-  // Validar que fecha_primer_pago sea posterior a fecha_contrato
-  if (datos.fecha_contrato && datos.fecha_primer_pago) {
-    const fechaContrato = new Date(datos.fecha_contrato)
-    const fechaPrimerPago = new Date(datos.fecha_primer_pago)
-    if (fechaPrimerPago < fechaContrato) {
-      errores.push('La fecha del primer pago debe ser posterior a la fecha del contrato')
-    }
-  }
-  
-  return {
-    valido: errores.length === 0,
-    errores
-  }
-}
 
 /**
  * Valida los datos de un pago
@@ -277,43 +205,87 @@ export function validarDatosRefinanciacion(datos) {
 export function validarDatosContrato(contrato) {
     const errores = [];
 
-    if (!contrato.cliente_id) {
+    // Validar cliente
+    if (!contrato.cliente_id || typeof contrato.cliente_id !== 'number') {
         errores.push('El cliente es obligatorio.');
     }
-    if (!contrato.plan_id) {
+
+    // Validar plan
+    if (!contrato.plan_id || typeof contrato.plan_id !== 'number') {
         errores.push('El plan de financiamiento es obligatorio.');
     }
-    if (!contrato.venta_id) {
+
+    // Validar venta asociada
+    if (!contrato.venta_id || typeof contrato.venta_id !== 'number') {
         errores.push('La venta asociada es obligatoria.');
     }
-    if (!contrato.ncf) {
+
+    // Validar NCF
+    if (!contrato.ncf || typeof contrato.ncf !== 'string' || contrato.ncf.trim().length === 0) {
         errores.push('El NCF es obligatorio.');
     }
-    if (!contrato.precio_producto || contrato.precio_producto <= 0) {
+
+    // Validar precio del producto
+    if (!contrato.precio_producto || typeof contrato.precio_producto !== 'number' || contrato.precio_producto <= 0) {
         errores.push('El precio del producto debe ser mayor a 0.');
     }
-    if (!contrato.monto_financiado || contrato.monto_financiado <= 0) {
+
+    // Validar pago inicial
+    if (contrato.pago_inicial !== undefined && (typeof contrato.pago_inicial !== 'number' || contrato.pago_inicial < 0)) {
+        errores.push('El pago inicial debe ser un número válido mayor o igual a cero.');
+    }
+
+    // Calcular o validar monto financiado
+    const pagoInicial = contrato.pago_inicial || 0;
+    const montoFinanciado = contrato.monto_financiado !== undefined 
+        ? contrato.monto_financiado 
+        : (contrato.precio_producto - pagoInicial);
+
+    if (!montoFinanciado || montoFinanciado <= 0) {
         errores.push('El monto financiado debe ser mayor a 0.');
     }
+
+    // Validar monto financiable usando reglas de negocio
+    if (montoFinanciado > 0) {
+        const validacionMonto = validarMontoFinanciable(montoFinanciado);
+        if (!validacionMonto.valido) {
+            errores.push(validacionMonto.error);
+        }
+    }
+
+    // Validar número de cuotas
     if (!contrato.numero_cuotas || contrato.numero_cuotas <= 0) {
         errores.push('El número de cuotas debe ser mayor a 0.');
     }
+
+    // Validar fechas
+    if (!contrato.fecha_contrato) {
+        errores.push('La fecha del contrato es obligatoria.');
+    }
+
     if (!contrato.fecha_primer_pago) {
         errores.push('La fecha del primer pago es obligatoria.');
     }
 
+    // Validar que fecha_primer_pago sea posterior a fecha_contrato
+    if (contrato.fecha_contrato && contrato.fecha_primer_pago) {
+        const fechaContrato = new Date(contrato.fecha_contrato);
+        const fechaPrimerPago = new Date(contrato.fecha_primer_pago);
+        if (fechaPrimerPago < fechaContrato) {
+            errores.push('La fecha del primer pago debe ser posterior a la fecha del contrato.');
+        }
+    }
+
     // Validar que el monto financiado no sea mayor al precio
-    if (contrato.precio_producto && contrato.monto_financiado && 
-        contrato.monto_financiado > contrato.precio_producto) {
+    if (contrato.precio_producto && montoFinanciado && montoFinanciado > contrato.precio_producto) {
         errores.push('El monto financiado no puede ser mayor al precio del producto.');
     }
 
     // Validar que el pago inicial + monto financiado = precio producto
-    const pagoInicial = contrato.pago_inicial || 0;
-    const suma = pagoInicial + contrato.monto_financiado;
+    const suma = pagoInicial + montoFinanciado;
     const diferencia = Math.abs(suma - contrato.precio_producto);
     if (diferencia > 0.01) { // Tolerancia para decimales
-        errores.push(`La suma del pago inicial (${pagoInicial}) y el monto financiado (${contrato.monto_financiado}) debe ser igual al precio del producto (${contrato.precio_producto}).`);
+        errores.push(`La suma del pago inicial (${pagoInicial}) y el monto financiado (${montoFinanciado}) debe ser igual al precio del producto (${contrato.precio_producto}).`);
     }
 
     return {

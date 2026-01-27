@@ -1,7 +1,12 @@
-import ContratosFinanciamiento from '@/_Pages/admin/financiamiento/contratos/contratos'
+import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
+import ContratosFinanciamiento from "@/_Pages/admin/contratos/contratos";
 
 export default function ContratosPage() {
-    return <ContratosFinanciamiento />
+  return (
+    <ClienteWrapper>
+      <ContratosFinanciamiento />
+    </ClienteWrapper>
+  );
 }
 
 

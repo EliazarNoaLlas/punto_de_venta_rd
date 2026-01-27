@@ -1,0 +1,8 @@
+/* Reutilizar estilos de proyectos */
+@import '../proyectos/proyectos.module.css';
+
+.prioridad_secondary { background: #f1f5f9; color: #475569; }
+.prioridad_info { background: #dbeafe; color: #1e40af; }
+.prioridad_warning { background: #fef3c7; color: #92400e; }
+.prioridad_danger { background: #fee2e2; color: #991b1b; }
+

@@ -1,4 +1,4 @@
-import ImprimirCotizacion from "@/_Pages/admin/cotizaciones/ImprimirCotizacion"
+import ImprimirCotizacion from "@/_Pages/admin/cotizaciones/imprimir/imprimir"
 
 export const metadata = {
     title: 'Imprimir Cotización - Admin',

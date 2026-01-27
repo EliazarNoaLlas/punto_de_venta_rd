@@ -1,0 +1,224 @@
+.contenedor {
+    padding: 30px;
+    min-height: 100vh;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.titulo {
+    font-size: 2rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.subtitulo {
+    color: #64748b;
+    margin: 5px 0 0;
+}
+
+.btnNuevo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    background: #0ea5e9;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btnNuevo:hover {
+    background: #0284c7;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(14, 165, 233, 0.2);
+}
+
+.filtros {
+    margin-bottom: 30px;
+}
+
+.grupo {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.grupo label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #475569;
+}
+
+.dark .grupo label {
+    color: #cbd5e1;
+}
+
+.grupo select {
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dark .grupo select {
+    background: #1e293b;
+    border-color: #334155;
+    color: #f1f5f9;
+}
+
+.grupo select:focus {
+    outline: none;
+    border-color: #0ea5e9;
+    box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.1);
+}
+
+.cargando,
+.vacio {
+    text-align: center;
+    padding: 60px 20px;
+    color: #64748b;
+    font-size: 1.1rem;
+}
+
+.lista {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.tarjeta {
+    padding: 25px;
+    border-radius: 20px;
+    transition: all 0.3s ease;
+    border: 1px solid transparent;
+}
+
+.light .tarjeta {
+    background: white;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.dark .tarjeta {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+.tarjetaHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 15px;
+}
+
+.tarjetaHeader h3 {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+}
+
+.obraNombre {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.dark .obraNombre {
+    color: #94a3b8;
+}
+
+.btnVer {
+    padding: 10px 20px;
+    background: transparent;
+    border: 2px solid #0ea5e9;
+    color: #0ea5e9;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btnVer:hover {
+    background: #0ea5e9;
+    color: white;
+}
+
+.tarjetaBody {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.itemInfo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.dark .itemInfo {
+    color: #94a3b8;
+}
+
+.itemInfo ion-icon {
+    font-size: 18px;
+}
+
+.resumen {
+    margin-top: 10px;
+    padding: 15px;
+    background: #f8fafc;
+    border-radius: 12px;
+    border-left: 4px solid #0ea5e9;
+}
+
+.dark .resumen {
+    background: #334155;
+    border-color: #0ea5e9;
+}
+
+.resumen p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.dark .resumen p {
+    color: #cbd5e1;
+}
+
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .btnNuevo {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .tarjetaHeader {
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .btnVer {
+        width: 100%;
+    }
+}
+

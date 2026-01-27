@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import {
     obtenerPlanesFinanciamiento,
@@ -55,11 +55,7 @@ export default function PlanesFinanciamiento() {
         }
     }, [])
 
-    useEffect(() => {
-        cargarPlanes()
-    }, [filtroActivo, buscar])
-
-    const cargarPlanes = async () => {
+    const cargarPlanes = useCallback(async () => {
         setCargando(true)
         try {
             const resultado = await obtenerPlanesFinanciamiento({
@@ -78,7 +74,11 @@ export default function PlanesFinanciamiento() {
         } finally {
             setCargando(false)
         }
-    }
+    }, [filtroActivo, buscar])
+
+    useEffect(() => {
+        cargarPlanes()
+    }, [cargarPlanes])
 
     const abrirModalCrear = () => {
         setPlanEditando(null)

@@ -1,7 +1,12 @@
-import AlertasFinanciamiento from '@/_Pages/admin/financiamiento/alertas/alertas'
+import ClienteWrapper from "@/_EXTRAS/LadoCliente/ClienteWraper";
+import AlertasFinanciamiento from "@/_Pages/admin/alertas/alertas";
 
 export default function AlertasPage() {
-    return <AlertasFinanciamiento />
+  return (
+    <ClienteWrapper>
+      <AlertasFinanciamiento />
+    </ClienteWrapper>
+  );
 }
 
 
