@@ -1,0 +1,34 @@
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:4","message":"Page function entry","data":{"paramsType":"object","paramsIsPromise":true,"paramsStringified":"{}"},"timestamp":1769529659473,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:6","message":"Params resolved","data":{"resolvedParams":{"id":"1"},"id":"1"},"timestamp":1769529659497,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:10","message":"Rendering EditarPlan","data":{"id":"1"},"timestamp":1769529659498,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:4","message":"Page function entry","data":{"paramsType":"object","paramsIsPromise":true,"paramsStringified":"{}"},"timestamp":1769529728107,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:6","message":"Params resolved","data":{"resolvedParams":{"id":"1"},"id":"1"},"timestamp":1769529728121,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"app/(admin)/admin/planes/editar/[id]/page.js:10","message":"Rendering EditarPlan","data":{"id":"1"},"timestamp":1769529728121,"sessionId":"debug-session","runId":"run1","hypothesisId":"A"}
+{"location":"constructora.js:7","message":"Before Image import","data":{"nodeEnv":"development"},"timestamp":1769539774938,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:9","message":"After Image import","data":{"imageType":"object","imageExists":true},"timestamp":1769539774938,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:3","message":"Module imports starting","data":{"hasReact":true,"hasRouter":true},"timestamp":1769539774937,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":false},"timestamp":1769539774945,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":false},"timestamp":1769539774952,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:3","message":"Module imports starting","data":{"hasReact":true,"hasRouter":true},"timestamp":1769539790263,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"constructora.js:7","message":"Before Image import","data":{"nodeEnv":"development"},"timestamp":1769539790263,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:9","message":"After Image import","data":{"imageType":"object","imageExists":true},"timestamp":1769539790264,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":false},"timestamp":1769539790271,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"object","propsReady":true},"timestamp":1769539790278,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":false},"timestamp":1769539790284,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"object","propsReady":true},"timestamp":1769539790289,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":true},"timestamp":1769539844980,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539844996,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":true},"timestamp":1769539845002,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539845010,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":true},"timestamp":1769539845017,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":true},"timestamp":1769539845034,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539845042,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:14","message":"Component function entry","data":{"imageAvailable":true,"imageIsFunction":true},"timestamp":1769539845046,"sessionId":"debug-session","hypothesisId":"B"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539845053,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:3","message":"Module imports starting","data":{"hasReact":true,"hasRouter":true},"timestamp":1769539892632,"sessionId":"debug-session","hypothesisId":"C"}
+{"location":"constructora.js:7","message":"Before Image import","data":{"nodeEnv":"development"},"timestamp":1769539892633,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:9","message":"After Image import","data":{"imageType":"object","imageExists":true},"timestamp":1769539892633,"sessionId":"debug-session","hypothesisId":"A"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539956374,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539956461,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539956484,"sessionId":"debug-session","hypothesisId":"D"}
+{"location":"constructora.js:395","message":"Before Image render","data":{"imageComponent":"function","propsReady":true},"timestamp":1769539956389,"sessionId":"debug-session","hypothesisId":"D"}

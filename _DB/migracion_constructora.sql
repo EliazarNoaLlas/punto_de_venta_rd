@@ -598,6 +598,49 @@ CREATE TABLE IF NOT EXISTS presupuesto_alertas (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- 14. TABLA: obra_documentos
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS obra_documentos (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    obra_id INT(11) NOT NULL,
+    tipo ENUM('contrato', 'presupuesto', 'plano', 'permiso', 'orden_trabajo', 'acta', 'factura', 'otro') DEFAULT 'otro',
+    nombre VARCHAR(255) NOT NULL,
+    descripcion TEXT,
+    ruta_archivo VARCHAR(500) NOT NULL,
+    extension VARCHAR(10),
+    tamaño_kb INT,
+    visible_cliente TINYINT(1) DEFAULT 0,
+    subido_por INT(11) NOT NULL,
+    fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_obra (obra_id),
+    KEY idx_tipo (tipo),
+    FOREIGN KEY (obra_id) REFERENCES obras(id) ON DELETE CASCADE,
+    FOREIGN KEY (subido_por) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- 15. TABLA: obra_imagenes
+-- =====================================================
+
+CREATE TABLE IF NOT EXISTS obra_imagenes (
+    id INT(11) NOT NULL AUTO_INCREMENT,
+    obra_id INT(11) NOT NULL,
+    categoria ENUM('inicio', 'avance', 'problema', 'final', 'otro') DEFAULT 'avance',
+    descripcion TEXT,
+    ruta_imagen VARCHAR(500) NOT NULL,
+    fecha_toma DATE,
+    subido_por INT(11) NOT NULL,
+    fecha_subida TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    KEY idx_obra (obra_id),
+    KEY idx_categoria (categoria),
+    FOREIGN KEY (obra_id) REFERENCES obras(id) ON DELETE CASCADE,
+    FOREIGN KEY (subido_por) REFERENCES usuarios(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- FINALIZAR TRANSACCIÓN
 -- =====================================================
 
@@ -620,4 +663,6 @@ SHOW TABLES LIKE '%ordenes%';
 SHOW TABLES LIKE '%compras_obra%';
 SHOW TABLES LIKE '%conduces_obra%';
 SHOW TABLES LIKE '%presupuesto_alertas%';
+SHOW TABLES LIKE '%obra_documentos%';
+SHOW TABLES LIKE '%obra_imagenes%';
 

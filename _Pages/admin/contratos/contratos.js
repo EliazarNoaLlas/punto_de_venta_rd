@@ -114,10 +114,16 @@ export default function ContratosFinanciamiento() {
                     <h1 className={estilos.titulo}>Contratos de Financiamiento</h1>
                     <p className={estilos.subtitulo}>Gestiona todos los contratos activos</p>
                 </div>
-                <Link href="/admin/financiamiento" className={estilos.btnSecundario}>
-                    <ion-icon name="arrow-back-outline"></ion-icon>
-                    Dashboard
-                </Link>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <Link href="/admin/contratos/nuevo" className={estilos.btnPrimario}>
+                        <ion-icon name="add-outline"></ion-icon>
+                        Nuevo Contrato
+                    </Link>
+                    <Link href="/admin/financiamiento" className={estilos.btnSecundario}>
+                        <ion-icon name="arrow-back-outline"></ion-icon>
+                        Dashboard
+                    </Link>
+                </div>
             </div>
 
             {/* Filtros */}

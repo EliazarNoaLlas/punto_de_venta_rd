@@ -241,3 +241,146 @@ export async function existeImagenLocal(imagenUrl) {
         return false
     }
 }
+
+// =====================================================
+// FUNCIONES PARA OBRAS
+// =====================================================
+
+// Directorios para obras
+const OBRAS_IMAGES_DIR_PRODUCTION = '/var/data/pdv_images/obras'
+const OBRAS_IMAGES_DIR_DEVELOPMENT = path.join(process.cwd(), 'public', 'images', 'obras')
+const OBRAS_DOCS_DIR_PRODUCTION = '/var/data/pdv_documents/obras'
+const OBRAS_DOCS_DIR_DEVELOPMENT = path.join(process.cwd(), 'public', 'documents', 'obras')
+
+const OBRAS_IMAGES_DIR = isProduction ? OBRAS_IMAGES_DIR_PRODUCTION : OBRAS_IMAGES_DIR_DEVELOPMENT
+const OBRAS_DOCS_DIR = isProduction ? OBRAS_DOCS_DIR_PRODUCTION : OBRAS_DOCS_DIR_DEVELOPMENT
+
+const OBRAS_IMAGES_PUBLIC_PATH = '/images/obras'
+const OBRAS_DOCS_PUBLIC_PATH = '/documents/obras'
+
+/**
+ * Asegura que la carpeta de imágenes de obras existe
+ */
+async function ensureObrasImagesDirExists() {
+    try {
+        await fs.mkdir(OBRAS_IMAGES_DIR, { recursive: true })
+    } catch (error) {
+        console.error('Error al crear directorio de imágenes de obras:', error)
+        throw new Error('No se pudo crear el directorio de imágenes de obras')
+    }
+}
+
+/**
+ * Asegura que la carpeta de documentos de obras existe
+ */
+async function ensureObrasDocsDirExists() {
+    try {
+        await fs.mkdir(OBRAS_DOCS_DIR, { recursive: true })
+    } catch (error) {
+        console.error('Error al crear directorio de documentos de obras:', error)
+        throw new Error('No se pudo crear el directorio de documentos de obras')
+    }
+}
+
+/**
+ * Guarda una imagen de obra y retorna la ruta relativa
+ * @param {string} base64Data - Cadena base64 de la imagen (data:image/...)
+ * @param {number|string} obraId - ID de la obra
+ * @returns {Promise<string>} - Ruta relativa de la imagen (/images/obras/...)
+ */
+export async function guardarImagenObra(base64Data, obraId) {
+    // Validación
+    if (!base64Data || !base64Data.startsWith('data:image/')) {
+        throw new Error('Formato de imagen inválido')
+    }
+
+    await ensureObrasImagesDirExists()
+
+    // Extraer información
+    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
+    if (!matches) {
+        throw new Error('Base64 inválido')
+    }
+
+    const [, extension, data] = matches
+    const buffer = Buffer.from(data, 'base64')
+
+    // Validar extensión permitida
+    const extensionesPermitidas = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+    if (!extensionesPermitidas.includes(extension.toLowerCase())) {
+        throw new Error(`Extensión ${extension} no permitida. Use: ${extensionesPermitidas.join(', ')}`)
+    }
+
+    // Validar tamaño (máximo 5MB)
+    const maxSize = 5 * 1024 * 1024 // 5MB
+    if (buffer.length > maxSize) {
+        throw new Error('La imagen es demasiado grande. Máximo 5MB')
+    }
+
+    // Nombre único para obra
+    const timestamp = Date.now()
+    const fileName = `obra_${obraId}_${timestamp}.${extension}`
+    const filePath = path.join(OBRAS_IMAGES_DIR, fileName)
+
+    // Guardar archivo
+    await fs.writeFile(filePath, buffer)
+
+    // Retornar ruta RELATIVA
+    return `${OBRAS_IMAGES_PUBLIC_PATH}/${fileName}`
+}
+
+/**
+ * Guarda un documento de obra y retorna la ruta relativa
+ * @param {string} base64Data - Cadena base64 del documento (data:application/... o data:image/...)
+ * @param {number|string} obraId - ID de la obra
+ * @param {string} tipo - Tipo de documento (contrato, presupuesto, etc.)
+ * @param {string} nombre - Nombre del documento
+ * @returns {Promise<{ruta: string, extension: string, tamaño_kb: number}>} - Información del documento guardado
+ */
+export async function guardarDocumentoObra(base64Data, obraId, tipo, nombre) {
+    // Validación
+    if (!base64Data || (!base64Data.startsWith('data:application/') && !base64Data.startsWith('data:image/'))) {
+        throw new Error('Formato de documento inválido')
+    }
+
+    await ensureObrasDocsDirExists()
+
+    // Extraer información
+    const matches = base64Data.match(/^data:(application|image)\/(\w+);base64,(.+)$/)
+    if (!matches) {
+        throw new Error('Base64 inválido')
+    }
+
+    const [, , extension, data] = matches
+    const buffer = Buffer.from(data, 'base64')
+
+    // Validar extensión permitida
+    const extensionesPermitidas = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'jpg', 'jpeg', 'png', 'dwg', 'dwt']
+    if (!extensionesPermitidas.includes(extension.toLowerCase())) {
+        throw new Error(`Extensión ${extension} no permitida. Use: ${extensionesPermitidas.join(', ')}`)
+    }
+
+    // Validar tamaño (máximo 10MB para documentos)
+    const maxSize = 10 * 1024 * 1024 // 10MB
+    if (buffer.length > maxSize) {
+        throw new Error('El documento es demasiado grande. Máximo 10MB')
+    }
+
+    // Nombre único para documento
+    const timestamp = Date.now()
+    const sanitizedNombre = nombre.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 100)
+    const fileName = `obra_${obraId}_${tipo}_${sanitizedNombre}_${timestamp}.${extension}`
+    const filePath = path.join(OBRAS_DOCS_DIR, fileName)
+
+    // Guardar archivo
+    await fs.writeFile(filePath, buffer)
+
+    const tamaño_kb = Math.ceil(buffer.length / 1024)
+
+    // Retornar información del documento
+    return {
+        ruta: `${OBRAS_DOCS_PUBLIC_PATH}/${fileName}`,
+        extension: extension.toLowerCase(),
+        tamaño_kb
+    }
+}

@@ -11,14 +11,14 @@ import { cookies } from 'next/headers'
 // TODO: Eliminar estos re-exports después de migrar todos los imports
 // =====================================================
 
-// Re-exportar funciones de planes desde el nuevo módulo
+// Re-exportar funciones de planes desde los módulos refactorizados
 import {
     obtenerPlanesFinanciamiento,
-    obtenerPlanPorId,
-    crearPlanFinanciamiento,
-    actualizarPlanFinanciamiento,
     eliminarPlanFinanciamiento
 } from '../planes/servidor.js'
+
+import { crearPlanFinanciamiento } from '../planes/nuevo/servidor.js'
+import { actualizarPlanFinanciamiento, obtenerPlanPorId } from '../planes/editar/servidor.js'
 
 export {
     obtenerPlanesFinanciamiento,

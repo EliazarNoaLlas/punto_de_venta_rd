@@ -531,6 +531,52 @@
     border-color: rgba(51, 65, 85, 0.6);
 }
 
+.btnVer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 20px;
+    border-radius: var(--radius-md);
+    border: 2px solid;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.light .btnVer {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+    color: #475569;
+}
+
+.dark .btnVer {
+    background: #334155;
+    border-color: #475569;
+    color: #cbd5e1;
+}
+
+.btnVer:hover:not(:disabled) {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+    color: #334155;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(148, 163, 184, 0.3);
+}
+
+.dark .btnVer:hover:not(:disabled) {
+    background: #475569;
+    border-color: #64748b;
+    color: #f1f5f9;
+}
+
+.btnVer ion-icon {
+    font-size: 20px;
+}
+
 .btnEditar {
     flex: 1;
     display: flex;

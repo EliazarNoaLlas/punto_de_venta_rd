@@ -5,6 +5,7 @@ import { dbCrearObra } from "@/lib/services/constructionService"
 import { validarObra } from '../../core/construction/validaciones'
 import { ESTADOS_OBRA } from '../../core/construction/estados'
 import { obtenerUsuarioActual, validarPermisoObras, mapearDatosFormularioABD } from '../lib'
+import { guardarImagenObra, guardarDocumentoObra } from '@/services/imageService'
 
 /**
  * Crear nueva obra
@@ -56,6 +57,70 @@ export async function crearObra(datos) {
             estado: ESTADOS_OBRA.ACTIVA,
             creado_por: usuario.id
         })
+
+        // Procesar imágenes si existen
+        if (datos.imagenes && Array.isArray(datos.imagenes) && datos.imagenes.length > 0) {
+            for (const imagen of datos.imagenes) {
+                if (imagen.base64) {
+                    try {
+                        const rutaImagen = await guardarImagenObra(imagen.base64, obraId)
+                        
+                        await connection.execute(
+                            `INSERT INTO obra_imagenes (
+                                obra_id, categoria, descripcion, ruta_imagen, fecha_toma, subido_por
+                            ) VALUES (?, ?, ?, ?, ?, ?)`,
+                            [
+                                obraId,
+                                imagen.categoria || 'avance',
+                                imagen.descripcion || null,
+                                rutaImagen,
+                                imagen.fecha_toma || null,
+                                usuario.id
+                            ]
+                        )
+                    } catch (error) {
+                        console.error('Error al guardar imagen de obra:', error)
+                        // Continuar con las demás imágenes aunque una falle
+                    }
+                }
+            }
+        }
+
+        // Procesar documentos si existen
+        if (datos.documentos && Array.isArray(datos.documentos) && datos.documentos.length > 0) {
+            for (const documento of datos.documentos) {
+                if (documento.base64 && documento.nombre && documento.tipo) {
+                    try {
+                        const docInfo = await guardarDocumentoObra(
+                            documento.base64,
+                            obraId,
+                            documento.tipo,
+                            documento.nombre
+                        )
+                        
+                        await connection.execute(
+                            `INSERT INTO obra_documentos (
+                                obra_id, tipo, nombre, descripcion, ruta_archivo, extension, tamaño_kb, visible_cliente, subido_por
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                            [
+                                obraId,
+                                documento.tipo,
+                                documento.nombre,
+                                documento.descripcion || null,
+                                docInfo.ruta,
+                                docInfo.extension,
+                                docInfo.tamaño_kb,
+                                documento.visible_cliente || 0,
+                                usuario.id
+                            ]
+                        )
+                    } catch (error) {
+                        console.error('Error al guardar documento de obra:', error)
+                        // Continuar con los demás documentos aunque uno falle
+                    }
+                }
+            }
+        }
 
         await connection.commit()
         connection.release()

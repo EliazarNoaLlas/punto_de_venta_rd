@@ -299,3 +299,88 @@ export async function obtenerTrabajadorPorId(id) {
     }
 }
 
+export async function obtenerEstadisticasPersonal() {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) {
+            return { success: false, mensaje: 'Sesión inválida' }
+        }
+
+        const fechaHoy = new Date().toISOString().split('T')[0]
+        connection = await db.getConnection()
+        
+        // Total de trabajadores
+        const [totalResult] = await connection.query(
+            'SELECT COUNT(*) as total FROM trabajadores_obra WHERE empresa_id = ?',
+            [empresaId]
+        )
+        
+        // Personal activo hoy
+        const [activosResult] = await connection.query(
+            `SELECT COUNT(DISTINCT a.trabajador_id) as activos
+             FROM asignaciones_trabajadores a
+             WHERE a.empresa_id = ? 
+               AND a.fecha_asignacion = ?
+               AND a.estado = 'activo'`,
+            [empresaId, fechaHoy]
+        )
+        
+        // En obras
+        const [obrasResult] = await connection.query(
+            `SELECT COUNT(DISTINCT a.trabajador_id) as en_obras
+             FROM asignaciones_trabajadores a
+             WHERE a.empresa_id = ? 
+               AND a.fecha_asignacion = ?
+               AND a.tipo_destino = 'obra'
+               AND a.estado = 'activo'`,
+            [empresaId, fechaHoy]
+        )
+        
+        // En servicios
+        const [serviciosResult] = await connection.query(
+            `SELECT COUNT(DISTINCT a.trabajador_id) as en_servicios
+             FROM asignaciones_trabajadores a
+             WHERE a.empresa_id = ? 
+               AND a.fecha_asignacion = ?
+               AND a.tipo_destino = 'servicio'
+               AND a.estado = 'activo'`,
+            [empresaId, fechaHoy]
+        )
+        
+        // Disponibles (activos sin asignación hoy)
+        const [disponiblesResult] = await connection.query(
+            `SELECT COUNT(*) as disponibles
+             FROM trabajadores_obra t
+             WHERE t.empresa_id = ?
+               AND t.estado = 'activo'
+               AND NOT EXISTS (
+                   SELECT 1 FROM asignaciones_trabajadores a
+                   WHERE a.trabajador_id = t.id
+                     AND a.fecha_asignacion = ?
+                     AND a.estado = 'activo'
+               )`,
+            [empresaId, fechaHoy]
+        )
+        
+        connection.release()
+        
+        return {
+            success: true,
+            data: {
+                total_trabajadores: totalResult[0].total,
+                activos: activosResult[0].activos,
+                en_obras: obrasResult[0].en_obras,
+                en_servicios: serviciosResult[0].en_servicios,
+                disponibles: disponiblesResult[0].disponibles
+            }
+        }
+    } catch (error) {
+        console.error('Error al obtener estadísticas:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al cargar estadísticas' }
+    }
+}
+
