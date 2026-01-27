@@ -36,6 +36,7 @@ export default function HeaderAdmin() {
         { href: '/admin/conduces', icon: 'basket-outline', label: 'Conduces' },
         { href: '/admin/categorias', icon: 'apps-outline', label: 'Categorias' },
         { href: '/admin/marcas', icon: 'pricetag-outline', label: 'Marcas' },
+        { href: '/admin/equipos', icon: 'hardware-chip-outline', label: 'Equipos' },
         { href: '/admin/cajas', icon: 'cash-outline', label: 'Cajas' },
         { href: '/admin/gastos', icon: 'wallet-outline', label: 'Gastos' },
         { href: '/admin/credito', icon: 'card-outline', label: 'Control de Crédito' },

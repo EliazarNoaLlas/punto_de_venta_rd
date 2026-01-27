@@ -260,6 +260,37 @@
     border-top-color: #334155;
 }
 
+.btnVer {
+    flex: 1;
+    background: #f0f9ff;
+    color: #0369a1;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.btnVer:hover {
+    background: #e0f2fe;
+    transform: translateY(-1px);
+}
+
+.dark .btnVer {
+    background: #1e3a5f;
+    color: #93c5fd;
+}
+
+.dark .btnVer:hover {
+    background: #1e40af;
+}
+
 .btnEditar {
     flex: 1;
     background: #f1f5f9;

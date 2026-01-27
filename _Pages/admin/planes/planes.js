@@ -1,12 +1,7 @@
 "use client"
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-    obtenerPlanesFinanciamiento,
-    crearPlanFinanciamiento,
-    actualizarPlanFinanciamiento
-} from './servidor'
-import { tasaAnualAMensual } from '../core/finance/calculos'
+import { obtenerPlanesFinanciamiento } from './servidor'
 import estilos from './planes.module.css'
 
 export default function PlanesFinanciamiento() {
@@ -14,28 +9,8 @@ export default function PlanesFinanciamiento() {
     const [tema, setTema] = useState('light')
     const [cargando, setCargando] = useState(true)
     const [planes, setPlanes] = useState([])
-    const [mostrarModal, setMostrarModal] = useState(false)
-    const [planEditando, setPlanEditando] = useState(null)
     const [filtroActivo, setFiltroActivo] = useState('')
     const [buscar, setBuscar] = useState('')
-
-    const [formData, setFormData] = useState({
-        codigo: '',
-        nombre: '',
-        descripcion: '',
-        plazo_meses: 12,
-        tasa_interes_anual: 18.00,
-        pago_inicial_minimo_pct: 15.00,
-        monto_minimo: 0,
-        monto_maximo: null,
-        penalidad_mora_pct: 5.00,
-        dias_gracia: 5,
-        descuento_pago_anticipado_pct: 0,
-        cuotas_minimas_anticipadas: 3,
-        activo: true,
-        permite_pago_anticipado: true,
-        requiere_fiador: false
-    })
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -80,112 +55,17 @@ export default function PlanesFinanciamiento() {
         cargarPlanes()
     }, [cargarPlanes])
 
-    const abrirModalCrear = () => {
-        setPlanEditando(null)
-        setFormData({
-            codigo: '',
-            nombre: '',
-            descripcion: '',
-            plazo_meses: 12,
-            tasa_interes_anual: 18.00,
-            pago_inicial_minimo_pct: 15.00,
-            monto_minimo: 0,
-            monto_maximo: null,
-            penalidad_mora_pct: 5.00,
-            dias_gracia: 5,
-            descuento_pago_anticipado_pct: 0,
-            cuotas_minimas_anticipadas: 3,
-            activo: true,
-            permite_pago_anticipado: true,
-            requiere_fiador: false
-        })
-        setMostrarModal(true)
+    const navegarANuevo = () => {
+        router.push('/admin/planes/nuevo')
     }
 
-    const abrirModalEditar = (plan) => {
-        setPlanEditando(plan)
-        setFormData({
-            codigo: plan.codigo,
-            nombre: plan.nombre,
-            descripcion: plan.descripcion || '',
-            plazo_meses: plan.plazo_meses,
-            tasa_interes_anual: plan.tasa_interes_anual,
-            pago_inicial_minimo_pct: plan.pago_inicial_minimo_pct,
-            monto_minimo: plan.monto_minimo || 0,
-            monto_maximo: plan.monto_maximo || null,
-            penalidad_mora_pct: plan.penalidad_mora_pct,
-            dias_gracia: plan.dias_gracia,
-            descuento_pago_anticipado_pct: plan.descuento_pago_anticipado_pct || 0,
-            cuotas_minimas_anticipadas: plan.cuotas_minimas_anticipadas || 3,
-            activo: plan.activo === 1,
-            permite_pago_anticipado: plan.permite_pago_anticipado === 1,
-            requiere_fiador: plan.requiere_fiador === 1
-        })
-        setMostrarModal(true)
+    const navegarAEditar = (planId) => {
+        router.push(`/admin/planes/editar/${planId}`)
     }
 
-    const cerrarModal = () => {
-        setMostrarModal(false)
-        setPlanEditando(null)
+    const navegarAVer = (planId) => {
+        router.push(`/admin/planes/ver/${planId}`)
     }
-
-    const manejarCambio = (e) => {
-        const { name, value, type, checked } = e.target
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'checkbox' ? checked : type === 'number' ? parseFloat(value) || 0 : value
-        }))
-    }
-
-    const calcularEjemploCuota = () => {
-        if (!formData.plazo_meses || !formData.tasa_interes_anual) return null
-
-        const montoEjemplo = 100000
-        const tasaMensual = tasaAnualAMensual(formData.tasa_interes_anual)
-        const factor = Math.pow(1 + tasaMensual, formData.plazo_meses)
-        const cuota = montoEjemplo * (tasaMensual * factor) / (factor - 1)
-        const totalIntereses = (cuota * formData.plazo_meses) - montoEjemplo
-
-        return {
-            monto: montoEjemplo,
-            cuota: Math.round(cuota * 100) / 100,
-            totalIntereses: Math.round(totalIntereses * 100) / 100,
-            totalPagar: Math.round((cuota * formData.plazo_meses) * 100) / 100
-        }
-    }
-
-    const guardarPlan = async () => {
-        try {
-            let resultado
-
-            if (planEditando) {
-                resultado = await actualizarPlanFinanciamiento(planEditando.id, formData)
-            } else {
-                resultado = await crearPlanFinanciamiento(formData)
-            }
-
-            if (resultado.success) {
-                alert(resultado.mensaje || 'Plan guardado exitosamente')
-                cerrarModal()
-                cargarPlanes()
-            } else {
-                alert(resultado.mensaje || 'Error al guardar plan')
-            }
-        } catch (error) {
-            console.error('Error al guardar plan:', error)
-            alert('Error al guardar plan')
-        }
-    }
-
-    const formatearMoneda = (monto) => {
-        return new Intl.NumberFormat('es-DO', {
-            style: 'currency',
-            currency: 'DOP',
-            minimumFractionDigits: 2
-        }).format(monto || 0)
-    }
-
-    const ejemploCuota = calcularEjemploCuota()
     const planesFiltrados = planes.filter(plan => {
         if (filtroActivo === 'activo' && plan.activo !== 1) return false
         if (filtroActivo === 'inactivo' && plan.activo !== 0) return false
@@ -212,7 +92,7 @@ export default function PlanesFinanciamiento() {
                     <h1 className={estilos.titulo}>Planes de Financiamiento</h1>
                     <p className={estilos.subtitulo}>Gestiona los planes disponibles para financiamiento</p>
                 </div>
-                <button className={estilos.btnPrimario} onClick={abrirModalCrear}>
+                <button className={estilos.btnPrimario} onClick={navegarANuevo}>
                     <ion-icon name="add-outline"></ion-icon>
                     Nuevo Plan
                 </button>
@@ -291,8 +171,15 @@ export default function PlanesFinanciamiento() {
 
                             <div className={estilos.planAcciones}>
                                 <button
+                                    className={estilos.btnVer}
+                                    onClick={() => navegarAVer(plan.id)}
+                                >
+                                    <ion-icon name="eye-outline"></ion-icon>
+                                    Ver
+                                </button>
+                                <button
                                     className={estilos.btnEditar}
-                                    onClick={() => abrirModalEditar(plan)}
+                                    onClick={() => navegarAEditar(plan.id)}
                                 >
                                     <ion-icon name="create-outline"></ion-icon>
                                     Editar
@@ -302,238 +189,6 @@ export default function PlanesFinanciamiento() {
                     ))
                 )}
             </div>
-
-            {/* Modal crear/editar */}
-            {mostrarModal && (
-                <div className={estilos.modalOverlay} onClick={cerrarModal}>
-                    <div className={estilos.modal} onClick={(e) => e.stopPropagation()}>
-                        <div className={estilos.modalHeader}>
-                            <h2>{planEditando ? 'Editar Plan' : 'Nuevo Plan'}</h2>
-                            <button className={estilos.btnCerrar} onClick={cerrarModal}>
-                                <ion-icon name="close-outline"></ion-icon>
-                            </button>
-                        </div>
-
-                        <div className={estilos.modalBody}>
-                            <div className={estilos.formGrid}>
-                                <div className={estilos.formGroup}>
-                                    <label>Código *</label>
-                                    <input
-                                        type="text"
-                                        name="codigo"
-                                        value={formData.codigo}
-                                        onChange={manejarCambio}
-                                        required
-                                        disabled={!!planEditando}
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Nombre *</label>
-                                    <input
-                                        type="text"
-                                        name="nombre"
-                                        value={formData.nombre}
-                                        onChange={manejarCambio}
-                                        required
-                                    />
-                                </div>
-
-                                <div className={`${estilos.formGroup} ${estilos.fullWidth}`}>
-                                    <label>Descripción</label>
-                                    <textarea
-                                        name="descripcion"
-                                        value={formData.descripcion}
-                                        onChange={manejarCambio}
-                                        rows="3"
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Plazo (meses) *</label>
-                                    <input
-                                        type="number"
-                                        name="plazo_meses"
-                                        value={formData.plazo_meses}
-                                        onChange={manejarCambio}
-                                        min="1"
-                                        max="60"
-                                        required
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Tasa Interés Anual (%) *</label>
-                                    <input
-                                        type="number"
-                                        name="tasa_interes_anual"
-                                        value={formData.tasa_interes_anual}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                        required
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Pago Inicial Mínimo (%) *</label>
-                                    <input
-                                        type="number"
-                                        name="pago_inicial_minimo_pct"
-                                        value={formData.pago_inicial_minimo_pct}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                        required
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Monto Mínimo</label>
-                                    <input
-                                        type="number"
-                                        name="monto_minimo"
-                                        value={formData.monto_minimo}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        step="0.01"
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Monto Máximo</label>
-                                    <input
-                                        type="number"
-                                        name="monto_maximo"
-                                        value={formData.monto_maximo || ''}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        step="0.01"
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Penalidad Mora (%) *</label>
-                                    <input
-                                        type="number"
-                                        name="penalidad_mora_pct"
-                                        value={formData.penalidad_mora_pct}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                        required
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Días de Gracia *</label>
-                                    <input
-                                        type="number"
-                                        name="dias_gracia"
-                                        value={formData.dias_gracia}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        required
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Descuento Pago Anticipado (%)</label>
-                                    <input
-                                        type="number"
-                                        name="descuento_pago_anticipado_pct"
-                                        value={formData.descuento_pago_anticipado_pct}
-                                        onChange={manejarCambio}
-                                        min="0"
-                                        max="100"
-                                        step="0.01"
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label>Cuotas Mínimas Anticipadas</label>
-                                    <input
-                                        type="number"
-                                        name="cuotas_minimas_anticipadas"
-                                        value={formData.cuotas_minimas_anticipadas}
-                                        onChange={manejarCambio}
-                                        min="1"
-                                    />
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label className={estilos.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
-                                            name="activo"
-                                            checked={formData.activo}
-                                            onChange={manejarCambio}
-                                        />
-                                        Plan activo
-                                    </label>
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label className={estilos.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
-                                            name="permite_pago_anticipado"
-                                            checked={formData.permite_pago_anticipado}
-                                            onChange={manejarCambio}
-                                        />
-                                        Permite pago anticipado
-                                    </label>
-                                </div>
-
-                                <div className={estilos.formGroup}>
-                                    <label className={estilos.checkboxLabel}>
-                                        <input
-                                            type="checkbox"
-                                            name="requiere_fiador"
-                                            checked={formData.requiere_fiador}
-                                            onChange={manejarCambio}
-                                        />
-                                        Requiere fiador
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Vista previa de cálculo */}
-                            {ejemploCuota && (
-                                <div className={estilos.vistaPrevia}>
-                                    <h3>Vista Previa (Ejemplo: {formatearMoneda(ejemploCuota.monto)})</h3>
-                                    <div className={estilos.vistaPreviaDetalle}>
-                                        <div>
-                                            <span>Cuota Mensual:</span>
-                                            <strong>{formatearMoneda(ejemploCuota.cuota)}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Total Intereses:</span>
-                                            <strong>{formatearMoneda(ejemploCuota.totalIntereses)}</strong>
-                                        </div>
-                                        <div>
-                                            <span>Total a Pagar:</span>
-                                            <strong>{formatearMoneda(ejemploCuota.totalPagar)}</strong>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className={estilos.modalFooter}>
-                            <button className={estilos.btnCancelar} onClick={cerrarModal}>
-                                Cancelar
-                            </button>
-                            <button className={estilos.btnGuardar} onClick={guardarPlan}>
-                                {planEditando ? 'Actualizar' : 'Crear'}
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     )
 }

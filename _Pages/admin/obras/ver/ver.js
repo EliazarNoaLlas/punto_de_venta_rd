@@ -1,10 +1,10 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { obtenerObraPorId } from '../servidor'
+import { obtenerObraPorId } from './servidor'
 import { formatearEstadoObra, formatearTipoObra } from '../../core/construction/estados'
 import { calcularPorcentajeEjecutado, calcularDiasRestantes } from '../../core/construction/calculos'
-import estilos from '../obras.module.css'
+import estilos from '../listar/listar.module.css'
 
 export default function VerObra({ id }) {
     const router = useRouter()

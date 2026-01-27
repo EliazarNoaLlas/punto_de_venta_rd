@@ -2,9 +2,9 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { obtenerObras } from './servidor'
-import { ESTADOS_OBRA, formatearEstadoObra, formatearTipoObra } from '../core/construction/estados'
-import { calcularPorcentajeEjecutado, calcularDiasRestantes } from '../core/construction/calculos'
-import estilos from './obras.module.css'
+import { ESTADOS_OBRA, formatearEstadoObra, formatearTipoObra } from '../../core/construction/estados'
+import { calcularPorcentajeEjecutado, calcularDiasRestantes } from '../../core/construction/calculos'
+import estilos from './listar.module.css'
 
 export default function ObrasAdmin() {
     const router = useRouter()
@@ -158,7 +158,7 @@ export default function ObrasAdmin() {
                     {obrasFiltradas.map(o => {
                         const estadoFormateado = formatearEstadoObra(o.estado || ESTADOS_OBRA.ACTIVA)
                         const porcentajeEjecutado = calcularPorcentajeEjecutado(
-                            o.costo_ejecutado || 0,
+                            o.costo_real || o.costo_ejecutado || 0,
                             o.presupuesto_aprobado || 0
                         )
                         const diasRestantes = o.fecha_fin_estimada 
@@ -185,9 +185,9 @@ export default function ObrasAdmin() {
                             <div key={o.id} className={estilos.tarjeta}>
                                 <div className={estilos.tarjetaHeader}>
                                     <div>
-                                        {o.codigo_obra && (
-                                            <span className={estilos.codigoObra}>{o.codigo_obra}</span>
-                                        )}
+                        {(o.codigo || o.codigo_obra) && (
+                            <span className={estilos.codigoObra}>{o.codigo || o.codigo_obra}</span>
+                        )}
                                         <h3>{o.nombre}</h3>
                                     </div>
                                     <div className={`${estilos.estado} ${estilos[estadoFormateado.color]}`}>
@@ -201,10 +201,10 @@ export default function ObrasAdmin() {
                                         <ion-icon name="location-outline"></ion-icon>
                                         <span>{o.ubicacion || 'Sin ubicación'}</span>
                                     </div>
-                                    {o.tipo_obra && (
+                                    {(o.tipo || o.tipo_obra) && (
                                         <div className={estilos.itemInfo}>
                                             <ion-icon name="construct-outline"></ion-icon>
-                                            <span>{formatearTipoObra(o.tipo_obra)}</span>
+                                            <span>{formatearTipoObra(o.tipo || o.tipo_obra)}</span>
                                         </div>
                                     )}
                                     {o.cliente_nombre && (
@@ -232,13 +232,13 @@ export default function ObrasAdmin() {
                                         </div>
                                         <div className={estilos.progresoDetalles}>
                                             <span>
-                                                Ejecutado: <strong>RD$ {parseFloat(o.costo_ejecutado || 0).toLocaleString()}</strong>
+                                                Ejecutado: <strong>RD$ {parseFloat(o.costo_real || o.costo_ejecutado || 0).toLocaleString()}</strong>
                                             </span>
                                             <span>
                                                 Presupuesto: <strong>RD$ {parseFloat(o.presupuesto_aprobado || 0).toLocaleString()}</strong>
                                             </span>
                                             <span>
-                                                Restante: <strong>RD$ {parseFloat((o.presupuesto_aprobado || 0) - (o.costo_ejecutado || 0)).toLocaleString()}</strong>
+                                                Restante: <strong>RD$ {parseFloat((o.presupuesto_aprobado || 0) - (o.costo_real || o.costo_ejecutado || 0)).toLocaleString()}</strong>
                                             </span>
                                         </div>
                                     </div>

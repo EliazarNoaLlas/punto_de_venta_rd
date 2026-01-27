@@ -1,9 +1,9 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { obtenerObraPorId, actualizarObra } from '../servidor'
+import { obtenerObraPorId, actualizarObra } from './servidor'
 import { TIPOS_OBRA, formatearTipoObra, ESTADOS_OBRA, formatearEstadoObra } from '../../core/construction/estados'
-import estilos from '../obras.module.css'
+import estilos from '../listar/listar.module.css'
 
 export default function EditarObra({ id }) {
     const router = useRouter()

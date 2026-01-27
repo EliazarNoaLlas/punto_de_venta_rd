@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { crearObra } from '../servidor'
+import { crearObra } from './servidor'
 import { TIPOS_OBRA, formatearTipoObra } from '../../core/construction/estados'
 import estilos from './nuevo.module.css'
 
