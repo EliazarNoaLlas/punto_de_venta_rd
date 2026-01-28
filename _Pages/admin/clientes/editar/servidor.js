@@ -2,7 +2,7 @@
 
 import db from "@/_DB/db";
 import { cookies } from "next/headers";
-import { guardarImagenCliente } from "@/services/imageService"
+import { guardarImagenCliente, eliminarImagenCliente } from "@/services/imageService"
 import { calcularScoreInicial, registrarHistorialCredito } from "../lib";
 
 // ============================================
@@ -11,6 +11,8 @@ import { calcularScoreInicial, registrarHistorialCredito } from "../lib";
 
 export async function actualizarClienteYCredito(datos) {
     let connection;
+    let imagenGuardada = null;
+    
     try {
         // 1️⃣ Validar sesión y permisos
         const cookieStore = await cookies();
@@ -19,37 +21,59 @@ export async function actualizarClienteYCredito(datos) {
         const userTipo = cookieStore.get("userTipo")?.value;
 
         if (!userId || !empresaId || (userTipo !== "admin" && userTipo !== "vendedor")) {
-            return { success: false, mensaje: "No tienes permisos" };
+            return { success: false, mensaje: "No tienes permisos para realizar esta acción" };
+        }
+
+        // Validar datos requeridos
+        if (!datos?.cliente_id) {
+            return { success: false, mensaje: "ID de cliente es requerido" };
+        }
+
+        if (!datos?.cliente?.nombre || !datos?.cliente?.numero_documento) {
+            return { success: false, mensaje: "Nombre y número de documento son requeridos" };
+        }
+
+        // 2️⃣ Procesar imagen ANTES de la transacción (si existe)
+        if (datos.cliente.imagen_base64) {
+            try {
+                imagenGuardada = await guardarImagenCliente(datos.cliente.imagen_base64, datos.cliente_id);
+            } catch (imgError) {
+                console.error("Error al guardar imagen:", imgError);
+                // No fallar toda la operación por la imagen
+                // Continuar sin actualizar la imagen
+            }
         }
 
         connection = await db.getConnection();
         await connection.beginTransaction();
 
-        // 2️⃣ Validar existencia del cliente
+        // 3️⃣ Validar existencia del cliente y obtener imagen actual
         const [clienteExiste] = await connection.execute(
-            `SELECT id FROM clientes WHERE id = ? AND empresa_id = ?`,
+            `SELECT id, foto_url FROM clientes WHERE id = ? AND empresa_id = ?`,
             [datos.cliente_id, empresaId]
         );
 
-        if (clienteExiste.length === 0) {
+        if (!clienteExiste || clienteExiste.length === 0) {
             await connection.rollback();
             connection.release();
             return { success: false, mensaje: "Cliente no encontrado" };
         }
+        
+        const imagenAnterior = clienteExiste[0].foto_url;
 
-        // 3️⃣ Validar duplicado de documento (excepto este cliente)
+        // 4️⃣ Validar duplicado de documento (excepto este cliente)
         const [existeDocumento] = await connection.execute(
             `SELECT id FROM clientes WHERE numero_documento = ? AND empresa_id = ? AND id != ?`,
             [datos.cliente.numero_documento, empresaId, datos.cliente_id]
         );
 
-        if (existeDocumento.length > 0) {
+        if (existeDocumento && existeDocumento.length > 0) {
             await connection.rollback();
             connection.release();
             return { success: false, mensaje: "Ya existe otro cliente con ese número de documento" };
         }
 
-        // 4️⃣ Actualizar datos del cliente
+        // 5️⃣ Actualizar datos del cliente
         await connection.execute(
             `UPDATE clientes
              SET tipo_documento_id = ?,
@@ -67,7 +91,7 @@ export async function actualizarClienteYCredito(datos) {
                  estado            = ?
              WHERE id = ? AND empresa_id = ?`,
             [
-                datos.cliente.tipo_documento_id,
+                datos.cliente.tipo_documento_id || 1,
                 datos.cliente.numero_documento,
                 datos.cliente.nombre,
                 datos.cliente.apellidos || null,
@@ -85,145 +109,168 @@ export async function actualizarClienteYCredito(datos) {
             ]
         );
 
-        // 5️⃣ Actualizar imagen si existe
-        if (datos.cliente.imagen_base64) {
+        // 6️⃣ Actualizar imagen si se guardó exitosamente
+        if (imagenGuardada) {
             try {
-                const imagenFinal = await guardarImagenCliente(datos.cliente.imagen_base64, datos.cliente_id);
                 await connection.execute(
                     `UPDATE clientes SET foto_url = ? WHERE id = ? AND empresa_id = ?`,
-                    [imagenFinal, datos.cliente_id, empresaId]
+                    [imagenGuardada, datos.cliente_id, empresaId]
                 );
-            } catch (error) {
-                await connection.rollback();
-                connection.release();
-                return { success: false, mensaje: "Error al actualizar imagen: " + error.message };
+                
+                // Eliminar imagen anterior si existe y es local (igual que productos)
+                if (imagenAnterior && imagenAnterior.startsWith('/images/')) {
+                    await eliminarImagenCliente(imagenAnterior);
+                }
+            } catch (imgDbError) {
+                console.error("Error al actualizar foto_url en BD:", imgDbError);
+                // No fallar por esto
             }
         }
 
-        // 6️⃣ Actualizar o crear crédito (solo admin)
+        // 7️⃣ Actualizar o crear crédito (solo admin)
         if (datos.credito && userTipo === 'admin') {
-            // Obtener crédito actual
-            const [creditoActual] = await connection.execute(
-                `SELECT id, limite_credito, clasificacion, frecuencia_pago, dias_plazo, activo
-                 FROM credito_clientes
-                 WHERE cliente_id = ? AND empresa_id = ?`,
-                [datos.cliente_id, empresaId]
-            );
-
-            if (creditoActual.length > 0) {
-                const cActual = creditoActual[0];
-                const creditoId = cActual.id;
-
-                // Nuevos valores
-                const limiteNuevo = datos.credito.limite ?? cActual.limite_credito;
-                const clasificacionNueva = datos.credito.clasificacion ?? cActual.clasificacion;
-                const frecuenciaPago = datos.credito.frecuencia_pago ?? cActual.frecuencia_pago ?? 'mensual';
-                const diasPlazo = datos.credito.dias_plazo ?? cActual.dias_plazo ?? 30;
-                const activoNuevo = datos.credito.activo !== false;
-
-                // Actualizar crédito
-                await connection.execute(
-                    `UPDATE credito_clientes
-                     SET limite_credito  = ?,
-                         frecuencia_pago = ?,
-                         dias_plazo      = ?,
-                         clasificacion   = ?,
-                         activo          = ?,
-                         modificado_por  = ?
-                     WHERE id = ?`,
-                    [
-                        limiteNuevo,
-                        frecuenciaPago,
-                        diasPlazo,
-                        clasificacionNueva,
-                        activoNuevo,
-                        userId,
-                        creditoId
-                    ]
+            try {
+                // Obtener crédito actual
+                const [creditoActual] = await connection.execute(
+                    `SELECT id, limite_credito, clasificacion, frecuencia_pago, dias_plazo, activo
+                     FROM credito_clientes
+                     WHERE cliente_id = ? AND empresa_id = ?`,
+                    [datos.cliente_id, empresaId]
                 );
 
-                // Registrar historial si hubo cambios
-                const huboCambios =
-                    cActual.limite_credito !== limiteNuevo ||
-                    cActual.clasificacion !== clasificacionNueva ||
-                    cActual.frecuencia_pago !== frecuenciaPago ||
-                    cActual.dias_plazo !== diasPlazo ||
-                    cActual.activo !== activoNuevo;
+                if (creditoActual && creditoActual.length > 0) {
+                    // ACTUALIZAR crédito existente
+                    const cActual = creditoActual[0];
+                    const creditoId = cActual.id;
 
-                if (huboCambios) {
-                    await registrarHistorialCredito(connection, {
-                        credito_cliente_id: creditoId,
-                        cliente_id: datos.cliente_id,
-                        empresa_id: empresaId,
-                        tipo_evento: 'ajuste_manual',
-                        datos_anteriores: {
-                            limite_credito: cActual.limite_credito,
-                            clasificacion: cActual.clasificacion,
-                            frecuencia_pago: cActual.frecuencia_pago,
-                            dias_plazo: cActual.dias_plazo,
-                            activo: cActual.activo
-                        },
-                        datos_nuevos: {
-                            limite_credito: limiteNuevo,
-                            clasificacion: clasificacionNueva,
-                            frecuencia_pago: frecuenciaPago,
-                            dias_plazo: diasPlazo,
-                            activo: activoNuevo
-                        },
-                        clasificacion_momento: clasificacionNueva,
-                        score_momento: await calcularScoreInicial(clasificacionNueva),
-                        observaciones: datos.credito.observacion || 'Ajuste manual realizado',
-                        usuario_id: userId
-                    });
+                    // Nuevos valores (con fallbacks seguros)
+                    const limiteNuevo = parseFloat(datos.credito.limite) || parseFloat(cActual.limite_credito) || 0;
+                    const clasificacionNueva = datos.credito.clasificacion || cActual.clasificacion || 'C';
+                    const frecuenciaPago = datos.credito.frecuencia_pago || cActual.frecuencia_pago || 'mensual';
+                    const diasPlazo = parseInt(datos.credito.dias_plazo) || parseInt(cActual.dias_plazo) || 30;
+                    const activoNuevo = datos.credito.activo !== false;
+
+                    // Actualizar crédito
+                    await connection.execute(
+                        `UPDATE credito_clientes
+                         SET limite_credito  = ?,
+                             frecuencia_pago = ?,
+                             dias_plazo      = ?,
+                             clasificacion   = ?,
+                             activo          = ?,
+                             modificado_por  = ?
+                         WHERE id = ?`,
+                        [
+                            limiteNuevo,
+                            frecuenciaPago,
+                            diasPlazo,
+                            clasificacionNueva,
+                            activoNuevo,
+                            userId,
+                            creditoId
+                        ]
+                    );
+
+                    // Registrar historial si hubo cambios significativos
+                    const huboCambios =
+                        parseFloat(cActual.limite_credito) !== limiteNuevo ||
+                        cActual.clasificacion !== clasificacionNueva ||
+                        cActual.frecuencia_pago !== frecuenciaPago ||
+                        parseInt(cActual.dias_plazo) !== diasPlazo ||
+                        Boolean(cActual.activo) !== activoNuevo;
+
+                    if (huboCambios) {
+                        try {
+                            const scoreCalculado = await calcularScoreInicial(clasificacionNueva, 0);
+                            await registrarHistorialCredito(connection, {
+                                credito_cliente_id: creditoId,
+                                cliente_id: datos.cliente_id,
+                                empresa_id: parseInt(empresaId),
+                                tipo_evento: 'ajuste_manual',
+                                datos_anteriores: {
+                                    limite_credito: parseFloat(cActual.limite_credito),
+                                    clasificacion: cActual.clasificacion,
+                                    frecuencia_pago: cActual.frecuencia_pago,
+                                    dias_plazo: parseInt(cActual.dias_plazo),
+                                    activo: Boolean(cActual.activo)
+                                },
+                                datos_nuevos: {
+                                    limite_credito: limiteNuevo,
+                                    clasificacion: clasificacionNueva,
+                                    frecuencia_pago: frecuenciaPago,
+                                    dias_plazo: diasPlazo,
+                                    activo: activoNuevo
+                                },
+                                clasificacion_momento: clasificacionNueva,
+                                score_momento: scoreCalculado,
+                                observaciones: datos.credito.observacion || 'Ajuste manual realizado',
+                                usuario_id: parseInt(userId)
+                            });
+                        } catch (historialError) {
+                            console.error("Error al registrar historial de crédito:", historialError);
+                            // No fallar por historial
+                        }
+                    }
+                } else if (datos.credito.activo) {
+                    // CREAR nuevo crédito
+                    try {
+                        const limiteNuevo = parseFloat(datos.credito.limite) || 0;
+                        const clasificacionNueva = 'C';
+                        const frecuenciaPago = datos.credito.frecuencia_pago || 'mensual';
+                        const diasPlazo = parseInt(datos.credito.dias_plazo) || 30;
+                        const scoreInicial = await calcularScoreInicial(clasificacionNueva, 0);
+
+                        const [resultCredito] = await connection.execute(
+                            `INSERT INTO credito_clientes (
+                                cliente_id, empresa_id, limite_credito, saldo_utilizado, 
+                                estado_credito, clasificacion, score_crediticio,
+                                frecuencia_pago, dias_plazo, activo, creado_por
+                            ) VALUES (?, ?, ?, 0, 'normal', ?, ?, ?, ?, TRUE, ?)`,
+                            [
+                                datos.cliente_id,
+                                parseInt(empresaId),
+                                limiteNuevo,
+                                clasificacionNueva,
+                                scoreInicial,
+                                frecuenciaPago,
+                                diasPlazo,
+                                parseInt(userId)
+                            ]
+                        );
+
+                        const creditoId = resultCredito.insertId;
+
+                        // Registrar en historial la creación
+                        try {
+                            await registrarHistorialCredito(connection, {
+                                credito_cliente_id: creditoId,
+                                cliente_id: datos.cliente_id,
+                                empresa_id: parseInt(empresaId),
+                                tipo_evento: 'creacion',
+                                datos_anteriores: null,
+                                datos_nuevos: {
+                                    limite_credito: limiteNuevo,
+                                    clasificacion: clasificacionNueva,
+                                    frecuencia_pago: frecuenciaPago,
+                                    dias_plazo: diasPlazo,
+                                    activo: true
+                                },
+                                clasificacion_momento: clasificacionNueva,
+                                score_momento: scoreInicial,
+                                observaciones: datos.credito.observacion || 'Perfil de crédito creado desde edición',
+                                usuario_id: parseInt(userId)
+                            });
+                        } catch (historialError) {
+                            console.error("Error al registrar historial de crédito nuevo:", historialError);
+                        }
+                    } catch (createError) {
+                        console.error("Error al crear perfil de crédito:", createError);
+                        // No fallar toda la operación por el crédito
+                    }
                 }
-            } else if (datos.credito.activo) {
-                // Crear crédito si no existe y está activo
-                const limiteNuevo = datos.credito.limite || 0;
-                const clasificacionNueva = 'C'; // Clasificación inicial por defecto
-                const frecuenciaPago = datos.credito.frecuencia_pago || 'mensual';
-                const diasPlazo = datos.credito.dias_plazo || 30;
-                const scoreInicial = await calcularScoreInicial(clasificacionNueva, 0);
-
-                // No incluir saldo_disponible porque es una columna COMPUTED
-                const [resultCredito] = await connection.execute(
-                    `INSERT INTO credito_clientes (
-                        cliente_id, empresa_id, limite_credito, saldo_utilizado, 
-                        estado_credito, clasificacion, score_crediticio,
-                        frecuencia_pago, dias_plazo, activo, creado_por
-                    ) VALUES (?, ?, ?, 0, 'normal', ?, ?, ?, ?, TRUE, ?)`,
-                    [
-                        datos.cliente_id,
-                        empresaId,
-                        limiteNuevo,
-                        clasificacionNueva,
-                        scoreInicial,
-                        frecuenciaPago,
-                        diasPlazo,
-                        userId
-                    ]
-                );
-
-                const creditoId = resultCredito.insertId;
-
-                // Registrar en historial la creación
-                await registrarHistorialCredito(connection, {
-                    credito_cliente_id: creditoId,
-                    cliente_id: datos.cliente_id,
-                    empresa_id: empresaId,
-                    tipo_evento: 'creacion',
-                    datos_anteriores: null,
-                    datos_nuevos: {
-                        limite_credito: limiteNuevo,
-                        clasificacion: clasificacionNueva,
-                        frecuencia_pago: frecuenciaPago,
-                        dias_plazo: diasPlazo,
-                        activo: true
-                    },
-                    clasificacion_momento: clasificacionNueva,
-                    score_momento: scoreInicial,
-                    observaciones: datos.credito.observacion || 'Perfil de crédito creado desde edición',
-                    usuario_id: userId
-                });
+            } catch (creditoError) {
+                console.error("Error en operaciones de crédito:", creditoError);
+                // No fallar toda la operación por crédito
             }
         }
 
@@ -232,15 +279,31 @@ export async function actualizarClienteYCredito(datos) {
 
         return {
             success: true,
-            mensaje: "Cliente y crédito actualizados exitosamente"
+            mensaje: "Cliente actualizado exitosamente" + (imagenGuardada ? " (imagen actualizada)" : "")
         };
 
     } catch (error) {
         console.error("Error al actualizar cliente y crédito:", error);
+        
         if (connection) {
-            await connection.rollback();
-            connection.release();
+            try {
+                await connection.rollback();
+                connection.release();
+            } catch (releaseError) {
+                console.error("Error al liberar conexión:", releaseError);
+            }
         }
-        return { success: false, mensaje: "Error al actualizar el cliente y crédito" };
+        
+        // Mensaje de error más descriptivo
+        let mensajeError = "Error al actualizar el cliente";
+        if (error.code === 'ER_DUP_ENTRY') {
+            mensajeError = "Ya existe un registro con estos datos";
+        } else if (error.code === 'ER_NO_REFERENCED_ROW') {
+            mensajeError = "Referencia inválida en los datos";
+        } else if (error.message) {
+            mensajeError = error.message;
+        }
+        
+        return { success: false, mensaje: mensajeError };
     }
 }

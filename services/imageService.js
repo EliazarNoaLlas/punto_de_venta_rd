@@ -8,19 +8,24 @@ import path from 'path'
  * Este servicio es el único punto de verdad para todo lo relacionado con imágenes
  */
 
-// En producción: usar carpeta persistente fuera del proyecto
-// En desarrollo: usar carpeta local (public/images/productos)
-const IMAGES_DIR_PRODUCTION = '/var/data/pdv_images/productos'
-const IMAGES_DIR_DEVELOPMENT = path.join(process.cwd(), 'public', 'images', 'productos')
-
 // Detectar si estamos en producción
 const isProduction = process.env.NODE_ENV === 'production'
 
-// En producción, usar siempre la carpeta persistente
-// En desarrollo, usar la carpeta local
-const IMAGES_DIR = isProduction ? IMAGES_DIR_PRODUCTION : IMAGES_DIR_DEVELOPMENT
-
+// =====================================================
+// RUTAS PARA PRODUCTOS
+// =====================================================
+const PRODUCTOS_IMAGES_DIR_PRODUCTION = '/var/data/pdv_images/productos'
+const PRODUCTOS_IMAGES_DIR_DEVELOPMENT = path.join(process.cwd(), 'public', 'images', 'productos')
+const IMAGES_DIR = isProduction ? PRODUCTOS_IMAGES_DIR_PRODUCTION : PRODUCTOS_IMAGES_DIR_DEVELOPMENT
 const PUBLIC_PATH = '/images/productos'
+
+// =====================================================
+// RUTAS PARA CLIENTES (separadas de productos)
+// =====================================================
+const CLIENTES_IMAGES_DIR_PRODUCTION = '/var/data/pdv_images/clientes'
+const CLIENTES_IMAGES_DIR_DEVELOPMENT = path.join(process.cwd(), 'public', 'images', 'clientes')
+const CLIENTES_IMAGES_DIR = isProduction ? CLIENTES_IMAGES_DIR_PRODUCTION : CLIENTES_IMAGES_DIR_DEVELOPMENT
+const CLIENTES_PUBLIC_PATH = '/images/clientes'
 
 /**
  * Asegura que la carpeta de imágenes existe
@@ -125,10 +130,22 @@ export function obtenerUrlValida(imagenUrl) {
 }
 
 /**
+ * Asegura que la carpeta de imágenes de clientes existe
+ */
+async function ensureClientesDirExists() {
+    try {
+        await fs.mkdir(CLIENTES_IMAGES_DIR, { recursive: true })
+    } catch (error) {
+        console.error('Error al crear directorio de imágenes de clientes:', error)
+        throw new Error('No se pudo crear el directorio de imágenes de clientes')
+    }
+}
+
+/**
  * Guarda una imagen de cliente y retorna la ruta relativa
  * @param {string} base64Data - Cadena base64 de la imagen (data:image/...)
  * @param {number|string} clienteId - ID del cliente
- * @returns {Promise<string>} - Ruta relativa de la imagen (/images/productos/...)
+ * @returns {Promise<string>} - Ruta relativa de la imagen (/images/clientes/...)
  */
 export async function guardarImagenCliente(base64Data, clienteId) {
     // Validación
@@ -136,7 +153,7 @@ export async function guardarImagenCliente(base64Data, clienteId) {
         throw new Error('Formato de imagen inválido')
     }
 
-    await ensureDirExists()
+    await ensureClientesDirExists()
 
     // Extraer extensión y datos
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
@@ -162,26 +179,37 @@ export async function guardarImagenCliente(base64Data, clienteId) {
     // Nombre único para cliente
     const timestamp = Date.now()
     const fileName = `cliente_${clienteId}_${timestamp}.${extension}`
-    const filePath = path.join(IMAGES_DIR, fileName)
+    const filePath = path.join(CLIENTES_IMAGES_DIR, fileName)
 
     // Guardar archivo
     await fs.writeFile(filePath, buffer)
 
     // Retornar ruta RELATIVA
-    return `${PUBLIC_PATH}/${fileName}`
+    return `${CLIENTES_PUBLIC_PATH}/${fileName}`
 }
 
 /**
  * Elimina una imagen de cliente si es local
- * @param {string} imagenUrl - Ruta relativa de la imagen (/images/productos/...)
+ * @param {string} imagenUrl - Ruta relativa de la imagen (/images/clientes/... o /images/productos/...)
  * @returns {Promise<void>}
  */
 export async function eliminarImagenCliente(imagenUrl) {
-    if (!imagenUrl || !imagenUrl.startsWith(PUBLIC_PATH)) return
+    if (!imagenUrl) return
+    
+    // Soportar tanto la nueva ruta (/images/clientes/) como la antigua (/images/productos/)
+    let targetDir = null
+    if (imagenUrl.startsWith(CLIENTES_PUBLIC_PATH)) {
+        targetDir = CLIENTES_IMAGES_DIR
+    } else if (imagenUrl.startsWith(PUBLIC_PATH) && imagenUrl.includes('cliente_')) {
+        // Compatibilidad con imágenes antiguas guardadas en /images/productos/
+        targetDir = IMAGES_DIR
+    }
+    
+    if (!targetDir) return
 
     try {
         const fileName = path.basename(imagenUrl)
-        const filePath = path.join(IMAGES_DIR, fileName)
+        const filePath = path.join(targetDir, fileName)
         await fs.unlink(filePath)
     } catch (error) {
         console.error('Error al eliminar imagen de cliente:', error)
@@ -211,10 +239,21 @@ export function obtenerUrlValidaCliente(imagenUrl) {
  * @returns {Promise<boolean>} - true si existe
  */
 export async function existeImagenCliente(imagenUrl) {
-    if (!imagenUrl || !imagenUrl.startsWith(PUBLIC_PATH)) return false
+    if (!imagenUrl) return false
+    
+    // Soportar tanto la nueva ruta (/images/clientes/) como la antigua (/images/productos/)
+    let targetDir = null
+    if (imagenUrl.startsWith(CLIENTES_PUBLIC_PATH)) {
+        targetDir = CLIENTES_IMAGES_DIR
+    } else if (imagenUrl.startsWith(PUBLIC_PATH) && imagenUrl.includes('cliente_')) {
+        targetDir = IMAGES_DIR
+    }
+    
+    if (!targetDir) return false
+    
     try {
         const fileName = path.basename(imagenUrl)
-        const filePath = path.join(IMAGES_DIR, fileName)
+        const filePath = path.join(targetDir, fileName)
         await fs.access(filePath)
         return true
     } catch {
