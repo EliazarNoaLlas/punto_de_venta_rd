@@ -4,6 +4,7 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerDetalleVenta } from './servidor'
 import estilos from './ver.module.css'
+import { formatCurrency } from '@/utils/monedaUtils'
 
 export default function VerVentaAdmin() {
     const router = useRouter()
@@ -13,6 +14,9 @@ export default function VerVentaAdmin() {
     const [cargando, setCargando] = useState(true)
     const [venta, setVenta] = useState(null)
     const [empresa, setEmpresa] = useState(null)
+    const monedaEmpresa = empresa?.moneda || 'DOP'
+    const localeEmpresa = empresa?.locale || 'es-DO'
+    const simboloEmpresa = empresa?.simbolo_moneda || ''
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -67,11 +71,11 @@ export default function VerVentaAdmin() {
     }
 
     const formatearMoneda = (monto) => {
-        return new Intl.NumberFormat('es-DO', {
-            style: 'currency',
-            currency: 'DOP',
-            minimumFractionDigits: 2
-        }).format(monto)
+        return formatCurrency(monto, {
+            currency: monedaEmpresa,
+            locale: localeEmpresa,
+            symbol: simboloEmpresa
+        })
     }
 
     const getEstadoBadge = (estado) => {

@@ -27,6 +27,8 @@ export async function obtenerDatosVenta() {
                     rnc,
                     impuesto_nombre,
                     impuesto_porcentaje,
+                    moneda,
+                    locale,
                     simbolo_moneda
              FROM empresas
              WHERE id = ?
@@ -203,30 +205,55 @@ export async function buscarClientes(termino = '') {
             params = [empresaId]
         } else {
             // CASO 2: Búsqueda General (Nombre, Apellido, Documento, Teléfono, Email)
+            // Siempre incluir los 3 primeros clientes + resultados de búsqueda
             const like = `%${terminoLimpio}%`
             sql = `
-                SELECT c.id,
-                       c.numero_documento,
-                       CONCAT(c.nombre, ' ', IFNULL(c.apellidos, '')) AS nombre_completo,
-                       td.codigo                                      AS tipo_documento,
-                       c.telefono,
-                       c.email,
-                       c.puntos_fidelidad
-                FROM clientes c
-                         INNER JOIN tipos_documento td ON td.id = c.tipo_documento_id
-                WHERE c.empresa_id = ?
-                  AND c.activo = TRUE
-                  AND c.estado = 'activo'
-                  AND (
-                    c.numero_documento LIKE ?
-                        OR c.nombre LIKE ?
-                        OR c.apellidos LIKE ?
-                        OR c.telefono LIKE ?
-                        OR c.email LIKE ?
-                    )
-                ORDER BY c.nombre ASC LIMIT 20
+                (
+                    -- Primeros 3 clientes (siempre visibles)
+                    SELECT c.id,
+                           c.numero_documento,
+                           CONCAT(c.nombre, ' ', IFNULL(c.apellidos, '')) AS nombre_completo,
+                           td.codigo                                      AS tipo_documento,
+                           c.telefono,
+                           c.email,
+                           c.puntos_fidelidad,
+                           0 AS orden_prioridad
+                    FROM clientes c
+                             INNER JOIN tipos_documento td ON td.id = c.tipo_documento_id
+                    WHERE c.empresa_id = ?
+                      AND c.activo = TRUE
+                      AND c.estado = 'activo'
+                    ORDER BY c.nombre ASC LIMIT 3
+                )
+                UNION
+                (
+                    -- Resultados de búsqueda
+                    SELECT c.id,
+                           c.numero_documento,
+                           CONCAT(c.nombre, ' ', IFNULL(c.apellidos, '')) AS nombre_completo,
+                           td.codigo                                      AS tipo_documento,
+                           c.telefono,
+                           c.email,
+                           c.puntos_fidelidad,
+                           1 AS orden_prioridad
+                    FROM clientes c
+                             INNER JOIN tipos_documento td ON td.id = c.tipo_documento_id
+                    WHERE c.empresa_id = ?
+                      AND c.activo = TRUE
+                      AND c.estado = 'activo'
+                      AND (
+                        c.numero_documento LIKE ?
+                            OR c.nombre LIKE ?
+                            OR c.apellidos LIKE ?
+                            OR c.telefono LIKE ?
+                            OR c.email LIKE ?
+                        )
+                )
+                ORDER BY orden_prioridad ASC, nombre_completo ASC
+                LIMIT 20
             `
             params = [
+                empresaId,
                 empresaId,
                 like, like, like, like, like
             ]

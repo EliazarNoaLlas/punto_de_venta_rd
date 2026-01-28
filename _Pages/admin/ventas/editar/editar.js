@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { obtenerVentaEditar, buscarProductos, buscarClientes, actualizarVenta } from './servidor'
 import estilos from './editar.module.css'
+import { formatCurrency } from '@/utils/monedaUtils'
 
 export default function EditarVentaAdmin() {
     const router = useRouter()
@@ -30,6 +31,15 @@ export default function EditarVentaAdmin() {
     const [efectivoRecibido, setEfectivoRecibido] = useState('')
     const [descuentoGlobal, setDescuentoGlobal] = useState('')
     const [notasVenta, setNotasVenta] = useState('')
+
+    const monedaEmpresa = datosEmpresa?.moneda || 'DOP'
+    const localeEmpresa = datosEmpresa?.locale || 'es-DO'
+    const simboloEmpresa = datosEmpresa?.simbolo_moneda || ''
+    const formatearMonto = (valor) => formatCurrency(valor, {
+        currency: monedaEmpresa,
+        locale: localeEmpresa,
+        symbol: simboloEmpresa
+    })
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -405,7 +415,7 @@ export default function EditarVentaAdmin() {
                                             <div className={estilos.productoDatos}>
                                                 <span className={estilos.productoStock}>Stock: {producto.stock}</span>
                                                 <span className={estilos.productoPrecio}>
-                                                    RD$ {parseFloat(producto.precio_venta).toFixed(2)}
+                                                    {formatearMonto(producto.precio_venta)}
                                                 </span>
                                             </div>
                                         </div>
@@ -456,7 +466,7 @@ export default function EditarVentaAdmin() {
                                             </div>
 
                                             <div className={estilos.controlPrecio}>
-                                                <span className={estilos.labelPrecio}>RD$</span>
+                                                <span className={estilos.labelPrecio}>{simboloEmpresa || monedaEmpresa}</span>
                                                 <input
                                                     type="number"
                                                     step="0.01"
@@ -468,7 +478,7 @@ export default function EditarVentaAdmin() {
                                             </div>
 
                                             <div className={estilos.productoSubtotal}>
-                                                <span>RD$ {(producto.cantidad * producto.precio_venta_usado).toFixed(2)}</span>
+                                                <span>{formatearMonto(producto.cantidad * producto.precio_venta_usado)}</span>
                                             </div>
 
                                             <button
@@ -565,7 +575,7 @@ export default function EditarVentaAdmin() {
                         </div>
 
                         <div className={estilos.grupoInput}>
-                            <label>Descuento Global (RD$)</label>
+                            <label>Descuento Global ({simboloEmpresa || monedaEmpresa})</label>
                             <input
                                 type="number"
                                 step="0.01"
@@ -629,7 +639,7 @@ export default function EditarVentaAdmin() {
 
                         {metodoPago === 'efectivo' && (
                             <div className={estilos.grupoInput}>
-                                <label>Efectivo Recibido (RD$)</label>
+                                <label>Efectivo Recibido ({simboloEmpresa || monedaEmpresa})</label>
                                 <input
                                     type="number"
                                     step="0.01"
@@ -642,7 +652,7 @@ export default function EditarVentaAdmin() {
                                 {efectivoRecibido && parseFloat(cambio) >= 0 && (
                                     <div className={`${estilos.cambioBox} ${estilos[tema]}`}>
                                         <span>Cambio:</span>
-                                        <strong>RD$ {cambio}</strong>
+                                        <strong>{formatearMonto(cambio)}</strong>
                                     </div>
                                 )}
                             </div>
@@ -665,31 +675,31 @@ export default function EditarVentaAdmin() {
                         
                         <div className={estilos.lineaResumen}>
                             <span>Subtotal:</span>
-                            <span>RD$ {totales.subtotal}</span>
+                            <span>{formatearMonto(totales.subtotal)}</span>
                         </div>
 
                         {parseFloat(totales.descuento) > 0 && (
                             <div className={estilos.lineaResumen}>
                                 <span>Descuento:</span>
-                                <span className={estilos.descuento}>- RD$ {totales.descuento}</span>
+                                <span className={estilos.descuento}>- {formatearMonto(totales.descuento)}</span>
                             </div>
                         )}
 
                         <div className={estilos.lineaResumen}>
                             <span>Monto Gravado:</span>
-                            <span>RD$ {totales.montoGravado}</span>
+                            <span>{formatearMonto(totales.montoGravado)}</span>
                         </div>
 
                         <div className={estilos.lineaResumen}>
                             <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'} ({datosEmpresa?.impuesto_porcentaje || 18}%):</span>
-                            <span>RD$ {totales.itbis}</span>
+                            <span>{formatearMonto(totales.itbis)}</span>
                         </div>
 
                         <div className={estilos.separador}></div>
 
                         <div className={estilos.lineaTotal}>
                             <span>Total a Pagar:</span>
-                            <span>RD$ {totales.total}</span>
+                            <span>{formatearMonto(totales.total)}</span>
                         </div>
 
                         <button

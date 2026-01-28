@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { obtenerObraPorId, actualizarObra } from './servidor'
+import { obtenerObraPorId, actualizarObra, obtenerRegionesEmpresa } from './servidor'
 import { TIPOS_OBRA, formatearTipoObra, ESTADOS_OBRA, formatearEstadoObra } from '../../core/construction/estados'
 import estilos from '../listar/listar.module.css'
 
@@ -26,6 +26,7 @@ export default function EditarObra({ id }) {
     const [errors, setErrors] = useState({})
     const [cargando, setCargando] = useState(true)
     const [procesando, setProcesando] = useState(false)
+    const [regiones, setRegiones] = useState([])
 
     const tiposObra = [
         { value: TIPOS_OBRA.CONSTRUCCION, label: 'Construcción', icon: '🏗️' },
@@ -40,11 +41,24 @@ export default function EditarObra({ id }) {
         ...formatearEstadoObra(estado)
     }))
 
-    const provincias = ['Santo Domingo', 'Santiago', 'La Vega', 'San Cristóbal', 'Puerto Plata']
-
     useEffect(() => {
         cargarObra()
     }, [id])
+
+    useEffect(() => {
+        cargarRegiones()
+    }, [])
+
+    const cargarRegiones = async () => {
+        try {
+            const resultado = await obtenerRegionesEmpresa()
+            if (resultado.success) {
+                setRegiones(resultado.regiones || [])
+            }
+        } catch (error) {
+            console.error('Error al cargar regiones:', error)
+        }
+    }
 
     async function cargarObra() {
         setCargando(true)
@@ -194,13 +208,23 @@ export default function EditarObra({ id }) {
                 </div>
 
                 <div className={estilos.grupo}>
-                    <label>Provincia</label>
-                    <select name="provincia" value={formData.provincia} onChange={handleChange}>
-                        <option value="">Seleccione...</option>
-                        {provincias.map(prov => (
-                            <option key={prov} value={prov}>{prov}</option>
-                        ))}
-                    </select>
+                    <label>Region / Provincia</label>
+                    {regiones.length > 0 ? (
+                        <select name="provincia" value={formData.provincia} onChange={handleChange}>
+                            <option value="">Seleccione...</option>
+                            {regiones.map(region => (
+                                <option key={region.id} value={region.nombre}>{region.nombre}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            type="text"
+                            name="provincia"
+                            value={formData.provincia}
+                            onChange={handleChange}
+                            placeholder="Provincia o region"
+                        />
+                    )}
                 </div>
 
                 <div className={estilos.grupo}>

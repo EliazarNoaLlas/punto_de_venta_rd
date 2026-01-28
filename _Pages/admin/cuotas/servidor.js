@@ -491,3 +491,302 @@ export async function obtenerEstadisticasCuotas(filtros = {}) {
     }
 }
 
+/**
+ * Obtiene cuotas por contrato
+ * @param {number} contratoId - ID del contrato
+ * @returns {Object} { success: boolean, cuotas?: Array, contrato?: Object, mensaje?: string }
+ */
+export async function obtenerCuotasPorContrato(contratoId) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) return { success: false, mensaje: 'Sesión inválida' }
+
+        connection = await db.getConnection()
+
+        // Obtener información del contrato
+        const [contratos] = await connection.execute(
+            `SELECT co.*,
+                    cl.nombre as cliente_nombre,
+                    cl.apellidos as cliente_apellidos,
+                    cl.numero_documento as cliente_documento,
+                    cl.telefono as cliente_telefono,
+                    p.nombre as plan_nombre,
+                    p.tasa_interes_mensual,
+                    p.penalidad_mora_pct,
+                    p.dias_gracia
+             FROM contratos_financiamiento co
+             LEFT JOIN clientes cl ON co.cliente_id = cl.id
+             LEFT JOIN planes_financiamiento p ON co.plan_id = p.id
+             WHERE co.id = ? AND co.empresa_id = ?`,
+            [contratoId, empresaId]
+        )
+
+        if (contratos.length === 0) {
+            connection.release()
+            return { success: false, mensaje: 'Contrato no encontrado' }
+        }
+
+        const contrato = contratos[0]
+
+        // Obtener cuotas del contrato
+        const [cuotas] = await connection.execute(
+            `SELECT c.*
+             FROM cuotas_financiamiento c
+             WHERE c.contrato_id = ? AND c.empresa_id = ?
+             ORDER BY c.numero_cuota ASC`,
+            [contratoId, empresaId]
+        )
+
+        // Calcular mora para cada cuota
+        const cuotasConMora = cuotas.map(cuota => {
+            const diasAtraso = calcularDiasAtraso(cuota.fecha_vencimiento)
+            let montoMoraCalculado = parseFloat(cuota.monto_mora || 0)
+
+            if (diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA) {
+                const tasaMora = (contrato.penalidad_mora_pct || 0) / 100
+                const diasGracia = contrato.dias_gracia || 5
+                montoMoraCalculado = calcularMora(
+                    cuota.monto_cuota,
+                    diasAtraso,
+                    tasaMora,
+                    diasGracia
+                )
+            }
+
+            return {
+                ...cuota,
+                dias_atraso_calculado: diasAtraso,
+                monto_mora_calculado: montoMoraCalculado,
+                total_a_pagar_calculado: parseFloat(cuota.monto_cuota) + montoMoraCalculado - parseFloat(cuota.monto_pagado || 0)
+            }
+        })
+
+        connection.release()
+
+        return {
+            success: true,
+            contrato,
+            cuotas: cuotasConMora
+        }
+
+    } catch (error) {
+        console.error('Error al obtener cuotas por contrato:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al cargar cuotas del contrato' }
+    }
+}
+
+/**
+ * Obtiene las próximas cuotas a vencer
+ * @param {number} dias - Número de días para considerar como "próximas"
+ * @param {number} limite - Cantidad máxima de cuotas a retornar
+ * @returns {Object} { success: boolean, cuotas?: Array, mensaje?: string }
+ */
+export async function obtenerCuotasProximasVencer(dias = 7, limite = 20) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) return { success: false, mensaje: 'Sesión inválida' }
+
+        connection = await db.getConnection()
+
+        const [cuotas] = await connection.execute(
+            `SELECT c.*,
+                    co.numero_contrato,
+                    co.fecha_contrato,
+                    cl.nombre as cliente_nombre,
+                    cl.numero_documento as cliente_documento,
+                    cl.telefono as cliente_telefono,
+                    p.nombre as plan_nombre
+             FROM cuotas_financiamiento c
+             INNER JOIN contratos_financiamiento co ON c.contrato_id = co.id
+             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+             LEFT JOIN planes_financiamiento p ON co.plan_id = p.id
+             WHERE c.empresa_id = ?
+               AND c.estado IN ('pendiente', 'parcial')
+               AND c.fecha_vencimiento BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL ? DAY)
+             ORDER BY c.fecha_vencimiento ASC
+             LIMIT ?`,
+            [empresaId, dias, limite]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            cuotas
+        }
+
+    } catch (error) {
+        console.error('Error al obtener próximas cuotas:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al cargar próximas cuotas' }
+    }
+}
+
+/**
+ * Obtiene cuotas vencidas (con atraso)
+ * @param {number} limite - Cantidad máxima de cuotas a retornar
+ * @returns {Object} { success: boolean, cuotas?: Array, mensaje?: string }
+ */
+export async function obtenerCuotasVencidas(limite = 50) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) return { success: false, mensaje: 'Sesión inválida' }
+
+        connection = await db.getConnection()
+
+        const [cuotas] = await connection.execute(
+            `SELECT c.*,
+                    co.numero_contrato,
+                    co.fecha_contrato,
+                    cl.nombre as cliente_nombre,
+                    cl.numero_documento as cliente_documento,
+                    cl.telefono as cliente_telefono,
+                    p.nombre as plan_nombre,
+                    p.penalidad_mora_pct,
+                    p.dias_gracia,
+                    DATEDIFF(CURDATE(), c.fecha_vencimiento) as dias_vencida
+             FROM cuotas_financiamiento c
+             INNER JOIN contratos_financiamiento co ON c.contrato_id = co.id
+             LEFT JOIN clientes cl ON c.cliente_id = cl.id
+             LEFT JOIN planes_financiamiento p ON co.plan_id = p.id
+             WHERE c.empresa_id = ?
+               AND c.estado != 'pagada'
+               AND c.fecha_vencimiento < CURDATE()
+             ORDER BY c.fecha_vencimiento ASC
+             LIMIT ?`,
+            [empresaId, limite]
+        )
+
+        // Calcular mora para cada cuota vencida
+        const cuotasConMora = cuotas.map(cuota => {
+            const diasAtraso = cuota.dias_vencida || 0
+            const tasaMora = (cuota.penalidad_mora_pct || 0) / 100
+            const diasGracia = cuota.dias_gracia || 5
+            
+            const montoMoraCalculado = calcularMora(
+                cuota.monto_cuota,
+                diasAtraso,
+                tasaMora,
+                diasGracia
+            )
+
+            return {
+                ...cuota,
+                dias_atraso_calculado: diasAtraso,
+                monto_mora_calculado: montoMoraCalculado,
+                total_a_pagar_calculado: parseFloat(cuota.monto_cuota) + montoMoraCalculado - parseFloat(cuota.monto_pagado || 0)
+            }
+        })
+
+        connection.release()
+
+        return {
+            success: true,
+            cuotas: cuotasConMora
+        }
+
+    } catch (error) {
+        console.error('Error al obtener cuotas vencidas:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al cargar cuotas vencidas' }
+    }
+}
+
+/**
+ * Obtiene resumen de cuotas por plan de financiamiento
+ * @returns {Object} { success: boolean, resumen?: Array, mensaje?: string }
+ */
+export async function obtenerResumenPorPlan() {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) return { success: false, mensaje: 'Sesión inválida' }
+
+        connection = await db.getConnection()
+
+        const [resumen] = await connection.execute(
+            `SELECT 
+                p.id as plan_id,
+                p.nombre as plan_nombre,
+                p.tasa_interes_mensual,
+                COUNT(DISTINCT co.id) as total_contratos,
+                COUNT(c.id) as total_cuotas,
+                SUM(CASE WHEN c.estado = 'pagada' THEN 1 ELSE 0 END) as cuotas_pagadas,
+                SUM(CASE WHEN c.estado != 'pagada' AND c.fecha_vencimiento < CURDATE() THEN 1 ELSE 0 END) as cuotas_vencidas,
+                SUM(c.monto_cuota) as monto_total,
+                SUM(c.monto_pagado) as monto_cobrado,
+                SUM(c.monto_mora) as mora_acumulada
+             FROM planes_financiamiento p
+             LEFT JOIN contratos_financiamiento co ON p.id = co.plan_id AND co.empresa_id = ?
+             LEFT JOIN cuotas_financiamiento c ON co.id = c.contrato_id
+             WHERE p.empresa_id = ? AND p.estado = 'activo'
+             GROUP BY p.id, p.nombre, p.tasa_interes_mensual
+             ORDER BY total_contratos DESC`,
+            [empresaId, empresaId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            resumen
+        }
+
+    } catch (error) {
+        console.error('Error al obtener resumen por plan:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al cargar resumen por plan' }
+    }
+}
+
+/**
+ * Actualiza masivamente el estado de cuotas vencidas
+ * @returns {Object} { success: boolean, actualizadas?: number, mensaje?: string }
+ */
+export async function actualizarCuotasVencidas() {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const empresaId = cookieStore.get('empresaId')?.value
+
+        if (!empresaId) return { success: false, mensaje: 'Sesión inválida' }
+
+        connection = await db.getConnection()
+
+        // Actualizar estado a 'vencida' para cuotas pendientes que pasaron su fecha
+        const [resultado] = await connection.execute(
+            `UPDATE cuotas_financiamiento c
+             SET c.estado = 'vencida'
+             WHERE c.empresa_id = ?
+               AND c.estado = 'pendiente'
+               AND c.fecha_vencimiento < CURDATE()`,
+            [empresaId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            actualizadas: resultado.affectedRows,
+            mensaje: `Se actualizaron ${resultado.affectedRows} cuotas a estado vencida`
+        }
+
+    } catch (error) {
+        console.error('Error al actualizar cuotas vencidas:', error)
+        if (connection) connection.release()
+        return { success: false, mensaje: 'Error al actualizar cuotas vencidas' }
+    }
+}
+

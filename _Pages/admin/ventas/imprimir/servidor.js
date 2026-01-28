@@ -80,6 +80,8 @@ export async function obtenerVentaImprimir(ventaId) {
                 logo_url,
                 impuesto_nombre,
                 impuesto_porcentaje,
+                moneda,
+                locale,
                 simbolo_moneda,
                 mensaje_factura
             FROM empresas

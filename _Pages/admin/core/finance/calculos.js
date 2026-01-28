@@ -28,11 +28,28 @@ export function calcularAmortizacionFrancesa(monto, tasaMensual, cuotas) {
   // Si la tasa es 0, cuota fija sin intereses
   if (tasaMensual === 0) {
     const cuotaMensual = monto / cuotas
+    const cronograma = []
+    let saldoRestante = monto
+
+    // Generar cronograma sin intereses
+    for (let i = 1; i <= cuotas; i++) {
+      const capital = cuotaMensual
+      saldoRestante -= capital
+
+      cronograma.push({
+        numero: i,
+        capital: Math.round(capital * 100) / 100,
+        interes: 0,
+        cuota: Math.round(cuotaMensual * 100) / 100,
+        saldoRestante: Math.round(Math.max(0, saldoRestante) * 100) / 100
+      })
+    }
+
     return {
-      cuotaMensual,
+      cuotaMensual: Math.round(cuotaMensual * 100) / 100,
       totalIntereses: 0,
       totalPagar: monto,
-      cronograma: []
+      cronograma
     }
   }
 

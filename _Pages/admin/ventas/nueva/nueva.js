@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { obtenerDatosVenta, buscarProductos, buscarClientes, crearClienteRapido, crearVenta, obtenerCreditoCliente } from './servidor'
 import estilos from './nueva.module.css'
+import { formatCurrency } from '@/utils/monedaUtils'
 
 function useDebounce(value, delay = 300) {
     const [debounced, setDebounced] = useState(value)
@@ -60,6 +61,15 @@ export default function NuevaVenta() {
         { valor: 'propina', nombre: 'Propina' },
         { valor: 'otro', nombre: 'Otro' }
     ]
+
+    const monedaEmpresa = datosEmpresa?.moneda || 'DOP'
+    const localeEmpresa = datosEmpresa?.locale || 'es-DO'
+    const simboloEmpresa = datosEmpresa?.simbolo_moneda || ''
+    const formatearMonto = (valor) => formatCurrency(valor, {
+        currency: monedaEmpresa,
+        locale: localeEmpresa,
+        symbol: simboloEmpresa
+    })
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -446,7 +456,7 @@ export default function NuevaVenta() {
             // Validar saldo disponible
             const total = parseFloat(calcularTotales().total)
             if (total > parseFloat(infoCredito.saldo_disponible)) {
-                alert(`El monto de la venta (RD$ ${total.toFixed(2)}) excede el saldo disponible del cliente (RD$ ${parseFloat(infoCredito.saldo_disponible).toFixed(2)})`)
+                alert(`El monto de la venta (${formatearMonto(total)}) excede el saldo disponible del cliente (${formatearMonto(infoCredito.saldo_disponible)})`)
                 return false
             }
         }
@@ -587,7 +597,7 @@ export default function NuevaVenta() {
                     </div>
                     <div className={estilos.infoHeader}>
                         <span className={estilos.labelTotal}>Total:</span>
-                        <strong className={estilos.montoTotal}>RD$ {totales.total}</strong>
+                        <strong className={estilos.montoTotal}>{formatearMonto(totales.total)}</strong>
                         {productosVenta.length > 0 && (
                             <span className={estilos.cantidadItems}>
                                 ({productosVenta.length} {productosVenta.length === 1 ? 'producto' : 'productos'})
@@ -820,30 +830,13 @@ export default function NuevaVenta() {
                             <ion-icon name="close-circle-outline"></ion-icon>
                             <span>El cliente no tiene configuración de crédito. No se puede procesar la venta.</span>
                         </div>
-                    ) : (
-                        <div className={estilos.alertaSuccess}>
-                            <div className={estilos.infoCreditoGrid}>
-                                <div className={estilos.itemCredito}>
-                                    <span className={estilos.labelCredito}>Límite:</span>
-                                    <strong className={estilos.valorCredito}>
-                                        RD$ {parseFloat(infoCredito.limite_credito).toFixed(2)}
-                                    </strong>
-                                </div>
-                                <div className={estilos.itemCredito}>
-                                    <span className={estilos.labelCredito}>Disponible:</span>
-                                    <strong className={`${estilos.valorCredito} ${estilos.disponible}`}>
-                                        RD$ {parseFloat(infoCredito.saldo_disponible).toFixed(2)}
-                                    </strong>
-                                </div>
-                                <div className={estilos.itemCredito}>
-                                    <span className={estilos.labelCredito}>Clasificación:</span>
-                                    <span className={`${estilos.badgeClasificacion} ${estilos[infoCredito.clasificacion]}`}>
-                                        {infoCredito.clasificacion}
-                                    </span>
-                                </div>
-                            </div>
+                    ) : infoCredito && parseFloat(infoCredito.saldo_disponible) <= 0 ? (
+                        <div className={estilos.alertaDanger}>
+                            <ion-icon name="close-circle-outline"></ion-icon>
+                            <span>El cliente no tiene saldo disponible de crédito. Saldo disponible: {formatearMonto(infoCredito.saldo_disponible)}</span>
                         </div>
-                    )}
+                    ) : null}
+                    {/* Si el cliente tiene crédito válido, no se muestra ninguna alerta */}
                 </div>
             )}
 
@@ -882,7 +875,7 @@ export default function NuevaVenta() {
                                             <div className={estilos.productoDatos}>
                                                 <span className={estilos.productoStock}>Stock: {producto.stock}</span>
                                                 <span className={estilos.productoPrecio}>
-                                                    RD$ {parseFloat(producto.precio_venta).toFixed(2)}
+                                                    {formatearMonto(producto.precio_venta)}
                                                 </span>
                                             </div>
                                         </div>
@@ -948,7 +941,7 @@ export default function NuevaVenta() {
                                                 </div>
 
                                                 <div className={estilos.controlPrecioCompacto}>
-                                                    <span className={estilos.simboloMoneda}>RD$</span>
+                                                    <span className={estilos.simboloMoneda}>{simboloEmpresa || monedaEmpresa}</span>
                                                     <input
                                                         type="number"
                                                         step="0.01"
@@ -960,7 +953,7 @@ export default function NuevaVenta() {
                                                 </div>
 
                                                 <span className={estilos.subtotalProducto}>
-                                                    RD$ {(producto.cantidad * producto.precio_venta_usado).toFixed(2)}
+                                                    {formatearMonto(producto.cantidad * producto.precio_venta_usado)}
                                                 </span>
 
                                                 <button
@@ -1091,11 +1084,11 @@ export default function NuevaVenta() {
                                                 <div className={estilos.infoExtraCompacto}>
                                                     <span className={estilos.nombreExtraCompacto}>{extra.nombre}</span>
                                                     <span className={estilos.detalleExtraCompacto}>
-                                                        {cantidad} x RD$ {precio.toFixed(2)}
+                                                        {cantidad} x {formatearMonto(precio)}
                                                         {extra.aplica_itbis && ` + ${datosEmpresa?.impuesto_porcentaje || 18}%`}
                                                     </span>
                                                 </div>
-                                                <span className={estilos.totalExtraCompacto}>RD$ {total.toFixed(2)}</span>
+                                                <span className={estilos.totalExtraCompacto}>{formatearMonto(total)}</span>
                                                 <button
                                                     type="button"
                                                     onClick={() => eliminarProductoExtra(extra.id)}
@@ -1126,7 +1119,7 @@ export default function NuevaVenta() {
                                 <div className={estilos.campoCompacto}>
                                     <label>{getLabelMontoRecibido()}</label>
                                     <div className={estilos.inputConIcono}>
-                                        <span className={estilos.iconoMoneda}>RD$</span>
+                                        <span className={estilos.iconoMoneda}>{simboloEmpresa || monedaEmpresa}</span>
                                         <input
                                             type="number"
                                             step="0.01"
@@ -1142,7 +1135,7 @@ export default function NuevaVenta() {
                                 {metodoPago === 'efectivo' && efectivoRecibido && parseFloat(cambio) >= 0 && (
                                     <div className={`${estilos.cambioInfo} ${estilos[tema]}`}>
                                         <span>Cambio:</span>
-                                        <strong>RD$ {cambio}</strong>
+                                        <strong>{formatearMonto(cambio)}</strong>
                                     </div>
                                 )}
                             </div>
@@ -1152,7 +1145,7 @@ export default function NuevaVenta() {
                             <div className={estilos.campoCompacto}>
                                 <label>Descuento Global</label>
                                 <div className={estilos.inputConIcono}>
-                                    <span className={estilos.iconoMoneda}>RD$</span>
+                                    <span className={estilos.iconoMoneda}>{simboloEmpresa || monedaEmpresa}</span>
                                     <input
                                         type="number"
                                         step="0.01"
@@ -1170,25 +1163,25 @@ export default function NuevaVenta() {
                         <div className={estilos.desgloseTotales}>
                             <div className={estilos.lineaTotalCompacta}>
                                 <span>Subtotal:</span>
-                                <span>RD$ {totales.subtotal}</span>
+                                <span>{formatearMonto(totales.subtotal)}</span>
                             </div>
 
                             {parseFloat(totales.subtotalExtras) > 0 && (
                                 <div className={estilos.lineaTotalCompacta}>
                                     <span>Extras:</span>
-                                    <span>RD$ {totales.subtotalExtras}</span>
+                                    <span>{formatearMonto(totales.subtotalExtras)}</span>
                                 </div>
                             )}
 
                             <div className={estilos.lineaTotalCompacta}>
                                 <span>{datosEmpresa?.impuesto_nombre || 'ITBIS'}:</span>
-                                <span>RD$ {totales.itbis}</span>
+                                <span>{formatearMonto(totales.itbis)}</span>
                             </div>
 
                             {parseFloat(totales.descuento) > 0 && (
                                 <div className={`${estilos.lineaTotalCompacta} ${estilos.descuento}`}>
                                     <span>Descuento:</span>
-                                    <span>- RD$ {totales.descuento}</span>
+                                    <span>- {formatearMonto(totales.descuento)}</span>
                                 </div>
                             )}
 
@@ -1196,7 +1189,7 @@ export default function NuevaVenta() {
 
                             <div className={estilos.totalFinal}>
                                 <span>Total a Pagar:</span>
-                                <span>RD$ {totales.total}</span>
+                                <span>{formatearMonto(totales.total)}</span>
                             </div>
                         </div>
                     </div>
@@ -1323,7 +1316,7 @@ export default function NuevaVenta() {
                                         Precio Unitario <span className={estilos.requeridoExtra}>*</span>
                                     </label>
                                     <div className={estilos.inputWrapperExtra}>
-                                        <span className={estilos.prefijoExtra}>RD$</span>
+                                        <span className={estilos.prefijoExtra}>{simboloEmpresa || monedaEmpresa}</span>
                                         <input
                                             type="number"
                                             value={formExtra.precioUnitario}
@@ -1357,17 +1350,17 @@ export default function NuevaVenta() {
                                 <div className={estilos.resumenExtra}>
                                     <div className={estilos.lineaResumenExtra}>
                                         <span>Subtotal:</span>
-                                        <span>RD$ {((parseFloat(formExtra.precioUnitario) || 0) * (parseFloat(formExtra.cantidad) || 1)).toFixed(2)}</span>
+                                        <span>{formatearMonto((parseFloat(formExtra.precioUnitario) || 0) * (parseFloat(formExtra.cantidad) || 1))}</span>
                                     </div>
                                     {formExtra.aplicaItbis && (
                                         <div className={estilos.lineaResumenExtra}>
                                             <span>Impuesto ({datosEmpresa?.impuesto_porcentaje || 18}%):</span>
-                                            <span>RD$ {(((parseFloat(formExtra.precioUnitario) || 0) * (parseFloat(formExtra.cantidad) || 1)) * (datosEmpresa?.impuesto_porcentaje || 18) / 100).toFixed(2)}</span>
+                                            <span>{formatearMonto(((parseFloat(formExtra.precioUnitario) || 0) * (parseFloat(formExtra.cantidad) || 1)) * (datosEmpresa?.impuesto_porcentaje || 18) / 100)}</span>
                                         </div>
                                     )}
                                     <div className={estilos.lineaResumenTotalExtra}>
                                         <span>Total:</span>
-                                        <span>RD$ {calcularTotalExtra().toFixed(2)}</span>
+                                        <span>{formatearMonto(calcularTotalExtra())}</span>
                                     </div>
                                 </div>
                             )}

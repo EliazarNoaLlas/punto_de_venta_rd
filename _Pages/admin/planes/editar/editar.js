@@ -354,7 +354,7 @@ export default function EditarPlan({ planId }) {
                             <div className={estilos.formGroup}>
                                 <label>
                                     <DollarSign size={16} />
-                                    Monto Mínimo
+                                    Monto Mínimo Financiable
                                 </label>
                                 <div className={estilos.inputConIcono}>
                                     <DollarSign className={estilos.iconoInput} size={18} />
@@ -368,6 +368,9 @@ export default function EditarPlan({ planId }) {
                                         placeholder="0.00"
                                     />
                                 </div>
+                                <small className={estilos.helperText}>
+                                    Monto mínimo requerido para aplicar este plan. Dejar en 0 para sin límite mínimo.
+                                </small>
                             </div>
 
                             <div className={estilos.formGroup}>

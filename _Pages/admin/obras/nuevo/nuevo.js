@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { crearObra } from './servidor'
+import { crearObra, obtenerRegionesEmpresa } from './servidor'
 import { TIPOS_OBRA, formatearTipoObra } from '../../core/construction/estados'
 import { 
     HardHat, Hammer, Wrench, Settings, FileText, 
@@ -41,17 +41,7 @@ export default function NuevaObra() {
 
     const [imagenes, setImagenes] = useState([])
     const [documentos, setDocumentos] = useState([])
-
-    // Opciones predefinidas
-    const provincias = [
-        'Azua', 'Baoruco', 'Barahona', 'Dajabón', 'Distrito Nacional', 'Duarte',
-        'El Seibo', 'Elías Piña', 'Espaillat', 'Hato Mayor', 'Hermanas Mirabal',
-        'Independencia', 'La Altagracia', 'La Romana', 'La Vega', 'María Trinidad Sánchez',
-        'Monseñor Nouel', 'Monte Cristi', 'Monte Plata', 'Pedernales', 'Peravia',
-        'Puerto Plata', 'Samaná', 'San Cristóbal', 'San José de Ocoa', 'San Juan',
-        'San Pedro de Macorís', 'Sánchez Ramírez', 'Santiago', 'Santiago Rodríguez',
-        'Santo Domingo', 'Valverde'
-    ]
+    const [regiones, setRegiones] = useState([])
 
     const zonas = [
         'Zona Norte', 'Zona Sur', 'Zona Este', 'Zona Oeste', 'Zona Centro',
@@ -95,6 +85,21 @@ export default function NuevaObra() {
             tipo: 'otro'
         }
     ]
+
+    useEffect(() => {
+        cargarRegiones()
+    }, [])
+
+    const cargarRegiones = async () => {
+        try {
+            const resultado = await obtenerRegionesEmpresa()
+            if (resultado.success) {
+                setRegiones(resultado.regiones || [])
+            }
+        } catch (error) {
+            console.error('Error al cargar regiones:', error)
+        }
+    }
 
     const pasos = [
         { 
@@ -500,20 +505,32 @@ export default function NuevaObra() {
                                 <div className={estilos.grupoInput}>
                                     <label>
                                         <MapPin />
-                                        Provincia *
+                                        Region / Provincia *
                                     </label>
-                                    <select
-                                        name="provincia"
-                                        value={formData.provincia}
-                                        onChange={handleChange}
-                                        className={errors.provincia ? estilos.inputError : ''}
-                                        disabled={procesando}
-                                    >
-                                        <option value="">Seleccione...</option>
-                                        {provincias.map(prov => (
-                                            <option key={prov} value={prov}>{prov}</option>
-                                        ))}
-                                    </select>
+                                    {regiones.length > 0 ? (
+                                        <select
+                                            name="provincia"
+                                            value={formData.provincia}
+                                            onChange={handleChange}
+                                            className={errors.provincia ? estilos.inputError : ''}
+                                            disabled={procesando}
+                                        >
+                                            <option value="">Seleccione...</option>
+                                            {regiones.map(region => (
+                                                <option key={region.id} value={region.nombre}>{region.nombre}</option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="text"
+                                            name="provincia"
+                                            value={formData.provincia}
+                                            onChange={handleChange}
+                                            className={errors.provincia ? estilos.inputError : ''}
+                                            placeholder="Provincia o region"
+                                            disabled={procesando}
+                                        />
+                                    )}
                                     {errors.provincia && (
                                         <p className={estilos.mensajeError}>
                                             <AlertCircle />

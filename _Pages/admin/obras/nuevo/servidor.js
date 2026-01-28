@@ -144,3 +144,46 @@ export async function crearObra(datos) {
     }
 }
 
+export async function obtenerRegionesEmpresa() {
+    let connection
+    try {
+        const usuario = await obtenerUsuarioActual()
+        validarPermisoObras(usuario)
+
+        connection = await db.getConnection()
+
+        const [empresa] = await connection.execute(
+            'SELECT pais_id FROM empresas WHERE id = ?',
+            [usuario.empresaId]
+        )
+
+        const paisId = empresa[0]?.pais_id
+        if (!paisId) {
+            connection.release()
+            return { success: true, regiones: [] }
+        }
+
+        const [regiones] = await connection.execute(
+            `SELECT id, nombre, tipo
+             FROM regiones
+             WHERE pais_id = ? AND activo = TRUE
+             ORDER BY nombre ASC`,
+            [paisId]
+        )
+
+        connection.release()
+
+        return { success: true, regiones }
+    } catch (error) {
+        console.error('Error al obtener regiones:', error)
+        if (connection) {
+            connection.release()
+        }
+        return {
+            success: false,
+            mensaje: 'Error al cargar regiones',
+            regiones: []
+        }
+    }
+}
+

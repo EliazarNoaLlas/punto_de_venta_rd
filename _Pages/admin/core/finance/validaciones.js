@@ -215,14 +215,18 @@ export function validarDatosContrato(contrato) {
         errores.push('El plan de financiamiento es obligatorio.');
     }
 
-    // Validar venta asociada
-    if (!contrato.venta_id || typeof contrato.venta_id !== 'number') {
-        errores.push('La venta asociada es obligatoria.');
+    // Validar venta asociada (opcional - puede ser null si es contrato directo)
+    if (contrato.venta_id !== null && contrato.venta_id !== undefined) {
+        if (typeof contrato.venta_id !== 'number') {
+            errores.push('La venta asociada debe ser un ID numérico válido.');
+        }
     }
 
-    // Validar NCF
-    if (!contrato.ncf || typeof contrato.ncf !== 'string' || contrato.ncf.trim().length === 0) {
-        errores.push('El NCF es obligatorio.');
+    // Validar NCF (opcional para contratos directos)
+    if (contrato.ncf !== null && contrato.ncf !== undefined && contrato.ncf !== '') {
+        if (typeof contrato.ncf !== 'string') {
+            errores.push('El NCF debe ser una cadena de texto válida.');
+        }
     }
 
     // Validar precio del producto

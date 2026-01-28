@@ -65,6 +65,8 @@ export async function obtenerVentaEditar(ventaId) {
                 rnc,
                 impuesto_nombre,
                 impuesto_porcentaje,
+                moneda,
+                locale,
                 simbolo_moneda
             FROM empresas
             WHERE id = ? AND activo = TRUE`,

@@ -98,6 +98,10 @@ export async function actualizarEmpresa(datosEmpresa) {
             }
         }
 
+        const paisId = datosEmpresa.pais_id ? parseInt(datosEmpresa.pais_id) : null
+        const regionId = datosEmpresa.region_id ? parseInt(datosEmpresa.region_id) : null
+        const locale = datosEmpresa.locale?.trim() || null
+
         await connection.execute(
             `UPDATE empresas SET
                 nombre_empresa = ?,
@@ -109,10 +113,13 @@ export async function actualizarEmpresa(datosEmpresa) {
                 sector = ?,
                 municipio = ?,
                 provincia = ?,
+                pais_id = ?,
+                region_id = ?,
                 telefono = ?,
                 email = ?,
                 moneda = ?,
                 simbolo_moneda = ?,
+                locale = ?,
                 impuesto_nombre = ?,
                 impuesto_porcentaje = ?,
                 mensaje_factura = ?
@@ -126,11 +133,14 @@ export async function actualizarEmpresa(datosEmpresa) {
                 datosEmpresa.direccion?.trim() || null,
                 datosEmpresa.sector?.trim() || null,
                 datosEmpresa.municipio?.trim() || null,
-                datosEmpresa.provincia || null,
+                datosEmpresa.provincia?.trim() || null,
+                Number.isNaN(paisId) ? null : paisId,
+                Number.isNaN(regionId) ? null : regionId,
                 datosEmpresa.telefono?.trim() || null,
                 datosEmpresa.email?.trim() || null,
                 datosEmpresa.moneda || 'DOP',
                 datosEmpresa.simbolo_moneda || 'RD$',
+                locale,
                 datosEmpresa.impuesto_nombre?.trim() || 'ITBIS',
                 datosEmpresa.impuesto_porcentaje !== undefined && datosEmpresa.impuesto_porcentaje !== null && datosEmpresa.impuesto_porcentaje !== '' ? parseFloat(datosEmpresa.impuesto_porcentaje) : 0.00,
                 datosEmpresa.mensaje_factura?.trim() || null,
@@ -192,6 +202,164 @@ export async function obtenerMonedas() {
             connection.release()
         }
 
+        return {
+            success: false,
+            mensaje: 'Error al cargar monedas',
+            monedas: []
+        }
+    }
+}
+
+export async function obtenerPaises() {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
+
+        if (!userId) {
+            return {
+                success: false,
+                mensaje: 'Sesion invalida'
+            }
+        }
+
+        if (userTipo !== 'admin') {
+            return {
+                success: false,
+                mensaje: 'No tienes permisos para ver paises'
+            }
+        }
+
+        connection = await db.getConnection()
+
+        const [paises] = await connection.execute(
+            `SELECT id, codigo_iso2, nombre, moneda_principal_codigo, locale_default, activo
+             FROM paises
+             WHERE activo = TRUE
+             ORDER BY nombre ASC`
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            paises
+        }
+    } catch (error) {
+        console.error('Error al obtener paises:', error)
+        if (connection) {
+            connection.release()
+        }
+        return {
+            success: false,
+            mensaje: 'Error al cargar paises',
+            paises: []
+        }
+    }
+}
+
+export async function obtenerRegiones(paisId) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
+
+        if (!userId) {
+            return {
+                success: false,
+                mensaje: 'Sesion invalida'
+            }
+        }
+
+        if (userTipo !== 'admin') {
+            return {
+                success: false,
+                mensaje: 'No tienes permisos para ver regiones'
+            }
+        }
+
+        if (!paisId) {
+            return { success: true, regiones: [] }
+        }
+
+        connection = await db.getConnection()
+
+        const [regiones] = await connection.execute(
+            `SELECT id, nombre, codigo, tipo
+             FROM regiones
+             WHERE pais_id = ? AND activo = TRUE
+             ORDER BY nombre ASC`,
+            [paisId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            regiones
+        }
+    } catch (error) {
+        console.error('Error al obtener regiones:', error)
+        if (connection) {
+            connection.release()
+        }
+        return {
+            success: false,
+            mensaje: 'Error al cargar regiones',
+            regiones: []
+        }
+    }
+}
+
+export async function obtenerMonedasPorPais(paisId) {
+    let connection
+    try {
+        const cookieStore = await cookies()
+        const userId = cookieStore.get('userId')?.value
+        const userTipo = cookieStore.get('userTipo')?.value
+
+        if (!userId) {
+            return {
+                success: false,
+                mensaje: 'Sesion invalida'
+            }
+        }
+
+        if (userTipo !== 'admin') {
+            return {
+                success: false,
+                mensaje: 'No tienes permisos para ver monedas'
+            }
+        }
+
+        if (!paisId) {
+            return { success: true, monedas: [] }
+        }
+
+        connection = await db.getConnection()
+
+        const [monedas] = await connection.execute(
+            `SELECT m.id, m.codigo, m.nombre, m.simbolo, m.activo, pm.es_principal
+             FROM paises_monedas pm
+             INNER JOIN monedas m ON m.codigo = pm.moneda_codigo
+             WHERE pm.pais_id = ?
+             ORDER BY pm.es_principal DESC, m.nombre ASC`,
+            [paisId]
+        )
+
+        connection.release()
+
+        return {
+            success: true,
+            monedas
+        }
+    } catch (error) {
+        console.error('Error al obtener monedas por pais:', error)
+        if (connection) {
+            connection.release()
+        }
         return {
             success: false,
             mensaje: 'Error al cargar monedas',

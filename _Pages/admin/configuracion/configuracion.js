@@ -5,6 +5,9 @@ import {
     obtenerConfiguracion, 
     actualizarEmpresa,
     obtenerMonedas,
+    obtenerPaises,
+    obtenerRegiones,
+    obtenerMonedasPorPais,
     crearMoneda,
     actualizarMoneda,
     eliminarMoneda,
@@ -32,16 +35,22 @@ export default function ConfiguracionAdmin() {
         sector: '',
         municipio: '',
         provincia: '',
+        pais_id: '',
+        region_id: '',
         telefono: '',
         email: '',
         moneda: 'DOP',
         simbolo_moneda: 'RD$',
+        locale: '',
         impuesto_nombre: 'ITBIS',
         impuesto_porcentaje: 0.00,
         mensaje_factura: ''
     })
 
     const [monedas, setMonedas] = useState([])
+    const [monedasPais, setMonedasPais] = useState([])
+    const [paises, setPaises] = useState([])
+    const [regiones, setRegiones] = useState([])
     const [unidadesMedida, setUnidadesMedida] = useState([])
     const [modalMoneda, setModalMoneda] = useState(false)
     const [modalUnidad, setModalUnidad] = useState(false)
@@ -63,16 +72,6 @@ export default function ConfiguracionAdmin() {
     })
 
     const [errores, setErrores] = useState({})
-
-    const provincias = [
-        'Azua', 'Bahoruco', 'Barahona', 'Dajabón', 'Distrito Nacional', 'Duarte',
-        'El Seibo', 'Elías Piña', 'Espaillat', 'Hato Mayor', 'Hermanas Mirabal',
-        'Independencia', 'La Altagracia', 'La Romana', 'La Vega', 'María Trinidad Sánchez',
-        'Monseñor Nouel', 'Monte Cristi', 'Monte Plata', 'Pedernales', 'Peravia',
-        'Puerto Plata', 'Samaná', 'San Cristóbal', 'San José de Ocoa', 'San Juan',
-        'San Pedro de Macorís', 'Sánchez Ramírez', 'Santiago', 'Santiago Rodríguez',
-        'Santo Domingo', 'Valverde'
-    ]
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -96,16 +95,40 @@ export default function ConfiguracionAdmin() {
         cargarDatos()
     }, [])
 
+    const cargarRegionesYMonedas = async (paisId) => {
+        const [resultadoRegiones, resultadoMonedasPais] = await Promise.all([
+            obtenerRegiones(paisId),
+            obtenerMonedasPorPais(paisId)
+        ])
+
+        if (resultadoRegiones.success) {
+            setRegiones(resultadoRegiones.regiones || [])
+        }
+
+        if (resultadoMonedasPais.success) {
+            setMonedasPais(resultadoMonedasPais.monedas || [])
+        }
+    }
+
     const cargarDatos = async () => {
         setCargando(true)
         try {
-            const [resultadoConfig, resultadoMonedas, resultadoUnidades] = await Promise.all([
+            const [resultadoConfig, resultadoMonedas, resultadoUnidades, resultadoPaises] = await Promise.all([
                 obtenerConfiguracion(),
                 obtenerMonedas(),
-                obtenerUnidadesMedida()
+                obtenerUnidadesMedida(),
+                obtenerPaises()
             ])
 
+            if (resultadoPaises.success) {
+                setPaises(resultadoPaises.paises)
+            }
+
             if (resultadoConfig.success) {
+                const paisesDisponibles = resultadoPaises.success ? resultadoPaises.paises : []
+                const paisDefault = paisesDisponibles.find(p => p.codigo_iso2 === 'DO') || paisesDisponibles[0]
+                const paisIdInicial = resultadoConfig.empresa.pais_id || paisDefault?.id || ''
+                const localeInicial = resultadoConfig.empresa.locale || paisDefault?.locale_default || 'es-DO'
                 setDatosEmpresa({
                     nombre_empresa: resultadoConfig.empresa.nombre_empresa || '',
                     rnc: resultadoConfig.empresa.rnc || '',
@@ -116,14 +139,21 @@ export default function ConfiguracionAdmin() {
                     sector: resultadoConfig.empresa.sector || '',
                     municipio: resultadoConfig.empresa.municipio || '',
                     provincia: resultadoConfig.empresa.provincia || '',
+                    pais_id: paisIdInicial,
+                    region_id: resultadoConfig.empresa.region_id || '',
                     telefono: resultadoConfig.empresa.telefono || '',
                     email: resultadoConfig.empresa.email || '',
-                    moneda: resultadoConfig.empresa.moneda || 'DOP',
+                    moneda: resultadoConfig.empresa.moneda || paisDefault?.moneda_principal_codigo || 'DOP',
                     simbolo_moneda: resultadoConfig.empresa.simbolo_moneda || 'RD$',
+                    locale: localeInicial,
                     impuesto_nombre: resultadoConfig.empresa.impuesto_nombre || 'ITBIS',
                     impuesto_porcentaje: resultadoConfig.empresa.impuesto_porcentaje !== undefined && resultadoConfig.empresa.impuesto_porcentaje !== null ? resultadoConfig.empresa.impuesto_porcentaje : 0.00,
                     mensaje_factura: resultadoConfig.empresa.mensaje_factura || ''
                 })
+
+                if (paisIdInicial) {
+                    await cargarRegionesYMonedas(paisIdInicial)
+                }
             }
 
             if (resultadoMonedas.success) {
@@ -161,11 +191,63 @@ export default function ConfiguracionAdmin() {
     }
 
     const manejarCambioMoneda = (e) => {
-        const monedaSeleccionada = monedas.find(m => m.codigo === e.target.value)
+        const monedasDisponibles = monedasPais.length > 0 ? monedasPais : monedas
+        const monedaSeleccionada = monedasDisponibles.find(m => m.codigo === e.target.value)
+        if (!monedaSeleccionada) return
         setDatosEmpresa(prev => ({
             ...prev,
             moneda: monedaSeleccionada.codigo,
             simbolo_moneda: monedaSeleccionada.simbolo
+        }))
+    }
+
+    const manejarCambioPais = async (e) => {
+        const paisId = e.target.value
+        const paisSeleccionado = paises.find(p => p.id === parseInt(paisId))
+        setDatosEmpresa(prev => ({
+            ...prev,
+            pais_id: paisId,
+            region_id: '',
+            provincia: '',
+            locale: paisSeleccionado?.locale_default || prev.locale
+        }))
+
+        if (!paisId) {
+            setRegiones([])
+            setMonedasPais([])
+            return
+        }
+
+        const [resultadoRegiones, resultadoMonedasPais] = await Promise.all([
+            obtenerRegiones(paisId),
+            obtenerMonedasPorPais(paisId)
+        ])
+
+        if (resultadoRegiones.success) {
+            setRegiones(resultadoRegiones.regiones || [])
+        }
+
+        if (resultadoMonedasPais.success) {
+            const monedasPaisData = resultadoMonedasPais.monedas || []
+            setMonedasPais(monedasPaisData)
+            const monedaPrincipal = monedasPaisData.find(mon => mon.es_principal) || monedasPaisData[0]
+            if (monedaPrincipal) {
+                setDatosEmpresa(prev => ({
+                    ...prev,
+                    moneda: monedaPrincipal.codigo,
+                    simbolo_moneda: monedaPrincipal.simbolo
+                }))
+            }
+        }
+    }
+
+    const manejarCambioRegion = (e) => {
+        const regionId = e.target.value
+        const regionSeleccionada = regiones.find(r => r.id === parseInt(regionId))
+        setDatosEmpresa(prev => ({
+            ...prev,
+            region_id: regionId,
+            provincia: regionSeleccionada?.nombre || ''
         }))
     }
 
@@ -322,6 +404,8 @@ export default function ConfiguracionAdmin() {
         }
     }
 
+    const monedasDisponibles = (monedasPais.length > 0 ? monedasPais : monedas).filter(mon => mon.activo)
+
     if (cargando) {
         return (
             <div className={`${estilos.contenedor} ${estilos[tema]}`}>
@@ -423,14 +507,36 @@ export default function ConfiguracionAdmin() {
                                         <input type="text" name="municipio" value={datosEmpresa.municipio} onChange={manejarCambio} disabled={procesando} />
                                     </div>
                                 </div>
-                                <div className={estilos.grupoInput}>
-                                    <label>Provincia *</label>
-                                    <select name="provincia" value={datosEmpresa.provincia} onChange={manejarCambio} disabled={procesando}>
-                                        <option value="">Seleccionar provincia</option>
-                                        {provincias.map(prov => (
-                                            <option key={prov} value={prov}>{prov}</option>
-                                        ))}
-                                    </select>
+                                <div className={estilos.filaForm}>
+                                    <div className={estilos.grupoInput}>
+                                        <label>Pais *</label>
+                                        <select name="pais_id" value={datosEmpresa.pais_id} onChange={manejarCambioPais} disabled={procesando}>
+                                            <option value="">Seleccionar pais</option>
+                                            {paises.map(pais => (
+                                                <option key={pais.id} value={pais.id}>{pais.nombre}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className={estilos.grupoInput}>
+                                        <label>Region / Provincia</label>
+                                        {regiones.length > 0 ? (
+                                            <select name="region_id" value={datosEmpresa.region_id} onChange={manejarCambioRegion} disabled={procesando}>
+                                                <option value="">Seleccionar region</option>
+                                                {regiones.map(region => (
+                                                    <option key={region.id} value={region.id}>{region.nombre}</option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <input
+                                                type="text"
+                                                name="provincia"
+                                                value={datosEmpresa.provincia}
+                                                onChange={manejarCambio}
+                                                disabled={procesando}
+                                                placeholder="Provincia o region"
+                                            />
+                                        )}
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -441,7 +547,7 @@ export default function ConfiguracionAdmin() {
                                     <div className={estilos.grupoInput}>
                                         <label>Moneda *</label>
                                         <select name="moneda" value={datosEmpresa.moneda} onChange={manejarCambioMoneda} disabled={procesando}>
-                                            {monedas.filter(m => m.activo).map(mon => (
+                                            {monedasDisponibles.map(mon => (
                                                 <option key={`moneda-${mon.id}-${mon.codigo}`} value={mon.codigo}>
                                                     {mon.nombre} ({mon.simbolo})
                                                 </option>

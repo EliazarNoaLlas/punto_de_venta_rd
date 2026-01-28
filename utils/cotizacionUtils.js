@@ -1,3 +1,5 @@
+import { formatCurrency } from './monedaUtils'
+
 /**
  * Utilidades para el módulo de Cotizaciones
  */
@@ -14,17 +16,22 @@ export function formatearNumeroCotizacion(prefijo, numeroActual) {
 }
 
 /**
- * Formatea un valor como moneda dominicana
+ * Formatea un valor como moneda
  * @param {number} valor - Valor a formatear
+ * @param {Object} options
+ * @param {string} options.currency
+ * @param {string} options.locale
+ * @param {string} options.symbol
  * @returns {string} Valor formateado
  */
-export function formatearMoneda(valor) {
-    return new Intl.NumberFormat('es-DO', {
-        style: 'currency',
-        currency: 'DOP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-    }).format(valor || 0);
+export function formatearMoneda(valor, options = {}) {
+    const {
+        currency = 'DOP',
+        locale = 'es-DO',
+        symbol
+    } = options
+
+    return formatCurrency(valor || 0, { currency, locale, symbol })
 }
 
 /**

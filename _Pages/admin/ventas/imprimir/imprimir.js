@@ -6,6 +6,7 @@ import html2canvas from 'html2canvas'
 import { obtenerVentaImprimir } from './servidor'
 import estilos from './imprimir.module.css'
 import { generarTicketESCPOS } from '@/utils/escpos'
+import { formatCurrency } from '@/utils/monedaUtils'
 import {
     conectarQZTray,
     obtenerImpresoras,
@@ -43,6 +44,10 @@ export default function ImprimirVenta() {
         mostrarCodigoBarras: true,
         mostrarExtras: true
     })
+
+    const monedaEmpresa = empresa?.moneda || 'DOP'
+    const localeEmpresa = empresa?.locale || 'es-DO'
+    const simboloEmpresa = empresa?.simbolo_moneda || ''
 
     useEffect(() => {
         const temaLocal = localStorage.getItem('tema') || 'light'
@@ -268,11 +273,11 @@ export default function ImprimirVenta() {
     }
 
     const formatearMoneda = (monto) => {
-        return new Intl.NumberFormat('es-DO', {
-            style: 'currency',
-            currency: 'DOP',
-            minimumFractionDigits: 2
-        }).format(monto)
+        return formatCurrency(monto, {
+            currency: monedaEmpresa,
+            locale: localeEmpresa,
+            symbol: simboloEmpresa
+        })
     }
 
     const esMobile = () => {
