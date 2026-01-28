@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { obtenerCuotas, obtenerEstadisticasCuotas } from './servidor'
 import { calcularDiasAtraso } from '../core/finance/calculos'
 import { ESTADOS_CUOTA, formatearEstadoCuota } from '../core/finance/estados'
@@ -13,7 +14,8 @@ export default function CuotasFinanciamiento() {
     const [cargando, setCargando] = useState(true)
     const [cuotas, setCuotas] = useState([])
     const [estadisticas, setEstadisticas] = useState(null)
-    const [vistaActiva, setVistaActiva] = useState('tabla') // 'tabla' o 'tarjetas'
+    const [vistaActiva, setVistaActiva] = useState('tabla')
+    const [tabActiva, setTabActiva] = useState('todas')
     const [paginacion, setPaginacion] = useState({
         pagina: 1,
         limite: 25,
@@ -50,18 +52,21 @@ export default function CuotasFinanciamiento() {
 
     useEffect(() => {
         cargarDatos()
-    }, [paginacion.pagina, filtros])
+    }, [paginacion.pagina, filtros, tabActiva])
 
     const cargarDatos = async () => {
         setCargando(true)
         try {
-            console.log('🔍 Cargando cuotas con filtros:', filtros)
-            
+            const estadoFiltro = tabActiva === 'todas' ? filtros.estado : 
+                                 tabActiva === 'pendientes' ? 'pendiente' :
+                                 tabActiva === 'vencidas' ? 'vencida' :
+                                 tabActiva === 'pagadas' ? 'pagada' : filtros.estado
+
             const [resultadoCuotas, resultadoEstadisticas] = await Promise.all([
                 obtenerCuotas({
                     pagina: paginacion.pagina,
                     limite: paginacion.limite,
-                    estado: filtros.estado || undefined,
+                    estado: estadoFiltro || undefined,
                     buscar: filtros.buscar || undefined,
                     fecha_desde: filtros.fecha_desde || undefined,
                     fecha_hasta: filtros.fecha_hasta || undefined,
@@ -73,30 +78,19 @@ export default function CuotasFinanciamiento() {
                 })
             ])
 
-            console.log('📊 Resultado cuotas:', resultadoCuotas)
-            console.log('📈 Resultado estadísticas:', resultadoEstadisticas)
-
             if (resultadoCuotas.success) {
                 setCuotas(resultadoCuotas.cuotas)
                 setPaginacion(prev => ({
                     ...prev,
                     ...resultadoCuotas.paginacion
                 }))
-                console.log(`✅ ${resultadoCuotas.cuotas.length} cuotas cargadas`)
-            } else {
-                console.error('❌ Error al cargar cuotas:', resultadoCuotas.mensaje)
-                alert(resultadoCuotas.mensaje || 'Error al cargar cuotas')
             }
 
             if (resultadoEstadisticas.success) {
                 setEstadisticas(resultadoEstadisticas.estadisticas)
-                console.log('✅ Estadísticas cargadas:', resultadoEstadisticas.estadisticas)
-            } else {
-                console.error('❌ Error al cargar estadísticas:', resultadoEstadisticas.mensaje)
             }
         } catch (error) {
-            console.error('💥 Error crítico al cargar datos:', error)
-            alert('Error crítico al cargar las cuotas. Revisa la consola para más detalles.')
+            console.error('Error al cargar datos:', error)
         } finally {
             setCargando(false)
         }
@@ -153,6 +147,7 @@ export default function CuotasFinanciamiento() {
             vencidas: false,
             ordenar: 'vencimiento_asc'
         })
+        setTabActiva('todas')
         setPaginacion(prev => ({ ...prev, pagina: 1 }))
     }
 
@@ -161,17 +156,35 @@ export default function CuotasFinanciamiento() {
         return Math.round((pagadas / total) * 100)
     }
 
+    const obtenerProximasCuotas = () => {
+        if (!cuotas || cuotas.length === 0) return []
+        const hoy = new Date()
+        return cuotas
+            .filter(c => c.estado === 'pendiente' || c.estado === 'vencida')
+            .slice(0, 5)
+            .map(cuota => {
+                const fechaVenc = new Date(cuota.fecha_vencimiento)
+                const diffDias = Math.ceil((fechaVenc - hoy) / (1000 * 60 * 60 * 24))
+                let tipo = 'semana'
+                if (diffDias <= 0) tipo = 'hoy'
+                else if (diffDias <= 1) tipo = 'manana'
+                return { ...cuota, tipo, diffDias }
+            })
+    }
+
     // Componente de carga
     if (cargando && cuotas.length === 0) {
         return (
             <div className={`${estilos.contenedor} ${estilos[tema]}`}>
                 <div className={estilos.cargando}>
                     <div className={estilos.cargandoSpinner}></div>
-                    <span>Cargando cuotas de financiamiento...</span>
+                    <span>Cargando cuotas...</span>
                 </div>
             </div>
         )
     }
+
+    const proximasCuotas = obtenerProximasCuotas()
 
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
@@ -179,102 +192,189 @@ export default function CuotasFinanciamiento() {
             <header className={estilos.header}>
                 <div className={estilos.headerInfo}>
                     <div className={estilos.headerIcono}>
-                        <ion-icon name="calendar-outline"></ion-icon>
+                        <Image 
+                            src="/financias/iconosv2/Recurring Deposit-Dollar.png" 
+                            alt="Cuotas" 
+                            width={32} 
+                            height={32}
+                        />
                     </div>
-                    <div>
+                    <div className={estilos.headerTexto}>
+                        <p className={estilos.subtitulo}>Financiamiento</p>
                         <h1 className={estilos.titulo}>Cuotas de Financiamiento</h1>
-                        <p className={estilos.subtitulo}>Gestión y seguimiento de cuotas de todos los contratos</p>
                     </div>
                 </div>
                 <div className={estilos.headerAcciones}>
                     <Link href="/admin/contratos" className={estilos.btnSecundario}>
                         <ion-icon name="document-text-outline"></ion-icon>
-                        Ver Contratos
-                    </Link>
-                    <Link href="/admin/planes" className={estilos.btnSecundario}>
-                        <ion-icon name="layers-outline"></ion-icon>
-                        Ver Planes
+                        <span>Contratos</span>
                     </Link>
                     <Link href="/admin/financiamiento" className={estilos.btnPrimario}>
                         <ion-icon name="stats-chart-outline"></ion-icon>
-                        Dashboard
+                        <span>Dashboard</span>
                     </Link>
                 </div>
             </header>
 
-            {/* Estadísticas */}
+            {/* Tarjetas Hero (Balance Principal) */}
+            {estadisticas && (
+                <section className={estilos.heroCards}>
+                    {/* Tarjeta Principal - Total Financiado */}
+                    <div className={`${estilos.heroCard} ${estilos.primary}`}>
+                        <div className={estilos.heroIcono}>
+                            <Image 
+                                src="/financias/iconosv2/Money bag-Dollar.png" 
+                                alt="Total" 
+                                width={28} 
+                                height={28}
+                                style={{ filter: 'brightness(0) invert(1)' }}
+                            />
+                        </div>
+                        <span className={estilos.heroLabel}>Total Financiado Activo</span>
+                        <span className={estilos.heroValor}>
+                            {formatearMonedaCorta(estadisticas.total_monto_cuotas || 0)}
+                        </span>
+                        <span className={`${estilos.heroTendencia} ${estilos.positivo}`}>
+                            <ion-icon name="trending-up-outline"></ion-icon>
+                            {estadisticas.total_cuotas || 0} cuotas activas
+                        </span>
+                    </div>
+
+                    {/* Tarjeta Secundaria - Recaudado */}
+                    <div className={`${estilos.heroCard} ${estilos.secondary}`}>
+                        <div className={estilos.heroIcono}>
+                            <Image 
+                                src="/financias/iconosv2/Cashback Reward-Dollar.png" 
+                                alt="Recaudado" 
+                                width={28} 
+                                height={28}
+                            />
+                        </div>
+                        <span className={estilos.heroLabel}>Total Recaudado</span>
+                        <span className={estilos.heroValor}>
+                            {formatearMonedaCorta(estadisticas.total_monto_pagado || 0)}
+                        </span>
+                        <span className={`${estilos.heroTendencia} ${estilos.positivo}`}>
+                            <ion-icon name="checkmark-circle-outline"></ion-icon>
+                            {obtenerPorcentajeProgreso(estadisticas.cuotas_pagadas, estadisticas.total_cuotas)}% recuperado
+                        </span>
+                    </div>
+
+                    {/* Tarjeta Terciaria - Por Cobrar */}
+                    <div className={`${estilos.heroCard} ${estilos.success}`}>
+                        <div className={estilos.heroIcono}>
+                            <Image 
+                                src="/financias/iconosv2/Wallet.png" 
+                                alt="Por Cobrar" 
+                                width={28} 
+                                height={28}
+                                style={{ filter: 'brightness(0) invert(1)' }}
+                            />
+                        </div>
+                        <span className={estilos.heroLabel}>Pendiente por Cobrar</span>
+                        <span className={estilos.heroValor}>
+                            {formatearMonedaCorta((estadisticas.total_monto_cuotas || 0) - (estadisticas.total_monto_pagado || 0))}
+                        </span>
+                        <span className={`${estilos.heroTendencia} ${estilos.positivo}`}>
+                            <ion-icon name="time-outline"></ion-icon>
+                            {estadisticas.cuotas_pendientes || 0} cuotas pendientes
+                        </span>
+                    </div>
+                </section>
+            )}
+
+            {/* Estadísticas Secundarias */}
             {estadisticas && (
                 <section className={estilos.estadisticas}>
-                    <div className={`${estilos.estadCard} ${estilos.primary}`}>
+                    <div className={estilos.estadCard}>
                         <div className={estilos.estadIconoWrapper}>
                             <div className={`${estilos.estadIcono} ${estilos.primary}`}>
-                                <ion-icon name="layers-outline"></ion-icon>
+                                <Image 
+                                    src="/financias/iconosv2/Analytics.png" 
+                                    alt="Total" 
+                                    width={28} 
+                                    height={28}
+                                />
                             </div>
                         </div>
                         <div className={estilos.estadInfo}>
                             <span className={estilos.estadLabel}>Total Cuotas</span>
                             <span className={estilos.estadValor}>{estadisticas.total_cuotas || 0}</span>
-                            <span className={`${estilos.estadTendencia} ${estilos.neutro}`}>
-                                Contratos activos
-                            </span>
                         </div>
                     </div>
 
-                    <div className={`${estilos.estadCard} ${estilos.success}`}>
+                    <div className={estilos.estadCard}>
                         <div className={estilos.estadIconoWrapper}>
                             <div className={`${estilos.estadIcono} ${estilos.success}`}>
-                                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                                <Image 
+                                    src="/financias/iconosv2/KYC verified.png" 
+                                    alt="Pagadas" 
+                                    width={28} 
+                                    height={28}
+                                />
                             </div>
                         </div>
                         <div className={estilos.estadInfo}>
-                            <span className={estilos.estadLabel}>Cuotas Pagadas</span>
+                            <span className={estilos.estadLabel}>Pagadas</span>
                             <span className={estilos.estadValor}>{estadisticas.cuotas_pagadas || 0}</span>
                             <span className={`${estilos.estadTendencia} ${estilos.positivo}`}>
-                                <ion-icon name="trending-up-outline"></ion-icon>
-                                {obtenerPorcentajeProgreso(estadisticas.cuotas_pagadas, estadisticas.total_cuotas)}% del total
+                                <ion-icon name="arrow-up-outline"></ion-icon>
+                                {obtenerPorcentajeProgreso(estadisticas.cuotas_pagadas, estadisticas.total_cuotas)}%
                             </span>
                         </div>
                     </div>
 
-                    <div className={`${estilos.estadCard} ${estilos.warning}`}>
+                    <div className={estilos.estadCard}>
                         <div className={estilos.estadIconoWrapper}>
                             <div className={`${estilos.estadIcono} ${estilos.warning}`}>
-                                <ion-icon name="time-outline"></ion-icon>
+                                <Image 
+                                    src="/financias/iconosv2/Bill Reminder-Dollar.png" 
+                                    alt="Pendientes" 
+                                    width={28} 
+                                    height={28}
+                                />
                             </div>
                         </div>
                         <div className={estilos.estadInfo}>
-                            <span className={estilos.estadLabel}>Cuotas Pendientes</span>
+                            <span className={estilos.estadLabel}>Pendientes</span>
                             <span className={estilos.estadValor}>{estadisticas.cuotas_pendientes || 0}</span>
-                            <span className={`${estilos.estadTendencia} ${estilos.neutro}`}>
-                                Por cobrar
-                            </span>
                         </div>
                     </div>
 
-                    <div className={`${estilos.estadCard} ${estilos.danger}`}>
+                    <div className={estilos.estadCard}>
                         <div className={estilos.estadIconoWrapper}>
                             <div className={`${estilos.estadIcono} ${estilos.danger}`}>
-                                <ion-icon name="alert-circle-outline"></ion-icon>
+                                <Image 
+                                    src="/financias/iconosv2/Fraud Alert.png" 
+                                    alt="Vencidas" 
+                                    width={28} 
+                                    height={28}
+                                />
                             </div>
                         </div>
                         <div className={estilos.estadInfo}>
-                            <span className={estilos.estadLabel}>Cuotas Vencidas</span>
+                            <span className={estilos.estadLabel}>Vencidas</span>
                             <span className={estilos.estadValor}>{estadisticas.cuotas_vencidas_activas || 0}</span>
                             <span className={`${estilos.estadTendencia} ${estilos.negativo}`}>
                                 <ion-icon name="warning-outline"></ion-icon>
-                                Requieren atención
+                                Atención
                             </span>
                         </div>
                     </div>
                 </section>
             )}
 
-            {/* Métricas financieras */}
+            {/* Métricas Financieras */}
             {estadisticas && (
                 <section className={estilos.metricasSecundarias}>
                     <div className={estilos.metricaCard}>
                         <div className={`${estilos.metricaIcono} ${estilos.green}`}>
-                            <ion-icon name="cash-outline"></ion-icon>
+                            <Image 
+                                src="/financias/iconosv2/Growth.png" 
+                                alt="Cobrado" 
+                                width={26} 
+                                height={26}
+                            />
                         </div>
                         <div className={estilos.metricaDetalle}>
                             <span className={estilos.metricaLabel}>Total Cobrado</span>
@@ -286,7 +386,12 @@ export default function CuotasFinanciamiento() {
 
                     <div className={estilos.metricaCard}>
                         <div className={`${estilos.metricaIcono} ${estilos.blue}`}>
-                            <ion-icon name="wallet-outline"></ion-icon>
+                            <Image 
+                                src="/financias/iconosv2/Savings Account-Dollar.png" 
+                                alt="Por Cobrar" 
+                                width={26} 
+                                height={26}
+                            />
                         </div>
                         <div className={estilos.metricaDetalle}>
                             <span className={estilos.metricaLabel}>Por Cobrar</span>
@@ -298,7 +403,12 @@ export default function CuotasFinanciamiento() {
 
                     <div className={estilos.metricaCard}>
                         <div className={`${estilos.metricaIcono} ${estilos.red}`}>
-                            <ion-icon name="trending-down-outline"></ion-icon>
+                            <Image 
+                                src="/financias/iconosv2/Expense Tracker-Dollar.png" 
+                                alt="Mora" 
+                                width={26} 
+                                height={26}
+                            />
                         </div>
                         <div className={estilos.metricaDetalle}>
                             <span className={estilos.metricaLabel}>Mora Acumulada</span>
@@ -310,7 +420,12 @@ export default function CuotasFinanciamiento() {
 
                     <div className={estilos.metricaCard}>
                         <div className={`${estilos.metricaIcono} ${estilos.orange}`}>
-                            <ion-icon name="pie-chart-outline"></ion-icon>
+                            <Image 
+                                src="/financias/iconosv2/Percentage.png" 
+                                alt="Morosidad" 
+                                width={26} 
+                                height={26}
+                            />
                         </div>
                         <div className={estilos.metricaDetalle}>
                             <span className={estilos.metricaLabel}>Tasa Morosidad</span>
@@ -324,14 +439,14 @@ export default function CuotasFinanciamiento() {
                 </section>
             )}
 
-            {/* Barra de filtros */}
+            {/* Barra de Filtros */}
             <section className={estilos.filtrosSeccion}>
                 <div className={estilos.filtrosHeader}>
                     <div className={estilos.busquedaContainer}>
                         <ion-icon name="search-outline"></ion-icon>
                         <input
                             type="text"
-                            placeholder="Buscar por contrato, cliente, documento..."
+                            placeholder="Buscar cliente, contrato..."
                             className={estilos.inputBuscar}
                             name="buscar"
                             value={filtros.buscar}
@@ -358,7 +473,7 @@ export default function CuotasFinanciamiento() {
                             onClick={() => setFiltrosAbiertos(!filtrosAbiertos)}
                         >
                             <ion-icon name="options-outline"></ion-icon>
-                            Filtros
+                            <span>Filtros</span>
                             {(filtros.estado || filtros.fecha_desde || filtros.fecha_hasta || filtros.vencidas) && (
                                 <span className={estilos.filtrosContador}>
                                     {[filtros.estado, filtros.fecha_desde, filtros.fecha_hasta, filtros.vencidas].filter(Boolean).length}
@@ -395,7 +510,7 @@ export default function CuotasFinanciamiento() {
                                 value={filtros.estado}
                                 onChange={manejarCambioFiltro}
                             >
-                                <option value="">Todos los estados</option>
+                                <option value="">Todos</option>
                                 <option value="pendiente">Pendientes</option>
                                 <option value="pagada">Pagadas</option>
                                 <option value="parcial">Parciales</option>
@@ -447,251 +562,404 @@ export default function CuotasFinanciamiento() {
                 )}
             </section>
 
-            {/* Contenido principal */}
-            {vistaActiva === 'tabla' ? (
-                <section className={estilos.tablaSeccion}>
-                    <div className={estilos.tablaContenedor}>
-                        <table className={estilos.tabla}>
-                            <thead>
-                                <tr>
-                                    <th>Contrato</th>
-                                    <th>Cliente</th>
-                                    <th className={estilos.centrado}>Cuota #</th>
-                                    <th>Vencimiento</th>
-                                    <th className={estilos.derecha}>Monto</th>
-                                    <th className={estilos.derecha}>Pagado</th>
-                                    <th className={estilos.derecha}>Mora</th>
-                                    <th className={estilos.centrado}>Atraso</th>
-                                    <th className={estilos.centrado}>Estado</th>
-                                    <th className={estilos.centrado}>Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {cuotas.length === 0 ? (
+            {/* Contenido Principal */}
+            <div className={estilos.contenidoPrincipal}>
+                {/* Sección de Tabla/Tarjetas */}
+                {vistaActiva === 'tabla' ? (
+                    <section className={estilos.tablaSeccion}>
+                        <div className={estilos.tablaHeader}>
+                            <div className={estilos.tablaHeaderTitulo}>
+                                <ion-icon name="receipt-outline"></ion-icon>
+                                <h3>Historial de Cuotas</h3>
+                            </div>
+                            <div className={estilos.tablaTabs}>
+                                <button 
+                                    className={`${estilos.tablaTab} ${tabActiva === 'todas' ? estilos.activo : ''}`}
+                                    onClick={() => setTabActiva('todas')}
+                                >
+                                    Todas
+                                </button>
+                                <button 
+                                    className={`${estilos.tablaTab} ${tabActiva === 'pendientes' ? estilos.activo : ''}`}
+                                    onClick={() => setTabActiva('pendientes')}
+                                >
+                                    Pendientes
+                                </button>
+                                <button 
+                                    className={`${estilos.tablaTab} ${tabActiva === 'vencidas' ? estilos.activo : ''}`}
+                                    onClick={() => setTabActiva('vencidas')}
+                                >
+                                    Vencidas
+                                </button>
+                                <button 
+                                    className={`${estilos.tablaTab} ${tabActiva === 'pagadas' ? estilos.activo : ''}`}
+                                    onClick={() => setTabActiva('pagadas')}
+                                >
+                                    Pagadas
+                                </button>
+                            </div>
+                        </div>
+                        <div className={estilos.tablaContenedor}>
+                            <table className={estilos.tabla}>
+                                <thead>
                                     <tr>
-                                        <td colSpan="10">
-                                            <div className={estilos.sinDatos}>
-                                                <ion-icon name="file-tray-outline"></ion-icon>
-                                                <span>No hay cuotas que mostrar</span>
-                                                <p>Ajusta los filtros o crea un nuevo contrato</p>
-                                            </div>
-                                        </td>
+                                        <th>Cliente</th>
+                                        <th>Contrato</th>
+                                        <th className={estilos.centrado}>Cuota</th>
+                                        <th>Vencimiento</th>
+                                        <th className={estilos.derecha}>Monto</th>
+                                        <th className={estilos.derecha}>Pagado</th>
+                                        <th className={estilos.derecha}>Mora</th>
+                                        <th className={estilos.centrado}>Atraso</th>
+                                        <th className={estilos.centrado}>Estado</th>
+                                        <th className={estilos.centrado}>Acción</th>
                                     </tr>
-                                ) : (
-                                    cuotas.map((cuota, index) => {
-                                        const diasAtraso = cuota.dias_atraso_calculado || calcularDiasAtraso(cuota.fecha_vencimiento)
-                                        const montoPendiente = cuota.total_a_pagar_calculado || 
-                                            (parseFloat(cuota.monto_cuota) + parseFloat(cuota.monto_mora || 0) - parseFloat(cuota.monto_pagado || 0))
-                                        const esVencida = diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA
-                                        const estadoInfo = formatearEstadoCuota(cuota.estado)
+                                </thead>
+                                <tbody>
+                                    {cuotas.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="10">
+                                                <div className={estilos.sinDatos}>
+                                                    <ion-icon name="file-tray-outline"></ion-icon>
+                                                    <span>No hay cuotas que mostrar</span>
+                                                    <p>Ajusta los filtros o crea un nuevo contrato</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        cuotas.map((cuota, index) => {
+                                            const diasAtraso = cuota.dias_atraso_calculado || calcularDiasAtraso(cuota.fecha_vencimiento)
+                                            const esVencida = diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA
+                                            const estadoInfo = formatearEstadoCuota(cuota.estado)
 
-                                        return (
-                                            <tr 
-                                                key={cuota.id}
-                                                className={`${esVencida ? estilos.filaVencida : ''} ${estilos.filaAnimada}`}
-                                                style={{ animationDelay: `${index * 0.03}s` }}
-                                            >
-                                                <td>
+                                            return (
+                                                <tr 
+                                                    key={cuota.id}
+                                                    className={`${esVencida ? estilos.filaVencida : ''} ${estilos.filaAnimada}`}
+                                                    style={{ animationDelay: `${index * 0.03}s` }}
+                                                >
+                                                    <td>
+                                                        <div className={estilos.clienteCell}>
+                                                            <div className={estilos.avatarCliente}>
+                                                                {cuota.cliente_nombre?.charAt(0) || 'C'}
+                                                            </div>
+                                                            <div className={estilos.clienteInfo}>
+                                                                <span className={estilos.clienteNombre}>
+                                                                    {cuota.cliente_nombre}
+                                                                </span>
+                                                                <span className={estilos.clienteDoc}>
+                                                                    {cuota.cliente_documento}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <Link 
+                                                            href={`/admin/contratos/ver/${cuota.contrato_id}`}
+                                                            className={estilos.contratoLink}
+                                                        >
+                                                            <span className={estilos.contratoNumero}>
+                                                                {cuota.numero_contrato}
+                                                            </span>
+                                                            <span className={estilos.contratoFecha}>
+                                                                {formatearFecha(cuota.fecha_contrato)}
+                                                            </span>
+                                                        </Link>
+                                                    </td>
+                                                    <td className={estilos.centrado}>
+                                                        <span className={estilos.numeroCuota}>
+                                                            #{cuota.numero_cuota}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <div className={estilos.fechaVencimiento}>
+                                                            <span>{formatearFecha(cuota.fecha_vencimiento)}</span>
+                                                            {esVencida && (
+                                                                <span className={estilos.vencidaBadge}>
+                                                                    <ion-icon name="warning"></ion-icon>
+                                                                    Vencida
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className={estilos.derecha}>
+                                                        <span className={estilos.monto}>
+                                                            {formatearMoneda(cuota.monto_cuota)}
+                                                        </span>
+                                                    </td>
+                                                    <td className={estilos.derecha}>
+                                                        <span className={`${estilos.monto} ${estilos.montoPagado}`}>
+                                                            {formatearMoneda(cuota.monto_pagado)}
+                                                        </span>
+                                                    </td>
+                                                    <td className={estilos.derecha}>
+                                                        <span className={`${estilos.monto} ${parseFloat(cuota.monto_mora) > 0 ? estilos.montoMora : ''}`}>
+                                                            {formatearMoneda(cuota.monto_mora)}
+                                                        </span>
+                                                    </td>
+                                                    <td className={estilos.centrado}>
+                                                        {diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA ? (
+                                                            <span className={estilos.diasAtraso}>
+                                                                {diasAtraso}d
+                                                            </span>
+                                                        ) : (
+                                                            <span className={estilos.sinAtraso}>—</span>
+                                                        )}
+                                                    </td>
+                                                    <td className={estilos.centrado}>
+                                                        <span className={`${estilos.badge} ${estilos[estadoInfo.color]}`}>
+                                                            {estadoInfo.texto}
+                                                        </span>
+                                                    </td>
+                                                    <td className={estilos.centrado}>
+                                                        <div className={estilos.acciones}>
+                                                            <Link
+                                                                href={`/admin/cuotas/ver/${cuota.id}`}
+                                                                className={`${estilos.btnAccion} ${estilos.btnAccionPrimario}`}
+                                                                title="Ver detalle"
+                                                            >
+                                                                <ion-icon name="eye-outline"></ion-icon>
+                                                            </Link>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                ) : (
+                    <section className={estilos.tarjetasSeccion}>
+                        <div className={estilos.tarjetasGrid}>
+                            {cuotas.length === 0 ? (
+                                <div className={estilos.vacio}>
+                                    <ion-icon name="file-tray-outline"></ion-icon>
+                                    <h3>No hay cuotas</h3>
+                                    <p>Ajusta los filtros o crea un nuevo contrato</p>
+                                </div>
+                            ) : (
+                                cuotas.map((cuota, index) => {
+                                    const diasAtraso = cuota.dias_atraso_calculado || calcularDiasAtraso(cuota.fecha_vencimiento)
+                                    const montoPendiente = parseFloat(cuota.monto_cuota) + parseFloat(cuota.monto_mora || 0) - parseFloat(cuota.monto_pagado || 0)
+                                    const esVencida = diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA
+                                    const estadoInfo = formatearEstadoCuota(cuota.estado)
+                                    const porcentajePago = ((parseFloat(cuota.monto_pagado) / parseFloat(cuota.monto_cuota)) * 100).toFixed(0)
+
+                                    return (
+                                        <div 
+                                            key={cuota.id} 
+                                            className={`${estilos.tarjetaCuota} ${esVencida ? estilos.tarjetaVencida : ''}`}
+                                            style={{ animationDelay: `${index * 0.05}s` }}
+                                        >
+                                            <div className={estilos.tarjetaHeader}>
+                                                <div className={estilos.tarjetaContrato}>
+                                                    <span className={estilos.tarjetaNumero}>Cuota #{cuota.numero_cuota}</span>
                                                     <Link 
                                                         href={`/admin/contratos/ver/${cuota.contrato_id}`}
-                                                        className={estilos.contratoLink}
+                                                        className={estilos.tarjetaContratoLink}
                                                     >
-                                                        <span className={estilos.contratoNumero}>
-                                                            {cuota.numero_contrato}
-                                                        </span>
-                                                        <span className={estilos.contratoFecha}>
-                                                            {formatearFecha(cuota.fecha_contrato)}
-                                                        </span>
+                                                        {cuota.numero_contrato}
                                                     </Link>
-                                                </td>
-                                                <td>
-                                                    <div className={estilos.clienteInfo}>
-                                                        <span className={estilos.clienteNombre}>
-                                                            {cuota.cliente_nombre}
-                                                        </span>
-                                                        <span className={estilos.clienteDoc}>
-                                                            {cuota.cliente_documento}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className={estilos.centrado}>
-                                                    <span className={estilos.numeroCuota}>
-                                                        #{cuota.numero_cuota}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <div className={estilos.fechaVencimiento}>
-                                                        <span>{formatearFecha(cuota.fecha_vencimiento)}</span>
-                                                        {esVencida && (
-                                                            <span className={estilos.vencidaBadge}>
-                                                                <ion-icon name="warning"></ion-icon>
-                                                                Vencida
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                                <td className={estilos.derecha}>
-                                                    <span className={estilos.monto}>
-                                                        {formatearMoneda(cuota.monto_cuota)}
-                                                    </span>
-                                                </td>
-                                                <td className={estilos.derecha}>
-                                                    <span className={`${estilos.monto} ${estilos.montoPagado}`}>
-                                                        {formatearMoneda(cuota.monto_pagado)}
-                                                    </span>
-                                                </td>
-                                                <td className={estilos.derecha}>
-                                                    <span className={`${estilos.monto} ${parseFloat(cuota.monto_mora) > 0 ? estilos.montoMora : ''}`}>
-                                                        {formatearMoneda(cuota.monto_mora)}
-                                                    </span>
-                                                </td>
-                                                <td className={estilos.centrado}>
-                                                    {diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA ? (
-                                                        <span className={estilos.diasAtraso}>
-                                                            {diasAtraso} días
-                                                        </span>
-                                                    ) : (
-                                                        <span className={estilos.sinAtraso}>—</span>
-                                                    )}
-                                                </td>
-                                                <td className={estilos.centrado}>
-                                                    <span className={`${estilos.badge} ${estilos[estadoInfo.color]}`}>
-                                                        {estadoInfo.texto}
-                                                    </span>
-                                                </td>
-                                                <td className={estilos.centrado}>
-                                                    <div className={estilos.acciones}>
-                                                        <Link
-                                                            href={`/admin/contratos/ver/${cuota.contrato_id}`}
-                                                            className={estilos.btnAccion}
-                                                            title="Ver contrato"
-                                                        >
-                                                            <ion-icon name="eye-outline"></ion-icon>
-                                                        </Link>
-                                                        <Link
-                                                            href={`/admin/cuotas/ver/${cuota.id}`}
-                                                            className={`${estilos.btnAccion} ${estilos.btnAccionPrimario}`}
-                                                            title="Ver detalle cuota"
-                                                        >
-                                                            <ion-icon name="receipt-outline"></ion-icon>
-                                                        </Link>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
-            ) : (
-                <section className={estilos.tarjetasSeccion}>
-                    <div className={estilos.tarjetasGrid}>
-                        {cuotas.length === 0 ? (
-                            <div className={estilos.vacio}>
-                                <ion-icon name="file-tray-outline"></ion-icon>
-                                <h3>No hay cuotas</h3>
-                                <p>Ajusta los filtros o crea un nuevo contrato</p>
-                            </div>
-                        ) : (
-                            cuotas.map((cuota, index) => {
-                                const diasAtraso = cuota.dias_atraso_calculado || calcularDiasAtraso(cuota.fecha_vencimiento)
-                                const montoPendiente = parseFloat(cuota.monto_cuota) + parseFloat(cuota.monto_mora || 0) - parseFloat(cuota.monto_pagado || 0)
-                                const esVencida = diasAtraso > 0 && cuota.estado !== ESTADOS_CUOTA.PAGADA
-                                const estadoInfo = formatearEstadoCuota(cuota.estado)
-                                const porcentajePago = ((parseFloat(cuota.monto_pagado) / parseFloat(cuota.monto_cuota)) * 100).toFixed(0)
-
-                                return (
-                                    <div 
-                                        key={cuota.id} 
-                                        className={`${estilos.tarjetaCuota} ${esVencida ? estilos.tarjetaVencida : ''}`}
-                                        style={{ animationDelay: `${index * 0.05}s` }}
-                                    >
-                                        <div className={estilos.tarjetaHeader}>
-                                            <div className={estilos.tarjetaContrato}>
-                                                <span className={estilos.tarjetaNumero}>Cuota #{cuota.numero_cuota}</span>
-                                                <Link 
-                                                    href={`/admin/contratos/ver/${cuota.contrato_id}`}
-                                                    className={estilos.tarjetaContratoLink}
-                                                >
-                                                    {cuota.numero_contrato}
-                                                </Link>
-                                            </div>
-                                            <span className={`${estilos.badge} ${estilos[estadoInfo.color]}`}>
-                                                {estadoInfo.texto}
-                                            </span>
-                                        </div>
-
-                                        <div className={estilos.tarjetaCliente}>
-                                            <div className={estilos.avatarCliente}>
-                                                {cuota.cliente_nombre?.charAt(0) || 'C'}
-                                            </div>
-                                            <div className={estilos.tarjetaClienteInfo}>
-                                                <span className={estilos.tarjetaClienteNombre}>{cuota.cliente_nombre}</span>
-                                                <span className={estilos.tarjetaClienteDoc}>{cuota.cliente_documento}</span>
-                                            </div>
-                                        </div>
-
-                                        <div className={estilos.tarjetaMontos}>
-                                            <div className={estilos.tarjetaMontoItem}>
-                                                <span className={estilos.tarjetaMontoLabel}>Monto Cuota</span>
-                                                <span className={estilos.tarjetaMontoValor}>{formatearMoneda(cuota.monto_cuota)}</span>
-                                            </div>
-                                            {parseFloat(cuota.monto_mora) > 0 && (
-                                                <div className={estilos.tarjetaMontoItem}>
-                                                    <span className={estilos.tarjetaMontoLabel}>Mora</span>
-                                                    <span className={`${estilos.tarjetaMontoValor} ${estilos.montoMora}`}>
-                                                        {formatearMoneda(cuota.monto_mora)}
-                                                    </span>
                                                 </div>
-                                            )}
-                                            <div className={estilos.tarjetaMontoItem}>
-                                                <span className={estilos.tarjetaMontoLabel}>Pendiente</span>
-                                                <span className={`${estilos.tarjetaMontoValor} ${estilos.montoPendiente}`}>
-                                                    {formatearMoneda(montoPendiente)}
+                                                <span className={`${estilos.badge} ${estilos[estadoInfo.color]}`}>
+                                                    {estadoInfo.texto}
                                                 </span>
                                             </div>
-                                        </div>
 
-                                        <div className={estilos.tarjetaProgreso}>
-                                            <div className={estilos.progresoInfo}>
-                                                <span>Pagado</span>
-                                                <span>{porcentajePago}%</span>
+                                            <div className={estilos.tarjetaCliente}>
+                                                <div className={estilos.avatarCliente}>
+                                                    {cuota.cliente_nombre?.charAt(0) || 'C'}
+                                                </div>
+                                                <div className={estilos.tarjetaClienteInfo}>
+                                                    <span className={estilos.tarjetaClienteNombre}>{cuota.cliente_nombre}</span>
+                                                    <span className={estilos.tarjetaClienteDoc}>{cuota.cliente_documento}</span>
+                                                </div>
                                             </div>
-                                            <div className={estilos.barraProgreso}>
-                                                <div 
-                                                    className={estilos.barraProgresoFill}
-                                                    style={{ width: `${Math.min(porcentajePago, 100)}%` }}
-                                                ></div>
-                                            </div>
-                                        </div>
 
-                                        <div className={estilos.tarjetaFooter}>
-                                            <div className={estilos.tarjetaVencimiento}>
-                                                <ion-icon name="calendar-outline"></ion-icon>
-                                                <span>{formatearFecha(cuota.fecha_vencimiento)}</span>
-                                                {esVencida && (
-                                                    <span className={estilos.diasAtrasoSmall}>{diasAtraso}d atraso</span>
+                                            <div className={estilos.tarjetaMontos}>
+                                                <div className={estilos.tarjetaMontoItem}>
+                                                    <span className={estilos.tarjetaMontoLabel}>Monto Cuota</span>
+                                                    <span className={estilos.tarjetaMontoValor}>{formatearMoneda(cuota.monto_cuota)}</span>
+                                                </div>
+                                                {parseFloat(cuota.monto_mora) > 0 && (
+                                                    <div className={estilos.tarjetaMontoItem}>
+                                                        <span className={estilos.tarjetaMontoLabel}>Mora</span>
+                                                        <span className={`${estilos.tarjetaMontoValor} ${estilos.montoMora}`}>
+                                                            {formatearMoneda(cuota.monto_mora)}
+                                                        </span>
+                                                    </div>
                                                 )}
+                                                <div className={estilos.tarjetaMontoItem}>
+                                                    <span className={estilos.tarjetaMontoLabel}>Pendiente</span>
+                                                    <span className={`${estilos.tarjetaMontoValor} ${estilos.montoPendiente}`}>
+                                                        {formatearMoneda(montoPendiente)}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div className={estilos.tarjetaAcciones}>
-                                                <Link
-                                                    href={`/admin/cuotas/ver/${cuota.id}`}
-                                                    className={estilos.btnTarjeta}
-                                                >
-                                                    Ver Detalle
-                                                    <ion-icon name="arrow-forward-outline"></ion-icon>
-                                                </Link>
+
+                                            <div className={estilos.tarjetaProgreso}>
+                                                <div className={estilos.progresoInfo}>
+                                                    <span>Pagado</span>
+                                                    <span>{porcentajePago}%</span>
+                                                </div>
+                                                <div className={estilos.barraProgreso}>
+                                                    <div 
+                                                        className={estilos.barraProgresoFill}
+                                                        style={{ width: `${Math.min(porcentajePago, 100)}%` }}
+                                                    ></div>
+                                                </div>
+                                            </div>
+
+                                            <div className={estilos.tarjetaFooter}>
+                                                <div className={estilos.tarjetaVencimiento}>
+                                                    <ion-icon name="calendar-outline"></ion-icon>
+                                                    <span>{formatearFecha(cuota.fecha_vencimiento)}</span>
+                                                    {esVencida && (
+                                                        <span className={estilos.diasAtrasoSmall}>{diasAtraso}d</span>
+                                                    )}
+                                                </div>
+                                                <div className={estilos.tarjetaAcciones}>
+                                                    <Link
+                                                        href={`/admin/cuotas/ver/${cuota.id}`}
+                                                        className={estilos.btnTarjeta}
+                                                    >
+                                                        Ver Detalle
+                                                        <ion-icon name="arrow-forward-outline"></ion-icon>
+                                                    </Link>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )
-                            })
-                        )}
+                                    )
+                                })
+                            )}
+                        </div>
+                    </section>
+                )}
+
+                {/* Panel Lateral - Próximas Cuotas */}
+                <aside className={estilos.panelLateral}>
+                    <div className={estilos.panelCard}>
+                        <div className={estilos.panelHeader}>
+                            <h3 className={estilos.panelTitulo}>Próximos Vencimientos</h3>
+                            <Link href="/admin/cuotas" className={estilos.verTodosLink}>
+                                Ver todo
+                                <ion-icon name="arrow-forward-outline"></ion-icon>
+                            </Link>
+                        </div>
+                        <div className={estilos.listaProximas}>
+                            {proximasCuotas.length === 0 ? (
+                                <div className={estilos.sinDatos} style={{ padding: '30px' }}>
+                                    <ion-icon name="checkmark-circle-outline" style={{ fontSize: '40px', color: 'var(--accent-green)' }}></ion-icon>
+                                    <span style={{ fontSize: '14px' }}>Sin cuotas próximas</span>
+                                </div>
+                            ) : (
+                                proximasCuotas.map((cuota) => (
+                                    <Link 
+                                        key={cuota.id}
+                                        href={`/admin/cuotas/ver/${cuota.id}`}
+                                        className={estilos.itemProxima}
+                                    >
+                                        <div className={`${estilos.itemProximaIcono} ${estilos[cuota.tipo]}`}>
+                                            <ion-icon name={
+                                                cuota.tipo === 'hoy' ? 'alert-circle-outline' :
+                                                cuota.tipo === 'manana' ? 'time-outline' : 'calendar-outline'
+                                            }></ion-icon>
+                                        </div>
+                                        <div className={estilos.itemProximaInfo}>
+                                            <span className={estilos.itemProximaTitulo}>
+                                                {cuota.cliente_nombre}
+                                            </span>
+                                            <span className={estilos.itemProximaSubtitulo}>
+                                                {cuota.numero_contrato} • Cuota #{cuota.numero_cuota}
+                                            </span>
+                                        </div>
+                                        <div className={estilos.itemProximaMonto}>
+                                            <span className={`${estilos.itemProximaMontoValor} ${cuota.tipo === 'hoy' ? estilos.negativo : ''}`}>
+                                                {formatearMoneda(cuota.monto_cuota)}
+                                            </span>
+                                            <span className={`${estilos.itemProximaEstado} ${estilos[cuota.estado]}`}>
+                                                {cuota.diffDias <= 0 ? 'Vencida' : 
+                                                 cuota.diffDias === 1 ? 'Mañana' : 
+                                                 `${cuota.diffDias} días`}
+                                            </span>
+                                        </div>
+                                    </Link>
+                                ))
+                            )}
+                        </div>
                     </div>
-                </section>
-            )}
+
+                    {/* Resumen Rápido */}
+                    {estadisticas && (
+                        <div className={estilos.panelCard}>
+                            <div className={estilos.panelHeader}>
+                                <h3 className={estilos.panelTitulo}>Resumen del Mes</h3>
+                            </div>
+                            <div className={estilos.listaProximas}>
+                                <div className={estilos.itemProxima} style={{ cursor: 'default' }}>
+                                    <div className={`${estilos.itemProximaIcono} ${estilos.semana}`}>
+                                        <Image 
+                                            src="/financias/iconosv2/Coin- Dollar.png" 
+                                            alt="Recaudado" 
+                                            width={24} 
+                                            height={24}
+                                        />
+                                    </div>
+                                    <div className={estilos.itemProximaInfo}>
+                                        <span className={estilos.itemProximaTitulo}>Recaudado</span>
+                                        <span className={estilos.itemProximaSubtitulo}>Este mes</span>
+                                    </div>
+                                    <div className={estilos.itemProximaMonto}>
+                                        <span className={`${estilos.itemProximaMontoValor} ${estilos.positivo}`}>
+                                            +{formatearMonedaCorta(estadisticas.total_monto_pagado || 0)}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className={estilos.itemProxima} style={{ cursor: 'default' }}>
+                                    <div className={`${estilos.itemProximaIcono} ${estilos.manana}`}>
+                                        <Image 
+                                            src="/financias/iconosv2/Bill Reminder-Dollar.png" 
+                                            alt="Por Cobrar" 
+                                            width={24} 
+                                            height={24}
+                                        />
+                                    </div>
+                                    <div className={estilos.itemProximaInfo}>
+                                        <span className={estilos.itemProximaTitulo}>Por Cobrar</span>
+                                        <span className={estilos.itemProximaSubtitulo}>Este mes</span>
+                                    </div>
+                                    <div className={estilos.itemProximaMonto}>
+                                        <span className={estilos.itemProximaMontoValor}>
+                                            {formatearMonedaCorta((estadisticas.total_monto_cuotas || 0) - (estadisticas.total_monto_pagado || 0))}
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className={estilos.itemProxima} style={{ cursor: 'default' }}>
+                                    <div className={`${estilos.itemProximaIcono} ${estilos.hoy}`}>
+                                        <Image 
+                                            src="/financias/iconosv2/Fraud Alert.png" 
+                                            alt="Mora" 
+                                            width={24} 
+                                            height={24}
+                                        />
+                                    </div>
+                                    <div className={estilos.itemProximaInfo}>
+                                        <span className={estilos.itemProximaTitulo}>Mora Total</span>
+                                        <span className={estilos.itemProximaSubtitulo}>Acumulada</span>
+                                    </div>
+                                    <div className={estilos.itemProximaMonto}>
+                                        <span className={`${estilos.itemProximaMontoValor} ${estilos.negativo}`}>
+                                            -{formatearMonedaCorta(estadisticas.total_mora || 0)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </aside>
+            </div>
 
             {/* Paginación */}
             {paginacion.totalPaginas > 1 && (
@@ -714,7 +982,7 @@ export default function CuotasFinanciamiento() {
                             disabled={paginacion.pagina === 1}
                         >
                             <ion-icon name="chevron-back-outline"></ion-icon>
-                            Anterior
+                            <span>Anterior</span>
                         </button>
                         
                         <div className={estilos.paginacionNumeros}>
@@ -746,7 +1014,7 @@ export default function CuotasFinanciamiento() {
                             onClick={() => cambiarPagina(paginacion.pagina + 1)}
                             disabled={paginacion.pagina === paginacion.totalPaginas}
                         >
-                            Siguiente
+                            <span>Siguiente</span>
                             <ion-icon name="chevron-forward-outline"></ion-icon>
                         </button>
                         <button

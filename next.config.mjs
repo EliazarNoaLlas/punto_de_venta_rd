@@ -49,6 +49,27 @@ const nextConfig = {
           { key: 'Cache-Control', value: 'no-cache' },
         ],
       },
+      // NO cachear chunks JS de Next.js (incluye Server Actions)
+      {
+        source: '/_next/static/chunks/:path*.js',
+        headers: [
+          { 
+            key: 'Cache-Control', 
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0' 
+          },
+          { key: 'Pragma', value: 'no-cache' },
+        ],
+      },
+      // Cachear otros assets estáticos normalmente
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          { 
+            key: 'Cache-Control', 
+            value: 'public, max-age=31536000, immutable' 
+          },
+        ],
+      },
     ]
   },
 }
@@ -94,9 +115,33 @@ const pwaConfig = withPWA({
         ]
       }
     },
-    // ⚡ Assets Next.js
+    // ⚡ Chunks JS de Next.js (NetworkFirst para evitar problemas con Server Actions)
     {
-      urlPattern: /^\/_next\/static\/.*$/i,
+      urlPattern: /^\/_next\/static\/chunks\/.*\.js$/i,
+      handler: 'NetworkFirst',
+      options: {
+        cacheName: 'next-chunks',
+        networkTimeoutSeconds: 3,
+        expiration: {
+          maxEntries: 20,
+          maxAgeSeconds: 0, // No cachear por tiempo, solo para offline
+        },
+        plugins: [
+          {
+            cacheWillUpdate: async ({ response }) => {
+              // Solo cachear si la respuesta es exitosa y no tiene headers no-cache
+              if (response.status === 200 && !response.headers.get('cache-control')?.includes('no-store')) {
+                return response;
+              }
+              return null;
+            }
+          }
+        ]
+      },
+    },
+    // ⚡ Otros assets estáticos de Next.js (CSS, imágenes, etc.)
+    {
+      urlPattern: /^\/_next\/static\/(?!chunks\/).*$/i,
       handler: 'CacheFirst',
       options: {
         cacheName: 'next-static',
@@ -122,4 +167,6 @@ const pwaConfig = withPWA({
   ],
 })
 
+// Bundle Analyzer (solo cuando ANALYZE=true)
+// Nota: Para usar bundle analyzer, ejecutar: ANALYZE=true npm run build
 export default pwaConfig(nextConfig)

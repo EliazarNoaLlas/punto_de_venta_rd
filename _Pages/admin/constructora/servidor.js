@@ -17,7 +17,43 @@ export async function obtenerDashboardConstructora() {
             return { success: false, mensaje: 'Sesión inválida' }
         }
 
-        // Obtener datos de todos los módulos
+        // Cargar estadísticas críticas primero (para FCP)
+        connection = await db.getConnection()
+        const fechaHoy = new Date().toISOString().split('T')[0]
+        
+        // Estadísticas críticas en paralelo (más rápido)
+        const [totalObras, totalPersonal, totalServicios, totalAlertas] = await Promise.all([
+            connection.query(
+                'SELECT COUNT(*) as total FROM obras WHERE empresa_id = ? AND estado = "activa"',
+                [empresaId]
+            ),
+            connection.query(
+                `SELECT COUNT(DISTINCT trabajador_id) as total 
+                 FROM asignaciones_trabajadores 
+                 WHERE empresa_id = ? 
+                   AND fecha_asignacion = ? 
+                   AND estado = 'activo'`,
+                [empresaId, fechaHoy]
+            ),
+            connection.query(
+                `SELECT COUNT(*) as total 
+                 FROM servicios 
+                 WHERE empresa_id = ? 
+                   AND estado IN ('pendiente', 'programado', 'en_ejecucion')`,
+                [empresaId]
+            ),
+            connection.query(
+                `SELECT COUNT(*) as total 
+                 FROM presupuesto_alertas 
+                 WHERE empresa_id = ? 
+                   AND estado = 'activa'`,
+                [empresaId]
+            )
+        ])
+        
+        connection.release()
+
+        // Datos secundarios (para interacción) - cargar después de estadísticas
         const [resObras, resPersonal, resAlertas, resServicios] = await Promise.all([
             obtenerObras({ estado: 'activa' }),
             obtenerPersonalEnCampo(),
@@ -25,51 +61,11 @@ export async function obtenerDashboardConstructora() {
             obtenerServicios({ estado: 'en_ejecucion' })
         ])
 
-        // Calcular estadísticas
+        // Calcular datos secundarios
         const obrasActivas = resObras.success ? resObras.obras : []
         const personalActivo = resPersonal.success ? resPersonal.personal : []
         const alertasActivas = resAlertas.success ? resAlertas.alertas : []
         const serviciosHoy = resServicios.success ? resServicios.servicios : []
-
-        // Estadísticas adicionales
-        connection = await db.getConnection()
-        
-        // Total de obras activas
-        const [totalObras] = await connection.query(
-            'SELECT COUNT(*) as total FROM obras WHERE empresa_id = ? AND estado = "activa"',
-            [empresaId]
-        )
-        
-        // Total de personal en campo hoy
-        const fechaHoy = new Date().toISOString().split('T')[0]
-        const [totalPersonal] = await connection.query(
-            `SELECT COUNT(DISTINCT trabajador_id) as total 
-             FROM asignaciones_trabajadores 
-             WHERE empresa_id = ? 
-               AND fecha_asignacion = ? 
-               AND estado = 'activo'`,
-            [empresaId, fechaHoy]
-        )
-        
-        // Total de servicios pendientes
-        const [totalServicios] = await connection.query(
-            `SELECT COUNT(*) as total 
-             FROM servicios 
-             WHERE empresa_id = ? 
-               AND estado IN ('pendiente', 'programado', 'en_ejecucion')`,
-            [empresaId]
-        )
-        
-        // Total de alertas activas
-        const [totalAlertas] = await connection.query(
-            `SELECT COUNT(*) as total 
-             FROM presupuesto_alertas 
-             WHERE empresa_id = ? 
-               AND estado = 'activa'`,
-            [empresaId]
-        )
-        
-        connection.release()
         
         return {
             success: true,

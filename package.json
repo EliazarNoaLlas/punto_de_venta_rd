@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "compress-svgs": "node scripts/compress-svgs.js"
   },
   "dependencies": {
     "@capacitor/core": "^8.0.1",
@@ -36,10 +37,12 @@
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.1.6",
     "@types/workbox-window": "^4.3.4",
     "babel-plugin-react-compiler": "1.0.0",
     "eslint": "^9",
     "eslint-config-next": "16.0.10",
-    "pwa-asset-generator": "^8.1.2"
+    "pwa-asset-generator": "^8.1.2",
+    "svgo": "^4.0.0"
   }
 }

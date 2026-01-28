@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerProductos, eliminarProducto } from './servidor'
 import { ImagenProducto } from '@/utils/imageUtils'
+import { useServerActionRetry } from '@/hooks/useServerActionRetry'
 import estilos from './productos.module.css'
 
 export default function ProductosAdmin() {
     const router = useRouter()
+    const { executeWithRetry } = useServerActionRetry()
     const [tema, setTema] = useState('light')
     const [cargando, setCargando] = useState(true)
     const [productos, setProductos] = useState([])
@@ -44,12 +46,12 @@ export default function ProductosAdmin() {
     const cargarProductos = async () => {
         setCargando(true)
         try {
-            const resultado = await obtenerProductos()
-            if (resultado.success) {
+            const resultado = await executeWithRetry(() => obtenerProductos())
+            if (resultado?.success) {
                 setProductos(resultado.productos)
                 setCategorias(resultado.categorias)
                 setMarcas(resultado.marcas)
-            } else {
+            } else if (resultado) {
                 alert(resultado.mensaje || 'Error al cargar productos')
             }
         } catch (error) {
@@ -67,11 +69,11 @@ export default function ProductosAdmin() {
 
         setProcesando(true)
         try {
-            const resultado = await eliminarProducto(productoId)
-            if (resultado.success) {
+            const resultado = await executeWithRetry(() => eliminarProducto(productoId))
+            if (resultado?.success) {
                 await cargarProductos()
                 alert(resultado.mensaje)
-            } else {
+            } else if (resultado) {
                 alert(resultado.mensaje || 'Error al eliminar producto')
             }
         } catch (error) {

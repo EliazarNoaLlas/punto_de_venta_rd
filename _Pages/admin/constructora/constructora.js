@@ -1,12 +1,35 @@
 "use client"
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, useMemo } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { obtenerDashboardConstructora } from './servidor'
 import { formatearEstadoObra, formatearPrioridad } from '../core/construction/estados'
 import { calcularPorcentajeEjecutado, calcularDiasRestantes } from '../core/construction/calculos'
 import { obtenerSeveridadAlerta } from '../core/construction/reglas'
+import { EstadisticasCards, NavVistas, AlertasPresupuesto, GraficaDistribucion } from './components'
 import estilos from './constructora.module.css'
+
+// Dynamic imports para vistas pesadas (lazy loading)
+const VistaGantt = dynamic(() => import('./components/VistaGantt'), {
+    loading: () => (
+        <div className={estilos.cargando}>
+            <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
+            <p>Cargando timeline...</p>
+        </div>
+    ),
+    ssr: false
+})
+
+const VistaHorarios = dynamic(() => import('./components/VistaHorarios'), {
+    loading: () => (
+        <div className={estilos.cargando}>
+            <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
+            <p>Cargando horarios...</p>
+        </div>
+    ),
+    ssr: false
+})
 
 export default function ConstructoraAdmin() {
     const router = useRouter()
@@ -63,7 +86,8 @@ export default function ConstructoraAdmin() {
         })
     }
 
-    const calcularPorcentajes = () => {
+    // Memoizar cálculos pesados
+    const porcentajes = useMemo(() => {
         if (!dashboard) return { obras: 0, servicios: 0, personal: 0 }
         
         const total = dashboard.estadisticas.obras_activas + 
@@ -77,10 +101,10 @@ export default function ConstructoraAdmin() {
             servicios: ((dashboard.estadisticas.servicios_pendientes / total) * 100).toFixed(1),
             personal: ((dashboard.estadisticas.personal_campo / total) * 100).toFixed(1)
         }
-    }
+    }, [dashboard?.estadisticas])
 
-    // Función para generar timeline de Gantt
-    const generarGanttData = () => {
+    // Memoizar datos de Gantt
+    const ganttData = useMemo(() => {
         if (!dashboard || !dashboard.obras_activas) return []
         
         return dashboard.obras_activas.map(obra => {
@@ -102,7 +126,7 @@ export default function ConstructoraAdmin() {
                 estado: obra.estado
             }
         }).slice(0, 6) // Mostrar solo 6 para no saturar
-    }
+    }, [dashboard?.obras_activas])
 
     if (cargando) {
         return (
@@ -132,8 +156,6 @@ export default function ConstructoraAdmin() {
         )
     }
 
-    const porcentajes = calcularPorcentajes()
-    const ganttData = generarGanttData()
 
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
@@ -166,265 +188,32 @@ export default function ConstructoraAdmin() {
             </div>
 
             {/* Tarjetas de Estadísticas Principales */}
-            <div className={estilos.estadisticas}>
-                <div className={`${estilos.estadCard} ${estilos.primary}`}>
-                    <div className={estilos.estadIconoWrapper}>
-                        <div className={`${estilos.estadIcono} ${estilos.primary}`}>
-                            <ion-icon name="business-outline"></ion-icon>
-                        </div>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Obras Activas</span>
-                        <span className={estilos.estadValor}>{dashboard.estadisticas.obras_activas || 0}</span>
-                        <span className={estilos.estadTendencia}>
-                            <ion-icon name="trending-up-outline"></ion-icon>
-                            En construcción
-                        </span>
-                    </div>
-                </div>
-
-                <div className={`${estilos.estadCard} ${estilos.success}`}>
-                    <div className={estilos.estadIconoWrapper}>
-                        <div className={`${estilos.estadIcono} ${estilos.success}`}>
-                            <ion-icon name="people-outline"></ion-icon>
-                        </div>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Personal en Campo</span>
-                        <span className={estilos.estadValor}>{dashboard.estadisticas.personal_campo || 0}</span>
-                        <span className={estilos.estadTendencia}>
-                            <ion-icon name="pulse-outline"></ion-icon>
-                            Trabajando hoy
-                        </span>
-                    </div>
-                </div>
-
-                <div className={`${estilos.estadCard} ${estilos.info}`}>
-                    <div className={estilos.estadIconoWrapper}>
-                        <div className={`${estilos.estadIcono} ${estilos.info}`}>
-                            <ion-icon name="flash-outline"></ion-icon>
-                        </div>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Servicios Pendientes</span>
-                        <span className={estilos.estadValor}>{dashboard.estadisticas.servicios_pendientes || 0}</span>
-                        <span className={estilos.estadTendencia}>
-                            <ion-icon name="time-outline"></ion-icon>
-                            Programados
-                        </span>
-                    </div>
-                </div>
-
-                <div className={`${estilos.estadCard} ${estilos.warning}`}>
-                    <div className={estilos.estadIconoWrapper}>
-                        <div className={`${estilos.estadIcono} ${estilos.warning}`}>
-                            <ion-icon name="cash-outline"></ion-icon>
-                        </div>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Presupuesto Total</span>
-                        <span className={estilos.estadValor}>
-                            {formatearMoneda(
-                                dashboard.obras_activas?.reduce((sum, obra) => 
-                                    sum + parseFloat(obra.presupuesto_aprobado || 0), 0
-                                ) || 0
-                            )}
-                        </span>
-                        <span className={estilos.estadTendencia}>
-                            <ion-icon name="wallet-outline"></ion-icon>
-                            Obras activas
-                        </span>
-                    </div>
-                </div>
-
-                <div className={`${estilos.estadCard} ${dashboard.estadisticas.alertas_activas > 0 ? estilos.danger : estilos.secondary}`}>
-                    <div className={estilos.estadIconoWrapper}>
-                        <div className={`${estilos.estadIcono} ${dashboard.estadisticas.alertas_activas > 0 ? estilos.danger : estilos.secondary}`}>
-                            <ion-icon name="warning-outline"></ion-icon>
-                        </div>
-                    </div>
-                    <div className={estilos.estadInfo}>
-                        <span className={estilos.estadLabel}>Alertas Activas</span>
-                        <span className={estilos.estadValor}>{dashboard.estadisticas.alertas_activas || 0}</span>
-                        <span className={estilos.estadTendencia}>
-                            <ion-icon name={dashboard.estadisticas.alertas_activas > 0 ? "alert-circle-outline" : "checkmark-circle-outline"}></ion-icon>
-                            {dashboard.estadisticas.alertas_activas > 0 ? 'Requieren atención' : 'Todo OK'}
-                        </span>
-                    </div>
-                </div>
-            </div>
+            <EstadisticasCards 
+                dashboard={dashboard} 
+                tema={tema} 
+                formatearMoneda={formatearMoneda} 
+            />
 
             {/* Navegación de Vistas */}
-            <div className={estilos.navVistas}>
-                <button 
-                    className={`${estilos.btnVista} ${vistaActiva === 'resumen' ? estilos.vistaActiva : ''}`}
-                    onClick={() => setVistaActiva('resumen')}
-                >
-                    <ion-icon name="analytics-outline"></ion-icon>
-                    <span>Resumen</span>
-                </button>
-                <button 
-                    className={`${estilos.btnVista} ${vistaActiva === 'gantt' ? estilos.vistaActiva : ''}`}
-                    onClick={() => setVistaActiva('gantt')}
-                >
-                    <ion-icon name="calendar-outline"></ion-icon>
-                    <span>Timeline (Gantt)</span>
-                </button>
-                <button 
-                    className={`${estilos.btnVista} ${vistaActiva === 'horarios' ? estilos.vistaActiva : ''}`}
-                    onClick={() => setVistaActiva('horarios')}
-                >
-                    <ion-icon name="time-outline"></ion-icon>
-                    <span>Horarios</span>
-                </button>
-            </div>
+            <NavVistas 
+                vistaActiva={vistaActiva} 
+                setVistaActiva={setVistaActiva} 
+            />
 
             {/* Vista: Resumen */}
             {vistaActiva === 'resumen' && (
                 <>
                     {/* Alertas de Presupuesto */}
-                    {dashboard.alertas_presupuesto && dashboard.alertas_presupuesto.length > 0 && (
-                        <div className={`${estilos.seccionAlertas} ${estilos[tema]}`}>
-                            <div className={estilos.alertasHeader}>
-                                <ion-icon name="alert-circle-outline"></ion-icon>
-                                <h2>Alertas de Presupuesto</h2>
-                                <span className={estilos.badgeCount}>{dashboard.alertas_presupuesto.length}</span>
-                            </div>
-                            <div className={estilos.listaAlertas}>
-                                {dashboard.alertas_presupuesto.slice(0, 3).map(alerta => {
-                                    const severidad = obtenerSeveridadAlerta(alerta.porcentaje_ejecutado)
-                                    return (
-                                        <div key={alerta.id} className={`${estilos.alertaCard} ${estilos[`severidad_${severidad}`]}`}>
-                                            <div className={estilos.alertaIcono}>
-                                                <ion-icon name={severidad === 'critico' ? 'alert-circle' : 'warning'}></ion-icon>
-                                            </div>
-                                            <div className={estilos.alertaInfo}>
-                                                <h4>{alerta.obra_nombre || 'Obra'}</h4>
-                                                <p>
-                                                    {alerta.tipo_alerta === 'umbral_70' ? 'Ha alcanzado el 70% del presupuesto' :
-                                                     alerta.tipo_alerta === 'umbral_90' ? 'Ha alcanzado el 90% del presupuesto' :
-                                                     alerta.tipo_alerta === 'excedido' ? 'Ha excedido el presupuesto' :
-                                                     'Proyección de sobrecosto'}
-                                                </p>
-                                                <span className={estilos.porcentajeAlerta}>{alerta.porcentaje_ejecutado?.toFixed(1)}% ejecutado</span>
-                                            </div>
-                                            <Link 
-                                                href={`/admin/presupuesto?obra=${alerta.destino_id}`}
-                                                className={estilos.btnAlerta}
-                                            >
-                                                <ion-icon name="eye-outline"></ion-icon>
-                                            </Link>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        </div>
-                    )}
+                    <AlertasPresupuesto dashboard={dashboard} tema={tema} />
 
                     {/* Grid Principal: Distribución y Obras */}
                     <div className={estilos.gridPrincipal}>
                         {/* Gráfica de Distribución */}
-                        <div className={`${estilos.cardGrafica} ${estilos[tema]}`}>
-                            <div className={estilos.cardGraficaHeader}>
-                                <div>
-                                    <h3 className={estilos.cardGraficaTitulo}>Distribución de Recursos</h3>
-                                    <p className={estilos.cardGraficaSubtitulo}>Vista general de actividades</p>
-                                </div>
-                            </div>
-
-                            <div className={estilos.graficaCircular}>
-                                <svg className={estilos.donaChart} viewBox="0 0 200 200">
-                                    <circle
-                                        cx="100"
-                                        cy="100"
-                                        r="80"
-                                        fill="none"
-                                        stroke={tema === 'light' ? '#f1f5f9' : '#1e293b'}
-                                        strokeWidth="40"
-                                    />
-                                    {/* Obras - Azul */}
-                                    <circle
-                                        cx="100"
-                                        cy="100"
-                                        r="80"
-                                        fill="none"
-                                        stroke="#3b82f6"
-                                        strokeWidth="40"
-                                        strokeDasharray={`${(porcentajes.obras * 5.024).toFixed(2)} 502.4`}
-                                        strokeDashoffset="0"
-                                        className={estilos.donaSegmento}
-                                    />
-                                    {/* Personal - Verde */}
-                                    <circle
-                                        cx="100"
-                                        cy="100"
-                                        r="80"
-                                        fill="none"
-                                        stroke="#10b981"
-                                        strokeWidth="40"
-                                        strokeDasharray={`${(porcentajes.personal * 5.024).toFixed(2)} 502.4`}
-                                        strokeDashoffset={`-${(porcentajes.obras * 5.024).toFixed(2)}`}
-                                        className={estilos.donaSegmento}
-                                    />
-                                    {/* Servicios - Naranja */}
-                                    <circle
-                                        cx="100"
-                                        cy="100"
-                                        r="80"
-                                        fill="none"
-                                        stroke="#f59e0b"
-                                        strokeWidth="40"
-                                        strokeDasharray={`${(porcentajes.servicios * 5.024).toFixed(2)} 502.4`}
-                                        strokeDashoffset={`-${((parseFloat(porcentajes.obras) + parseFloat(porcentajes.personal)) * 5.024).toFixed(2)}`}
-                                        className={estilos.donaSegmento}
-                                    />
-                                    <text x="100" y="95" textAnchor="middle" className={estilos.donaTextoValor}>
-                                        {dashboard.estadisticas.obras_activas + dashboard.estadisticas.personal_campo + dashboard.estadisticas.servicios_pendientes}
-                                    </text>
-                                    <text x="100" y="115" textAnchor="middle" className={estilos.donaTextoLabel}>
-                                        Total
-                                    </text>
-                                </svg>
-
-                                <div className={estilos.leyendaCircular}>
-                                    <div className={estilos.leyendaItem}>
-                                        <div className={`${estilos.leyendaDot} ${estilos.obras}`}></div>
-                                        <div className={estilos.leyendaInfo}>
-                                            <span className={estilos.leyendaLabel}>Obras Activas</span>
-                                            <span className={estilos.leyendaValor}>{dashboard.estadisticas.obras_activas || 0}</span>
-                                        </div>
-                                        <span className={estilos.leyendaPorcentaje}>{porcentajes.obras}%</span>
-                                    </div>
-                                    <div className={estilos.leyendaItem}>
-                                        <div className={`${estilos.leyendaDot} ${estilos.personal}`}></div>
-                                        <div className={estilos.leyendaInfo}>
-                                            <span className={estilos.leyendaLabel}>Personal</span>
-                                            <span className={estilos.leyendaValor}>{dashboard.estadisticas.personal_campo || 0}</span>
-                                        </div>
-                                        <span className={estilos.leyendaPorcentaje}>{porcentajes.personal}%</span>
-                                    </div>
-                                    <div className={estilos.leyendaItem}>
-                                        <div className={`${estilos.leyendaDot} ${estilos.servicios}`}></div>
-                                        <div className={estilos.leyendaInfo}>
-                                            <span className={estilos.leyendaLabel}>Servicios</span>
-                                            <span className={estilos.leyendaValor}>{dashboard.estadisticas.servicios_pendientes || 0}</span>
-                                        </div>
-                                        <span className={estilos.leyendaPorcentaje}>{porcentajes.servicios}%</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Ilustración decorativa */}
-                            <div className={estilos.ilustracionGrafica}>
-                                <img
-                                    src="/lustracion_reparaciones/Hammer_3D.svg"
-                                    alt="Construcción"
-                                    width={120}
-                                    height={120}
-                                    className={estilos.ilustracion3D}
-                                />
-                            </div>
-                        </div>
+                        <GraficaDistribucion 
+                            dashboard={dashboard} 
+                            porcentajes={porcentajes} 
+                            tema={tema} 
+                        />
 
                         {/* Obras Activas */}
                         <div className={`${estilos.cardObrasActivas} ${estilos[tema]}`}>
@@ -450,6 +239,8 @@ export default function ConstructoraAdmin() {
                                         width={200}
                                         height={200}
                                         className={estilos.ilustracionVacio}
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                     <h4>No hay obras activas</h4>
                                     <p>Crea tu primera obra para comenzar</p>
@@ -570,6 +361,8 @@ export default function ConstructoraAdmin() {
                                         width={150}
                                         height={150}
                                         className={estilos.ilustracionVacio}
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                     <p>No hay personal activo hoy</p>
                                 </div>
@@ -621,6 +414,8 @@ export default function ConstructoraAdmin() {
                                         width={120}
                                         height={120}
                                         className={estilos.ilustracionVacio}
+                                        loading="lazy"
+                                        decoding="async"
                                     />
                                     <p>No hay servicios programados hoy</p>
                                 </div>
@@ -659,160 +454,26 @@ export default function ConstructoraAdmin() {
 
             {/* Vista: Gantt */}
             {vistaActiva === 'gantt' && (
-                <div className={`${estilos.seccionGantt} ${estilos[tema]}`}>
-                    <div className={estilos.ganttHeader}>
-                        <div>
-                            <h2>
-                                <ion-icon name="calendar-outline"></ion-icon>
-                                Timeline de Proyectos (Diagrama de Gantt)
-                            </h2>
-                            <p>Visualización temporal de obras en ejecución</p>
-                        </div>
-                        <div className={estilos.ilustracionGantt}>
-                            <img
-                                src="/lustracion_reparaciones/Meter_3D.svg"
-                                alt="Timeline"
-                                width={80}
-                                height={80}
-                                className={estilos.ilustracion3D}
-                            />
-                        </div>
+                <Suspense fallback={
+                    <div className={estilos.cargando}>
+                        <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
+                        <p>Cargando timeline...</p>
                     </div>
-
-                    {ganttData.length === 0 ? (
-                        <div className={estilos.ganttVacio}>
-                            <img
-                                src="/illustrations3D/_0015.svg"
-                                alt="Sin proyectos"
-                                width={250}
-                                height={250}
-                                className={estilos.ilustracionVacio}
-                            />
-                            <h3>No hay proyectos programados</h3>
-                            <p>Crea una obra para visualizar su timeline</p>
-                        </div>
-                    ) : (
-                        <div className={estilos.ganttContainer}>
-                            <div className={estilos.ganttTimeline}>
-                                {ganttData.map(proyecto => (
-                                    <div key={proyecto.id} className={estilos.ganttRow}>
-                                        <div className={estilos.ganttInfo}>
-                                            <span className={estilos.ganttCodigo}>{proyecto.codigo}</span>
-                                            <h4 className={estilos.ganttNombre}>{proyecto.nombre}</h4>
-                                            <div className={estilos.ganttFechas}>
-                                                <span>
-                                                    <ion-icon name="play-outline"></ion-icon>
-                                                    {proyecto.inicio}
-                                                </span>
-                                                <span>
-                                                    <ion-icon name="flag-outline"></ion-icon>
-                                                    {proyecto.fin}
-                                                </span>
-                                            </div>
-                                        </div>
-                                        <div className={estilos.ganttBarra}>
-                                            <div className={estilos.ganttBarraContainer}>
-                                                <div 
-                                                    className={`${estilos.ganttBarraFill} ${estilos[proyecto.estado]}`}
-                                                    style={{ width: `${proyecto.progreso}%` }}
-                                                >
-                                                    <span className={estilos.ganttProgreso}>{proyecto.progreso}%</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
+                }>
+                    <VistaGantt ganttData={ganttData} tema={tema} />
+                </Suspense>
             )}
 
             {/* Vista: Horarios */}
             {vistaActiva === 'horarios' && (
-                <div className={`${estilos.seccionHorarios} ${estilos[tema]}`}>
-                    <div className={estilos.horariosHeader}>
-                        <div>
-                            <h2>
-                                <ion-icon name="time-outline"></ion-icon>
-                                Horarios y Asignaciones
-                            </h2>
-                            <p>Programación semanal del personal</p>
-                        </div>
-                        <div className={estilos.ilustracionHorarios}>
-                            <img
-                                src="/lustracion_reparaciones/Spirit Level_3D.svg"
-                                alt="Horarios"
-                                width={80}
-                                height={80}
-                                className={estilos.ilustracion3D}
-                            />
-                        </div>
+                <Suspense fallback={
+                    <div className={estilos.cargando}>
+                        <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
+                        <p>Cargando horarios...</p>
                     </div>
-
-                    {!dashboard.personal_campo || dashboard.personal_campo.length === 0 ? (
-                        <div className={estilos.horariosVacio}>
-                            <img
-                                src="/illustrations3D/_0011.svg"
-                                alt="Sin horarios"
-                                width={250}
-                                height={250}
-                                className={estilos.ilustracionVacio}
-                            />
-                            <h3>No hay personal asignado</h3>
-                            <p>Asigna personal a obras o servicios para visualizar horarios</p>
-                            <Link href="/admin/personal/asignar" className={estilos.btnNuevoVacio}>
-                                <ion-icon name="add-outline"></ion-icon>
-                                <span>Asignar Personal</span>
-                            </Link>
-                        </div>
-                    ) : (
-                        <div className={estilos.gridHorarios}>
-                            {dashboard.personal_campo.map(persona => (
-                                <div key={persona.id} className={estilos.cardHorario}>
-                                    <div className={estilos.horarioHeader}>
-                                        <div className={estilos.avatarHorario}>
-                                            {persona.nombre?.charAt(0)}{persona.apellidos?.charAt(0)}
-                                        </div>
-                                        <div className={estilos.horarioInfo}>
-                                            <h4>{persona.nombre} {persona.apellidos}</h4>
-                                            <p>{persona.rol}</p>
-                                        </div>
-                                    </div>
-                                    <div className={estilos.horarioBody}>
-                                        <div className={estilos.horarioItem}>
-                                            <ion-icon name="business-outline"></ion-icon>
-                                            <div>
-                                                <span>Asignado a:</span>
-                                                <strong>{persona.obra_nombre || persona.servicio_nombre}</strong>
-                                            </div>
-                                        </div>
-                                        <div className={estilos.horarioItem}>
-                                            <ion-icon name="time-outline"></ion-icon>
-                                            <div>
-                                                <span>Horario:</span>
-                                                <strong>8:00 AM - 5:00 PM</strong>
-                                            </div>
-                                        </div>
-                                        <div className={estilos.horarioItem}>
-                                            <ion-icon name="calendar-outline"></ion-icon>
-                                            <div>
-                                                <span>Fecha:</span>
-                                                <strong>Hoy</strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className={estilos.horarioEstado}>
-                                        <div className={estilos.estadoActivo}>
-                                            <div className={estilos.pulsoActivo}></div>
-                                            <span>Activo</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                }>
+                    <VistaHorarios dashboard={dashboard} tema={tema} />
+                </Suspense>
             )}
         </div>
     )
