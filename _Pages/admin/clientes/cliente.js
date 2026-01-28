@@ -213,31 +213,73 @@ export default function ClientesAdmin() {
     ]
 
     // -------------------------------
-    // Renderizado de mensajes vacío
+    // Función para renderizar contenido de lista
     // -------------------------------
-    if (!cargando && clientesFiltrados.length === 0) {
-        return (
-            <div className={`${estilos.contenedor} ${estilos[tema]}`}>
-                <div className={estilos.header}>
-                    <div className={estilos.tituloArea}>
-                        <h1 className={estilos.titulo}>Cartera de Clientes</h1>
-                        <p className={estilos.subtitulo}>Gestión profesional de perfiles crediticios</p>
-                    </div>
-                    <button
-                        className={estilos.btnNuevo}
-                        onClick={() => router.push("/admin/clientes/nuevo")}
-                    >
-                        <ion-icon name="person-add-outline"></ion-icon>
-                        <span>Nuevo Cliente</span>
-                    </button>
+    const renderizarListaClientes = () => {
+        if (cargando) {
+            return (
+                <div className={estilos.cargando}>
+                    <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
+                    <span>Cargando cartera de clientes...</span>
                 </div>
+            )
+        }
 
+        // Si no hay clientes en total (base de datos vacía)
+        if (clientes.length === 0) {
+            return (
                 <div className={estilos.vacio}>
                     <ion-icon name="people-outline"></ion-icon>
                     <h3>No hay clientes registrados</h3>
                     <p>Comienza agregando tu primer cliente</p>
                 </div>
-            </div>
+            )
+        }
+
+        // Si hay clientes pero el filtro no encuentra resultados
+        if (clientesFiltrados.length === 0) {
+            return (
+                <div className={estilos.vacio}>
+                    <ion-icon name="search-outline"></ion-icon>
+                    <h3>No se encontraron resultados</h3>
+                    <p>
+                        {busqueda
+                            ? `No hay clientes que coincidan con "${busqueda}"`
+                            : `No hay clientes con estado "${filtroEstado}"`}
+                    </p>
+                </div>
+            )
+        }
+
+        // Renderizar vista de cards o tabla
+        if (vistaActual === "cards") {
+            return (
+                <div className={estilos.listaClientes}>
+                    {clientesPaginados.map((cliente) => (
+                        <ClienteCard
+                            key={cliente.id}
+                            cliente={cliente}
+                            tema={tema}
+                            router={router}
+                            formatearMoneda={formatearMoneda}
+                            obtenerColorBarra={obtenerColorBarra}
+                            obtenerIconoEstado={obtenerIconoEstado}
+                            estilos={estilos}
+                        />
+                    ))}
+                </div>
+            )
+        }
+
+        return (
+            <TablaClientes
+                clientesPaginados={clientesPaginados}
+                tema={tema}
+                router={router}
+                formatearMoneda={formatearMoneda}
+                obtenerColorBarra={obtenerColorBarra}
+                estilos={estilos}
+            />
         )
     }
 
@@ -336,36 +378,7 @@ export default function ClientesAdmin() {
             </div>
 
             {/* ================= LISTA DE CLIENTES ================= */}
-            {cargando ? (
-                <div className={estilos.cargando}>
-                    <ion-icon name="hourglass-outline" className={estilos.iconoCargando}></ion-icon>
-                    <span>Cargando cartera de clientes...</span>
-                </div>
-            ) : vistaActual === "cards" ? (
-                <div className={estilos.listaClientes}>
-                    {clientesPaginados.map((cliente) => (
-                        <ClienteCard
-                            key={cliente.id}
-                            cliente={cliente}
-                            tema={tema}
-                            router={router}
-                            formatearMoneda={formatearMoneda}
-                            obtenerColorBarra={obtenerColorBarra}
-                            obtenerIconoEstado={obtenerIconoEstado}
-                            estilos={estilos}
-                        />
-                    ))}
-                </div>
-            ) : (
-                <TablaClientes
-                    clientesPaginados={clientesPaginados}
-                    tema={tema}
-                    router={router}
-                    formatearMoneda={formatearMoneda}
-                    obtenerColorBarra={obtenerColorBarra}
-                    estilos={estilos}
-                />
-            )}
+            {renderizarListaClientes()}
 
             {/* ================= PAGINACIÓN ================= */}
             {!cargando && clientesFiltrados.length > 0 && totalPaginas > 1 && (

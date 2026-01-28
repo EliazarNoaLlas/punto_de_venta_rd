@@ -1688,12 +1688,22 @@
 
     .header {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
     }
 
+    /* ===== MEJORA 1: Botones header mismo ancho ===== */
+    .headerButtons {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: 100%;
+    }
+
+    .btnDepuracion,
     .btnNuevo {
         width: 100%;
         justify-content: center;
+        padding: 14px 20px;
     }
 
     .stats {
@@ -1707,131 +1717,77 @@
 
     .listaClientes {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
 
-    .infoGrid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-    }
-
-    .cardFooter {
-        flex-wrap: wrap;
-    }
-
-    .btnAccion span {
-        display: none;
-    }
-
-    .btnVer,
-    .btnVender,
-    .btnCobrar {
-        flex: 1;
-    }
-}
-
-@media (max-width: 480px) {
-    .contenedor {
-        padding: 16px 12px;
-    }
-
-    .titulo {
-        font-size: 24px;
-    }
-
-    .btnNuevo {
-        padding: 12px 24px;
-        font-size: 14px;
-    }
-
-    .statCard {
-        padding: 16px;
-    }
-
-    .statIcono {
-        width: 56px;
-        height: 56px;
-    }
-
-    .statIcono ion-icon {
-        font-size: 28px;
-    }
-
-    .statValor {
-        font-size: 24px;
-    }
-
-    .chips {
-        gap: 8px;
-    }
-
-    .chip {
-        padding: 8px 16px;
-        font-size: 13px;
-    }
-
-    /* Mejoras específicas para card de clientes en móvil */
+    /* ===== MEJORA 2: Cards compactos y organizados ===== */
     .clienteCard {
-        margin-bottom: 16px;
+        border-radius: var(--radius-md);
     }
 
+    /* Header del card - Layout 2 columnas */
     .cardHeader {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-        padding: 16px;
+        display: grid;
+        grid-template-columns: 56px 1fr;
+        grid-template-rows: auto auto;
+        gap: 8px 12px;
+        padding: 14px;
+        align-items: center;
     }
 
     .avatarContenedor {
-        width: 50px;
-        height: 50px;
-        align-self: center;
+        width: 56px;
+        height: 56px;
+        grid-row: 1 / 3;
     }
 
     .infoBasica {
-        width: 100%;
-        text-align: center;
+        grid-column: 2;
+        text-align: left;
     }
 
     .nombreCliente {
-        font-size: 16px;
+        font-size: 15px;
+        line-height: 1.3;
         white-space: normal;
         word-break: break-word;
-        text-align: center;
     }
 
     .documentoCliente {
-        font-size: 12px;
-        text-align: center;
-        margin-top: 4px;
+        font-size: 11px;
+        margin-top: 2px;
     }
 
     .badgeEstadoCredito {
-        width: 100%;
-        display: flex;
-        justify-content: center;
+        grid-column: 2;
+        justify-self: start;
     }
 
     .badge {
-        font-size: 10px;
-        padding: 5px 12px;
+        font-size: 9px;
+        padding: 4px 10px;
     }
 
+    /* Body del card - Diseño compacto 2 columnas */
     .cardBody {
-        padding: 16px;
+        padding: 12px 14px;
     }
 
     .infoGrid {
-        grid-template-columns: 1fr;
-        gap: 12px;
-        margin-bottom: 16px;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 12px;
     }
 
     .infoItem {
-        justify-content: space-between;
-        padding: 10px 12px;
-        background: rgba(59, 130, 246, 0.05);
-        border-radius: var(--radius-sm);
-        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 10px;
+        background: rgba(59, 130, 246, 0.06);
+        border-radius: 6px;
+        font-size: 12px;
     }
 
     .light .infoItem {
@@ -1839,73 +1795,746 @@
     }
 
     .dark .infoItem {
-        background: rgba(59, 130, 246, 0.12);
+        background: rgba(59, 130, 246, 0.1);
     }
 
     .infoItem ion-icon {
-        font-size: 18px;
+        font-size: 16px;
+        flex-shrink: 0;
     }
 
+    /* Información de crédito compacta */
     .creditoInfo {
-        padding: 12px;
-        margin-top: 12px;
+        padding: 10px 12px;
+        margin-top: 0;
     }
 
     .creditoHeader {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 6px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 8px;
+    }
+
+    .creditoLabel {
+        font-size: 11px;
     }
 
     .creditoPorcentaje {
         font-size: 14px;
-        align-self: flex-end;
     }
 
     .creditoBarra {
-        margin: 10px 0;
+        height: 6px;
+        margin-bottom: 8px;
     }
 
     .creditoDetalles {
-        flex-direction: column;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
         gap: 8px;
-        font-size: 12px;
+        font-size: 11px;
     }
 
     .creditoDetalles span {
-        display: flex;
-        justify-content: space-between;
-        padding: 6px 0;
-        border-bottom: 1px solid;
+        padding: 0;
+        border-bottom: none;
     }
 
-    .light .creditoDetalles span {
-        border-color: #e0e7ff;
-    }
-
-    .dark .creditoDetalles span {
-        border-color: #334155;
-    }
-
+    /* ===== MEJORA 3: Botones de acciones horizontales centrados ===== */
     .cardFooter {
-        flex-direction: column;
-        gap: 8px;
-        padding: 12px;
+        display: flex;
+        flex-direction: row;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 14px;
+        flex-wrap: nowrap;
     }
 
     .btnAccion {
-        width: 100%;
+        flex: 0 0 auto;
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        padding: 0;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
         justify-content: center;
-        padding: 12px;
-        font-size: 14px;
-    }
-
-    .btnAccion span {
-        display: inline;
-        margin-left: 8px;
     }
 
     .btnAccion ion-icon {
         font-size: 18px;
+    }
+
+    .btnAccion span {
+        display: none;
+    }
+
+    /* ===== MEJORA 4: Vista tabla móvil ===== */
+    .tablaContenedor {
+        border-radius: var(--radius-md);
+        overflow: hidden;
+    }
+
+    .tabla {
+        min-width: unset;
+        width: 100%;
+    }
+
+    /* Ocultar columnas menos importantes en móvil */
+    .tabla th:nth-child(3),
+    .tabla td:nth-child(3),
+    .tabla th:nth-child(5),
+    .tabla td:nth-child(5) {
+        display: none;
+    }
+
+    .tabla th {
+        padding: 12px 10px;
+        font-size: 11px;
+    }
+
+    .tabla td {
+        padding: 10px;
+        font-size: 13px;
+    }
+
+    .tdInfoPrincipal {
+        gap: 10px;
+    }
+
+    .avatarTabla {
+        width: 36px;
+        height: 36px;
+    }
+
+    .nombreYCelular strong {
+        font-size: 13px;
+    }
+
+    .celularTabla {
+        font-size: 11px;
+    }
+
+    .infoDocTabla .docTipo {
+        font-size: 10px;
+    }
+
+    .infoDocTabla .docNum {
+        font-size: 11px;
+    }
+
+    .badgeTabla {
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+
+    .accionesTabla {
+        gap: 4px;
+    }
+
+    .accionesTabla button {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+}
+
+@media (max-width: 480px) {
+    .contenedor {
+        padding: 14px 10px;
+    }
+
+    .titulo {
+        font-size: 22px;
+    }
+
+    .subtitulo {
+        font-size: 12px;
+    }
+
+    /* Botones header compactos */
+    .btnDepuracion,
+    .btnNuevo {
+        padding: 12px 16px;
+        font-size: 14px;
+    }
+
+    .btnDepuracion ion-icon,
+    .btnNuevo ion-icon {
+        font-size: 20px;
+    }
+
+    /* Stats compactas */
+    .stats {
+        gap: 12px;
+    }
+
+    .statCard {
+        padding: 14px;
+        gap: 14px;
+    }
+
+    .statIcono {
+        width: 50px;
+        height: 50px;
+    }
+
+    .statIcono ion-icon {
+        font-size: 24px;
+    }
+
+    .statLabel {
+        font-size: 11px;
+    }
+
+    .statValor {
+        font-size: 22px;
+    }
+
+    .statDetalle {
+        font-size: 11px;
+    }
+
+    /* Chips más compactos */
+    .chips {
+        gap: 6px;
+    }
+
+    .chip {
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .chip ion-icon {
+        font-size: 14px;
+    }
+
+    /* Búsqueda */
+    .inputBusqueda {
+        padding: 14px 16px 14px 48px;
+        font-size: 14px;
+    }
+
+    .busqueda ion-icon {
+        left: 14px;
+        font-size: 20px;
+    }
+
+    /* ===== Cards de clientes ultra compactos ===== */
+    .listaClientes {
+        gap: 12px;
+    }
+
+    .clienteCard {
+        border-radius: 10px;
+    }
+
+    /* Header compacto */
+    .cardHeader {
+        grid-template-columns: 48px 1fr;
+        gap: 6px 10px;
+        padding: 12px;
+    }
+
+    .avatarContenedor {
+        width: 48px;
+        height: 48px;
+        border-width: 2px;
+    }
+
+    .nombreCliente {
+        font-size: 14px;
+    }
+
+    .documentoCliente {
+        font-size: 10px;
+    }
+
+    .badge {
+        font-size: 8px;
+        padding: 3px 8px;
+        gap: 4px;
+    }
+
+    .badge ion-icon {
+        font-size: 12px;
+    }
+
+    /* Body ultra compacto */
+    .cardBody {
+        padding: 10px 12px;
+    }
+
+    .infoGrid {
+        gap: 6px;
+        margin-bottom: 10px;
+    }
+
+    .infoItem {
+        padding: 6px 8px;
+        font-size: 11px;
+        border-radius: 5px;
+    }
+
+    .infoItem ion-icon {
+        font-size: 14px;
+    }
+
+    /* Crédito compacto */
+    .creditoInfo {
+        padding: 8px 10px;
+        border-width: 1px;
+    }
+
+    .creditoLabel {
+        font-size: 10px;
+    }
+
+    .creditoPorcentaje {
+        font-size: 13px;
+    }
+
+    .creditoBarra {
+        height: 5px;
+        margin-bottom: 6px;
+    }
+
+    .creditoDetalles {
+        font-size: 10px;
+    }
+
+    /* ===== Botones de acciones - Iconos pequeños horizontales ===== */
+    .cardFooter {
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .btnAccion {
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        border-radius: 8px;
+        border-width: 1.5px;
+    }
+
+    .btnAccion ion-icon {
+        font-size: 16px;
+    }
+
+    .btnAccion span {
+        display: none;
+    }
+
+    /* ===== Vista tabla ultra compacta ===== */
+    .tablaContenedor {
+        border-radius: 10px;
+        border-width: 1px;
+    }
+
+    .tabla th {
+        padding: 10px 8px;
+        font-size: 10px;
+    }
+
+    .tabla td {
+        padding: 8px;
+        font-size: 12px;
+    }
+
+    /* Ocultar más columnas en pantallas muy pequeñas */
+    .tabla th:nth-child(4),
+    .tabla td:nth-child(4) {
+        display: none;
+    }
+
+    .tdInfoPrincipal {
+        gap: 8px;
+    }
+
+    .avatarTabla {
+        width: 32px;
+        height: 32px;
+        border-width: 1.5px;
+    }
+
+    .avatarTabla ion-icon {
+        font-size: 16px;
+    }
+
+    .nombreYCelular strong {
+        font-size: 12px;
+    }
+
+    .celularTabla {
+        font-size: 10px;
+    }
+
+    .infoDocTabla .docTipo {
+        font-size: 9px;
+    }
+
+    .infoDocTabla .docNum {
+        font-size: 10px;
+    }
+
+    .badgeTabla {
+        padding: 3px 6px;
+        font-size: 8px;
+        border-radius: 12px;
+    }
+
+    .accionesTabla {
+        gap: 3px;
+    }
+
+    .accionesTabla button {
+        width: 28px;
+        height: 28px;
+        font-size: 14px;
+        border-radius: 6px;
+    }
+
+    /* Paginación compacta */
+    .paginacion {
+        padding: 16px 0;
+        gap: 12px;
+    }
+
+    .paginacionInfo {
+        font-size: 12px;
+        text-align: center;
+    }
+
+    .btnPaginacion {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    .btnNumeroPagina {
+        min-width: 36px;
+        height: 36px;
+        font-size: 12px;
+    }
+
+    .numerosPagina {
+        gap: 2px;
+    }
+}
+
+/* ============================================
+   PANTALLAS MUY PEQUEÑAS (< 360px)
+   ============================================ */
+@media (max-width: 360px) {
+    .contenedor {
+        padding: 12px 8px;
+    }
+
+    .titulo {
+        font-size: 20px;
+    }
+
+    .subtitulo {
+        font-size: 11px;
+    }
+
+    /* Botones header */
+    .btnDepuracion,
+    .btnNuevo {
+        padding: 10px 14px;
+        font-size: 13px;
+    }
+
+    /* Stats más compactas */
+    .statCard {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .statIcono {
+        width: 44px;
+        height: 44px;
+    }
+
+    .statIcono ion-icon {
+        font-size: 22px;
+    }
+
+    .statValor {
+        font-size: 20px;
+    }
+
+    /* Chips scroll horizontal */
+    .chips {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        padding-bottom: 8px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+    }
+
+    .chips::-webkit-scrollbar {
+        display: none;
+    }
+
+    .chip {
+        flex-shrink: 0;
+        padding: 6px 10px;
+        font-size: 11px;
+    }
+
+    /* Cards ultra compactos */
+    .cardHeader {
+        grid-template-columns: 44px 1fr;
+        gap: 4px 8px;
+        padding: 10px;
+    }
+
+    .avatarContenedor {
+        width: 44px;
+        height: 44px;
+    }
+
+    .nombreCliente {
+        font-size: 13px;
+    }
+
+    .documentoCliente {
+        font-size: 9px;
+    }
+
+    .cardBody {
+        padding: 8px 10px;
+    }
+
+    .infoGrid {
+        gap: 4px;
+    }
+
+    .infoItem {
+        padding: 5px 6px;
+        font-size: 10px;
+    }
+
+    .infoItem ion-icon {
+        font-size: 12px;
+    }
+
+    .creditoInfo {
+        padding: 6px 8px;
+    }
+
+    .creditoLabel {
+        font-size: 9px;
+    }
+
+    .creditoPorcentaje {
+        font-size: 12px;
+    }
+
+    .creditoDetalles {
+        font-size: 9px;
+    }
+
+    /* Botones de acciones más pequeños */
+    .cardFooter {
+        padding: 6px 10px;
+        gap: 6px;
+    }
+
+    .btnAccion {
+        width: 34px;
+        height: 34px;
+        min-width: 34px;
+    }
+
+    .btnAccion ion-icon {
+        font-size: 14px;
+    }
+
+    /* Tabla mínima */
+    .tabla th:nth-child(2),
+    .tabla td:nth-child(2) {
+        display: none;
+    }
+
+    .avatarTabla {
+        width: 28px;
+        height: 28px;
+    }
+
+    .nombreYCelular strong {
+        font-size: 11px;
+    }
+
+    .celularTabla {
+        display: none;
+    }
+
+    .accionesTabla button {
+        width: 26px;
+        height: 26px;
+        font-size: 12px;
+    }
+
+    /* Paginación mínima */
+    .btnPaginacion {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .btnNumeroPagina {
+        min-width: 32px;
+        height: 32px;
+        font-size: 11px;
+    }
+}
+
+/* ============================================
+   ESTILOS PARA VISTA MÓVIL - TABLA CARDS
+   ============================================ */
+@media (max-width: 600px) {
+    /* Convertir tabla a cards en móvil extremo */
+    .tablaContenedor {
+        background: transparent;
+        border: none;
+        box-shadow: none;
+    }
+
+    .tabla {
+        display: block;
+    }
+
+    .tabla thead {
+        display: none;
+    }
+
+    .tabla tbody {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .filaTabla {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 14px;
+        border-radius: var(--radius-md);
+        border: 2px solid;
+    }
+
+    .light .filaTabla {
+        background: #ffffff;
+        border-color: #e0e7ff;
+        box-shadow: var(--shadow-md);
+    }
+
+    .dark .filaTabla {
+        background: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    .filaTabla td {
+        padding: 0;
+    }
+
+    /* Primera celda (cliente) ocupa toda la fila */
+    .filaTabla td:first-child {
+        grid-column: 1 / -1;
+        padding-bottom: 10px;
+        border-bottom: 1px solid;
+    }
+
+    .light .filaTabla td:first-child {
+        border-color: #e0e7ff;
+    }
+
+    .dark .filaTabla td:first-child {
+        border-color: #334155;
+    }
+
+    /* Mostrar columnas que ocultamos antes */
+    .filaTabla td:nth-child(3),
+    .filaTabla td:nth-child(4),
+    .filaTabla td:nth-child(5) {
+        display: block;
+    }
+
+    /* Ocultar contacto en formato card */
+    .filaTabla td:nth-child(3) {
+        display: none;
+    }
+
+    /* Acciones ocupan toda la fila inferior */
+    .filaTabla td:last-child {
+        grid-column: 1 / -1;
+        padding-top: 10px;
+        border-top: 1px solid;
+    }
+
+    .light .filaTabla td:last-child {
+        border-color: #e0e7ff;
+    }
+
+    .dark .filaTabla td:last-child {
+        border-color: #334155;
+    }
+
+    .accionesTabla {
+        justify-content: center;
+    }
+
+    .accionesTabla button {
+        width: 36px;
+        height: 36px;
+        font-size: 18px;
+    }
+
+    /* Labels para celdas en formato card */
+    .filaTabla td::before {
+        display: block;
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
+    }
+
+    .light .filaTabla td::before {
+        color: #64748b;
+    }
+
+    .dark .filaTabla td::before {
+        color: #94a3b8;
+    }
+
+    .filaTabla td:first-child::before,
+    .filaTabla td:last-child::before {
+        display: none;
+    }
+
+    .filaTabla td:nth-child(2)::before {
+        content: "Documento";
+    }
+
+    .filaTabla td:nth-child(4)::before {
+        content: "Deuda";
+    }
+
+    .filaTabla td:nth-child(5)::before {
+        content: "Crédito";
+    }
+
+    .filaTabla td:nth-child(6)::before {
+        content: "Estado";
     }
 }

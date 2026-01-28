@@ -30,6 +30,7 @@ export default function EditarClienteAdmin() {
     const [fotoUrl, setFotoUrl] = useState('')
     const [fotoArchivo, setFotoArchivo] = useState(null)
     const [previewFoto, setPreviewFoto] = useState(null)
+    const [imagenBase64, setImagenBase64] = useState(null)
     const fileInputRef = useRef(null)
 
     // Crédito Profesional
@@ -113,14 +114,18 @@ export default function EditarClienteAdmin() {
         const file = e.target.files[0]
         if (!file) return
 
-        if (file.size > 2 * 1024 * 1024) {
-            alert('La imagen no debe superar 2MB')
+        if (file.size > 5 * 1024 * 1024) {
+            alert('La imagen no debe superar 5MB')
             return
         }
 
-        setFotoArchivo(file)
-        setPreviewFoto(URL.createObjectURL(file))
-        setFotoUrl(`/uploads/clientes/temp_${Date.now()}.jpg`) // Simulación
+        // Convertir a base64 usando FileReader
+        const reader = new FileReader()
+        reader.onloadend = () => {
+            setImagenBase64(reader.result)
+            setPreviewFoto(reader.result)
+        }
+        reader.readAsDataURL(file)
     }
 
     const validarFormulario = () => {
@@ -151,15 +156,14 @@ export default function EditarClienteAdmin() {
                     email: email.trim() || null,
                     direccion: direccion.trim() || null,
                     activo: activo,
-                    // Si hay una foto local (base64) se podría enviar aquí para guardarImagenCliente
-                    // Por ahora conservamos la fotoUrl existente si no se cambió
-                    foto_url: fotoUrl || null
+                    imagen_base64: imagenBase64
                 },
                 credito: {
                     limite: tieneCredito ? parseFloat(limiteCredito) : 0,
                     frecuencia_pago: tieneCredito ? frecuenciaPago : 'mensual',
                     dias_plazo: tieneCredito ? parseInt(diasGracia) : 30,
-                    activo: tieneCredito
+                    activo: tieneCredito,
+                    observacion: observacionCredito || 'Actualización desde edición de cliente'
                 }
             }
 
@@ -193,16 +197,18 @@ export default function EditarClienteAdmin() {
     return (
         <div className={`${estilos.contenedor} ${estilos[tema]}`}>
             <div className={estilos.header}>
-                <div>
-                    <h1 className={estilos.titulo}>Editar Cliente</h1>
-                    <p className={estilos.subtitulo}>Actualiza el perfil y la configuración de crédito</p>
+                <div className={estilos.headerLeft}>
+                    <h1 className={estilos.titulo}>✏️ Editar Cliente</h1>
+                    <p className={estilos.subtitulo}>
+                        Actualiza la información personal, perfil crediticio e imagen del cliente
+                    </p>
                 </div>
                 <button
                     className={estilos.btnCancelarHeader}
                     onClick={() => router.push('/admin/clientes')}
                 >
-                    <ion-icon name="close-outline"></ion-icon>
-                    <span>Cancelar</span>
+                    <ion-icon name="arrow-back-outline"></ion-icon>
+                    <span>Volver</span>
                 </button>
             </div>
 
@@ -218,7 +224,10 @@ export default function EditarClienteAdmin() {
 
                             <div className={estilos.gridDosColumnas}>
                                 <div className={estilos.grupoInput}>
-                                    <label>Tipo de Documento *</label>
+                                    <label>
+                                        Tipo de Documento 
+                                        <span style={{color: '#ef4444', marginLeft: '4px'}}>*</span>
+                                    </label>
                                     <select
                                         value={tipoDocumentoId}
                                         onChange={(e) => setTipoDocumentoId(e.target.value)}
@@ -234,12 +243,16 @@ export default function EditarClienteAdmin() {
                                 </div>
 
                                 <div className={estilos.grupoInput}>
-                                    <label>Número de Documento *</label>
+                                    <label>
+                                        Número de Documento 
+                                        <span style={{color: '#ef4444', marginLeft: '4px'}}>*</span>
+                                    </label>
                                     <input
                                         type="text"
                                         value={numeroDocumento}
                                         onChange={(e) => setNumeroDocumento(e.target.value)}
                                         className={estilos.input}
+                                        placeholder="Ej: 001-1234567-8"
                                         required
                                         disabled={procesando}
                                     />
@@ -248,12 +261,16 @@ export default function EditarClienteAdmin() {
 
                             <div className={estilos.gridDosColumnas}>
                                 <div className={estilos.grupoInput}>
-                                    <label>Nombre *</label>
+                                    <label>
+                                        Nombre 
+                                        <span style={{color: '#ef4444', marginLeft: '4px'}}>*</span>
+                                    </label>
                                     <input
                                         type="text"
                                         value={nombre}
                                         onChange={(e) => setNombre(e.target.value)}
                                         className={estilos.input}
+                                        placeholder="Nombre del cliente"
                                         required
                                         disabled={procesando}
                                     />
@@ -266,6 +283,7 @@ export default function EditarClienteAdmin() {
                                         value={apellidos}
                                         onChange={(e) => setApellidos(e.target.value)}
                                         className={estilos.input}
+                                        placeholder="Apellidos (opcional)"
                                         disabled={procesando}
                                     />
                                 </div>
@@ -273,34 +291,46 @@ export default function EditarClienteAdmin() {
 
                             <div className={estilos.gridDosColumnas}>
                                 <div className={estilos.grupoInput}>
-                                    <label>Teléfono</label>
+                                    <label>
+                                        <ion-icon name="call-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                        Teléfono
+                                    </label>
                                     <input
                                         type="tel"
                                         value={telefono}
                                         onChange={(e) => setTelefono(e.target.value)}
                                         className={estilos.input}
+                                        placeholder="(809) 000-0000"
                                         disabled={procesando}
                                     />
                                 </div>
 
                                 <div className={estilos.grupoInput}>
-                                    <label>Email</label>
+                                    <label>
+                                        <ion-icon name="mail-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                        Email
+                                    </label>
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
                                         className={estilos.input}
+                                        placeholder="cliente@ejemplo.com"
                                         disabled={procesando}
                                     />
                                 </div>
                             </div>
 
                             <div className={estilos.grupoInput}>
-                                <label>Dirección</label>
+                                <label>
+                                    <ion-icon name="location-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                    Dirección
+                                </label>
                                 <textarea
                                     value={direccion}
                                     onChange={(e) => setDireccion(e.target.value)}
                                     className={estilos.textarea}
+                                    placeholder="Calle, número, sector, ciudad..."
                                     disabled={procesando}
                                 />
                             </div>
@@ -313,7 +343,18 @@ export default function EditarClienteAdmin() {
                                         onChange={(e) => setActivo(e.target.checked)}
                                         disabled={procesando}
                                     />
-                                    <span>Cliente Activo</span>
+                                    <span>
+                                        <ion-icon 
+                                            name={activo ? "checkmark-circle" : "close-circle"} 
+                                            style={{
+                                                fontSize: '20px', 
+                                                verticalAlign: 'middle', 
+                                                marginRight: '6px',
+                                                color: activo ? '#10b981' : '#ef4444'
+                                            }}
+                                        ></ion-icon>
+                                        Cliente {activo ? 'Activo' : 'Inactivo'}
+                                    </span>
                                 </label>
                             </div>
                         </div>
@@ -332,49 +373,88 @@ export default function EditarClienteAdmin() {
                                         onChange={(e) => setTieneCredito(e.target.checked)}
                                         disabled={procesando}
                                     />
-                                    <span>Habilitar crédito para este cliente</span>
+                                    <span>
+                                        <ion-icon 
+                                            name={tieneCredito ? "wallet" : "wallet-outline"} 
+                                            style={{
+                                                fontSize: '20px', 
+                                                verticalAlign: 'middle', 
+                                                marginRight: '6px',
+                                                color: tieneCredito ? '#3b82f6' : '#64748b'
+                                            }}
+                                        ></ion-icon>
+                                        Habilitar crédito para este cliente
+                                    </span>
                                 </label>
                             </div>
 
                             {tieneCredito && (
                                 <div className={estilos.gridDosColumnas}>
                                     <div className={estilos.grupoInput}>
-                                        <label>Límite de Crédito *</label>
+                                        <label>
+                                            <ion-icon name="cash-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                            Límite de Crédito 
+                                            <span style={{color: '#ef4444', marginLeft: '4px'}}>*</span>
+                                        </label>
                                         <input
                                             type="number"
                                             min="0"
+                                            step="0.01"
                                             value={limiteCredito}
                                             onChange={(e) => setLimiteCredito(e.target.value)}
                                             className={estilos.input}
+                                            placeholder="0.00"
                                             required
                                             disabled={procesando}
                                         />
                                     </div>
 
                                     <div className={estilos.grupoInput}>
-                                        <label>Frecuencia de Pago *</label>
+                                        <label>
+                                            <ion-icon name="calendar-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                            Frecuencia de Pago
+                                        </label>
                                         <select
                                             value={frecuenciaPago}
                                             onChange={(e) => setFrecuenciaPago(e.target.value)}
                                             className={estilos.select}
                                             disabled={procesando}
                                         >
-                                            <option value="semanal">Semanal</option>
-                                            <option value="quincenal">Quincenal</option>
-                                            <option value="mensual">Mensual</option>
-                                            <option value="personalizada">Personalizada</option>
+                                            <option value="semanal">📅 Semanal</option>
+                                            <option value="quincenal">📅 Quincenal</option>
+                                            <option value="mensual">📅 Mensual</option>
+                                            <option value="personalizada">⚙️ Personalizada</option>
                                         </select>
                                     </div>
 
                                     <div className={estilos.grupoInput}>
-                                        <label>Días de Plazo / Gracia</label>
+                                        <label>
+                                            <ion-icon name="time-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                            Días de Plazo / Gracia
+                                        </label>
                                         <input
                                             type="number"
                                             min="0"
                                             value={diasGracia}
                                             onChange={(e) => setDiasGracia(e.target.value)}
                                             className={estilos.input}
+                                            placeholder="30"
                                             disabled={procesando}
+                                        />
+                                    </div>
+                                    
+                                    <div className={estilos.grupoInput} style={{gridColumn: '1 / -1'}}>
+                                        <label>
+                                            <ion-icon name="document-text-outline" style={{fontSize: '16px', verticalAlign: 'middle'}}></ion-icon>
+                                            Observación (opcional)
+                                        </label>
+                                        <textarea
+                                            value={observacionCredito}
+                                            onChange={(e) => setObservacionCredito(e.target.value)}
+                                            className={estilos.textarea}
+                                            placeholder="Motivo del ajuste de crédito o notas adicionales..."
+                                            disabled={procesando}
+                                            style={{minHeight: '80px'}}
                                         />
                                     </div>
                                 </div>
@@ -408,7 +488,16 @@ export default function EditarClienteAdmin() {
                                     onChange={manejarImagen}
                                     style={{ display: 'none' }}
                                 />
-                                <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center' }}>Click para cambiar imagen</p>
+                                <p style={{ 
+                                    fontSize: '13px', 
+                                    color: tema === 'light' ? '#64748b' : '#94a3b8', 
+                                    textAlign: 'center',
+                                    margin: '0',
+                                    fontWeight: '500'
+                                }}>
+                                    <ion-icon name="cloud-upload-outline" style={{fontSize: '18px', verticalAlign: 'middle', marginRight: '6px'}}></ion-icon>
+                                    Click para actualizar la imagen
+                                </p>
                             </div>
                         </div>
                     </div>
@@ -422,6 +511,7 @@ export default function EditarClienteAdmin() {
                         className={estilos.btnCancelarForm}
                         disabled={procesando}
                     >
+                        <ion-icon name="close-circle-outline"></ion-icon>
                         <span>Cancelar</span>
                     </button>
                     <button
@@ -429,7 +519,17 @@ export default function EditarClienteAdmin() {
                         className={estilos.btnGuardar}
                         disabled={procesando}
                     >
-                        {procesando ? 'Guardando...' : 'Guardar Cambios'}
+                        {procesando ? (
+                            <>
+                                <ion-icon name="sync-outline" style={{animation: 'spin 1s linear infinite'}}></ion-icon>
+                                <span>Guardando...</span>
+                            </>
+                        ) : (
+                            <>
+                                <ion-icon name="checkmark-circle-outline"></ion-icon>
+                                <span>Guardar Cambios</span>
+                            </>
+                        )}
                     </button>
                 </div>
             </form>

@@ -100,7 +100,7 @@ export async function actualizarClienteYCredito(datos) {
             }
         }
 
-        // 6️⃣ Actualizar crédito (solo admin)
+        // 6️⃣ Actualizar o crear crédito (solo admin)
         if (datos.credito && userTipo === 'admin') {
             // Obtener crédito actual
             const [creditoActual] = await connection.execute(
@@ -171,11 +171,59 @@ export async function actualizarClienteYCredito(datos) {
                             activo: activoNuevo
                         },
                         clasificacion_momento: clasificacionNueva,
-                        score_momento: calcularScoreInicial(clasificacionNueva),
+                        score_momento: await calcularScoreInicial(clasificacionNueva),
                         observaciones: datos.credito.observacion || 'Ajuste manual realizado',
                         usuario_id: userId
                     });
                 }
+            } else if (datos.credito.activo) {
+                // Crear crédito si no existe y está activo
+                const limiteNuevo = datos.credito.limite || 0;
+                const clasificacionNueva = 'C'; // Clasificación inicial por defecto
+                const frecuenciaPago = datos.credito.frecuencia_pago || 'mensual';
+                const diasPlazo = datos.credito.dias_plazo || 30;
+                const scoreInicial = await calcularScoreInicial(clasificacionNueva, 0);
+
+                // No incluir saldo_disponible porque es una columna COMPUTED
+                const [resultCredito] = await connection.execute(
+                    `INSERT INTO credito_clientes (
+                        cliente_id, empresa_id, limite_credito, saldo_utilizado, 
+                        estado_credito, clasificacion, score_crediticio,
+                        frecuencia_pago, dias_plazo, activo, creado_por
+                    ) VALUES (?, ?, ?, 0, 'normal', ?, ?, ?, ?, TRUE, ?)`,
+                    [
+                        datos.cliente_id,
+                        empresaId,
+                        limiteNuevo,
+                        clasificacionNueva,
+                        scoreInicial,
+                        frecuenciaPago,
+                        diasPlazo,
+                        userId
+                    ]
+                );
+
+                const creditoId = resultCredito.insertId;
+
+                // Registrar en historial la creación
+                await registrarHistorialCredito(connection, {
+                    credito_cliente_id: creditoId,
+                    cliente_id: datos.cliente_id,
+                    empresa_id: empresaId,
+                    tipo_evento: 'creacion',
+                    datos_anteriores: null,
+                    datos_nuevos: {
+                        limite_credito: limiteNuevo,
+                        clasificacion: clasificacionNueva,
+                        frecuencia_pago: frecuenciaPago,
+                        dias_plazo: diasPlazo,
+                        activo: true
+                    },
+                    clasificacion_momento: clasificacionNueva,
+                    score_momento: scoreInicial,
+                    observaciones: datos.credito.observacion || 'Perfil de crédito creado desde edición',
+                    usuario_id: userId
+                });
             }
         }
 
